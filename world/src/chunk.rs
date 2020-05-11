@@ -1,6 +1,6 @@
 use nalgebra::{Vector2, Vector3};
 
-use crate::{Block, SEA_LEVEL, MAX_HEIGHT};
+use crate::{Block, BiomeType, SEA_LEVEL, MAX_HEIGHT};
 
 const WIDTH: i64 = 16;
 const HEIGHT: i64 = MAX_HEIGHT;
@@ -9,6 +9,7 @@ const COUNT: i64 = WIDTH * WIDTH * HEIGHT;
 pub struct Chunk {
     coords: Vector2<i64>,
     blocks: [Block; COUNT as usize],
+    biomes: [BiomeType; WIDTH as usize * WIDTH as usize],
     decorated: bool,
 }
 
@@ -18,6 +19,7 @@ impl Chunk {
             coords: Vector2::new(x, z),
             blocks: [Block::Air; COUNT as usize],
             decorated: false,
+            biomes: [BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
         }
     }
 
@@ -35,6 +37,14 @@ impl Chunk {
         }
 
         chunk
+    }
+
+    pub fn biome_at(&self, x: i64, z: i64) -> &BiomeType {
+        &self.biomes[(x + z * WIDTH) as usize]
+    }
+
+    pub fn biome_at_mut(&mut self, x: i64, z: i64) -> &mut BiomeType {
+        &mut self.biomes[(x + z * WIDTH) as usize]
     }
 
     pub fn block_at_chunk(&self, x: i64, y: i64, z: i64) -> &Block {

@@ -25,13 +25,122 @@ impl BiomeShapeType {
 #[derive(Copy, Clone)]
 #[repr(isize)]
 pub enum BiomeType {
+    Ocean = 0,
+    DeepOcean,
+
+    // classifcal biomes
+    Beach,
     Plain,
+    Hills,
+    Forest,
+    ForestHills,
+    Swampland,
+
+    Jungle,
+    JungleHills,
+    Moutains,
+    HighMoutains,
+
+    Taiga,
+    TaigaHills,
+
+    // warms biomes
+    Desert,
+    DesertHills,
+    Savanna,
+    SavannaPlateau,
+
+    // ice biomes
+    IceBeach,
+    IcePlain,
+    IceHills,
+    IceForest,
+    IceForestHills,
+    IceMoutains,
+    IceHighMoutains,
+    IceTaiga,
+    IceTaigaHills,
+
+    River,
 }
 
 impl BiomeType {
+    pub fn from_id(i: isize) -> BiomeType {
+        unsafe { std::mem::transmute(i) }
+    }
+
     pub fn shape(&self) -> BiomeShapeType {
         match self {
             BiomeType::Plain => BiomeShapeType::Low,
+            _ => BiomeShapeType::Low,
+        }
+    }
+
+    pub fn color(&self) -> (u8, u8, u8) {
+        match self {
+            BiomeType::Ocean => (0, 119,190),
+            BiomeType::DeepOcean => (0, 71, 114),
+            BiomeType::Plain => (119, 190, 0),
+
+            BiomeType::Desert => (244, 164, 96),
+            BiomeType::DesertHills => (164, 84, 16),
+            BiomeType::Savanna => (236, 213, 64),
+            BiomeType::SavannaPlateau => (136, 113, 0),
+
+            BiomeType::Jungle => (0, 255, 0),
+            BiomeType::JungleHills => (0, 203, 0),
+            BiomeType::Moutains => (255, 255, 0),
+            BiomeType::HighMoutains => (203, 203, 0),
+
+            BiomeType::Taiga => (0, 255, 255),
+            BiomeType::TaigaHills => (0, 203, 203),
+
+            BiomeType::Beach => (194, 178, 128),
+            BiomeType::Hills => (104, 68, 48),
+            BiomeType::Forest => (138, 138, 138),
+            BiomeType::ForestHills => (78, 78, 78),
+            BiomeType::Swampland => (208, 108, 108),
+            BiomeType::IceBeach => (224, 208, 158),
+            BiomeType::IcePlain => (149, 208, 138),
+            BiomeType::IceHills => (79, 138, 68),
+            BiomeType::IceForest => (208, 208, 208),
+            BiomeType::IceForestHills => (158, 158, 158),
+            BiomeType::IceMoutains => (208, 153, 32),
+            BiomeType::IceHighMoutains => (158, 103, 0),
+            BiomeType::IceTaiga => (38, 143, 192),
+            BiomeType::IceTaigaHills => (0, 73, 132),
+
+            BiomeType::River => (0, 0, 255),
+        }
+    }
+
+    pub fn get_hills_version(&self) -> BiomeType {
+        match self {
+            BiomeType::Plain => BiomeType::Hills,
+
+            BiomeType::Desert => BiomeType::DesertHills,
+            BiomeType::Savanna => BiomeType::SavannaPlateau,
+
+            BiomeType::Jungle => BiomeType::JungleHills,
+            BiomeType::Moutains => BiomeType::HighMoutains,
+
+            BiomeType::Taiga => BiomeType::TaigaHills,
+
+            BiomeType::Forest => BiomeType::ForestHills,
+            BiomeType::IcePlain => BiomeType::IceHills,
+            BiomeType::IceForest => BiomeType::IceForestHills,
+            BiomeType::IceMoutains => BiomeType::IceHighMoutains,
+            BiomeType::IceTaiga => BiomeType::IceTaigaHills,
+
+            v => *v,
+        }
+    }
+
+    pub fn is_ocean(&self) -> bool {
+        match self {
+            BiomeType::Ocean => true,
+            BiomeType::DeepOcean => true,
+            _ => false,
         }
     }
 
@@ -111,25 +220,30 @@ impl BiomeType {
     }
 }
 
+#[repr(isize)]
 pub enum BiomeGroup {
-    Classic,
+    Warm = 0,
+    Temperate,
+    Cold,
+    Iced,
 }
 
 impl BiomeGroup {
     pub fn count() -> isize {
-        1
+        4
     }
 
     pub fn get(i: isize) -> BiomeGroup {
-        match i {
-            1 => BiomeGroup::Classic,
-            _ => BiomeGroup::Classic,
-        }
+        unsafe { std::mem::transmute(i) }
     }
 
     pub fn biomes(&self) -> Vec<BiomeType> {
+        //FIXME roofed & birch forests ?
         match self {
-            BiomeGroup::Classic => vec![ BiomeType::Plain ],
+            BiomeGroup::Warm => vec![BiomeType::Desert, BiomeType::Desert, BiomeType::Savanna, BiomeType::Plain],
+            BiomeGroup::Temperate => vec![BiomeType::Jungle, BiomeType::Forest, BiomeType::Forest, BiomeType::Moutains, BiomeType::Plain, BiomeType::Forest, BiomeType::Swampland],
+            BiomeGroup::Cold => vec![BiomeType::Forest, BiomeType::Moutains, BiomeType::Taiga, BiomeType::Plain],
+            BiomeGroup::Iced => vec![BiomeType::IcePlain, BiomeType::IceForest, BiomeType::IceTaiga, BiomeType::IceMoutains],
         }
     }
 }

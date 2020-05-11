@@ -7,9 +7,9 @@ pub struct ChunkGenerator
 
 impl ChunkGenerator
 {
-    pub fn new() -> ChunkGenerator {
+    pub fn new(seed: isize) -> ChunkGenerator {
         ChunkGenerator {
-            provider: ColumnProvider::new(),
+            provider: ColumnProvider::new(seed),
         }
     }
 

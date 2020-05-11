@@ -1,3 +1,5 @@
+mod biome_generator;
+
 use nalgebra::Vector3;
 
 use world::{World, ChunkListener};
@@ -36,13 +38,17 @@ impl ChunkListener for MyChunkListener {
     }
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    biome_generator::generate_biome()?;
+
     let mut listener = MyChunkListener::new();
 
-    let mut world = World::new();
+    let mut world = World::new(12381293);
     let mut player = world.create_player(&mut listener);
 
     // FIXME main loop
     player.update(&mut world, &mut listener, Vector3::z(), Vector3::x(), Vec::new(), 0.1);
     listener.update_renderer();
+
+    Ok(())
 }

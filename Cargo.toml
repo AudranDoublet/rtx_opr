@@ -10,3 +10,4 @@ edition = "2018"
 world = { path = "world" }
 perlin = { path = "perlin" }
 nalgebra = ""
+image = ""

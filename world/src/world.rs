@@ -9,9 +9,9 @@ pub struct World {
 }
 
 impl World {
-    pub fn new() -> World {
+    pub fn new(seed: isize) -> World {
         World {
-            generator: ChunkGenerator::new(),
+            generator: ChunkGenerator::new(seed),
             chunks: HashMap::new(),
         }
     }

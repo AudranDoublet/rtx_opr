@@ -1,12 +1,15 @@
 use nalgebra::Vector3;
 use perlin::PerlinOctaves;
 
-use crate::{Chunk, Block, SEA_LEVEL, BiomeType};
+use crate::{Chunk, Block, SEA_LEVEL};
+use crate::generator::layers::{Layer, LayerResult};
 
 pub struct ColumnProvider
 {
     perlins: [PerlinOctaves; 4],
     column_weights: [f32; 825],
+    biome_provider: Box<Layer>,
+    zoomed_biome_provider: Box<Layer>,
 }
 
 const BASE_SIZE: f32 = 8.5;
@@ -43,7 +46,9 @@ fn nearby_column_mult(x: isize, y: isize) -> f32 {
 
 impl ColumnProvider
 {
-    pub fn new() -> ColumnProvider {
+    pub fn new(seed: isize) -> ColumnProvider {
+        let (b, z) = Layer::create_generator(seed);
+
         ColumnProvider {
             perlins: [
                 PerlinOctaves::new(8),
@@ -52,15 +57,23 @@ impl ColumnProvider
                 PerlinOctaves::new(16),
             ],
             column_weights: [0.0; 825],
+            biome_provider: b,
+            zoomed_biome_provider: z,
         }
     }
 
     pub fn generate_chunk(&mut self, chunk: &mut Chunk) {
-        self.set_blocks(chunk);
+        let cx = chunk.coords().x as isize;
+        let cy = chunk.coords().y as isize;
+
+        self.set_blocks(cx, cy, chunk);
+
+        let biomes = self.biome_provider.generate(cx * 16, cy * 16, 16, 16);
 
         for x in 0..16 {
             for z in 0..16 {
-                BiomeType::Plain.generate_column(chunk, x, z);
+                biomes.biome(x, z).generate_column(chunk, x as i64, z as i64);
+                *chunk.biome_at_mut(x as i64, z as i64) = biomes.biome(x, z);
             }
         }
 
@@ -69,8 +82,10 @@ impl ColumnProvider
     /**
      * Create chunk general shape, with only stone and water
      */
-    fn set_blocks(&mut self, chunk: &mut Chunk) {
-        self.generate_weights(chunk.coords().x as isize * 4, chunk.coords().y as isize * 4);
+    fn set_blocks(&mut self, cx: isize, cy: isize, chunk: &mut Chunk) {
+        let biomes = self.zoomed_biome_provider.generate(cx * 4 - 2, cy * 4 - 2, 10, 10);
+
+        self.generate_weights(&biomes, cx * 4, cy * 4);
 
         for x in 0..4 {
             for z in 0..4 {
@@ -131,11 +146,7 @@ impl ColumnProvider
         ]
     }
 
-    fn biome_at(&self, _: isize, _: isize) -> BiomeType {
-        BiomeType::Plain
-    }
-
-    fn generate_weights(&mut self, x: isize, z: isize) {
+    fn generate_weights(&mut self, biomes: &LayerResult, x: isize, z: isize) {
         let position = Vector3::new(x as f32, 0., z as f32);
         let noise_size = Vector3::new(5, 33, 5);
         let amplitude = noise_amplitude();
@@ -156,11 +167,11 @@ impl ColumnProvider
                 let mut force = 0.0;
 
                 // compute depth and scale considering neighbouring biomes
-                let self_biome = self.biome_at(x, z);
+                let self_biome = biomes.biome(x + 2, z + 2);
 
                 for dz in -2..=2 {
                     for dx in -2..=2 {
-                        let biome = self.biome_at(x + dx, z + dz);
+                        let biome = biomes.biome(x + dx + 2, z + dz + 2);
 
                         let mut c_force = nearby_column_mult(dx, dz) / (2. + biome.elevation());
 
