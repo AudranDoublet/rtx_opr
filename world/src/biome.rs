@@ -5,19 +5,52 @@ use rand::prelude::*;
 use crate::{Chunk, Block, SEA_LEVEL};
 
 pub enum BiomeShapeType {
+    DeepVeryLow,
+    DeepLow,
+    DeepMedium,
+    DeepHigh,
+    Flat,
+    VeryLow,
     Low,
+    Medium,
+    HillsLow,
+    HillsMedium,
+    HillsHigh,
+    Plateau,
 }
 
 impl BiomeShapeType {
     pub fn elevation(&self) -> f32 {
         match self {
-            BiomeShapeType::Low => 0.0,
+            BiomeShapeType::DeepVeryLow => -0.2,
+            BiomeShapeType::DeepLow     => -0.5,
+            BiomeShapeType::DeepMedium  => -1.0,
+            BiomeShapeType::DeepHigh    => -1.8,
+            BiomeShapeType::Flat        => 0.0,
+            BiomeShapeType::VeryLow     => 0.1,
+            BiomeShapeType::Low         => 0.125,
+            BiomeShapeType::Medium      => 0.2,
+            BiomeShapeType::HillsLow    => 0.45,
+            BiomeShapeType::HillsMedium => 1.0,
+            BiomeShapeType::HillsHigh   => 1.2,
+            BiomeShapeType::Plateau     => 1.5,
         }
     }
 
     pub fn depth(&self) -> f32 {
         match self {
-            BiomeShapeType::Low => 0.025,
+            BiomeShapeType::DeepVeryLow => 0.1,
+            BiomeShapeType::DeepLow     => 0.0,
+            BiomeShapeType::DeepMedium  => 0.1,
+            BiomeShapeType::DeepHigh    => 0.1,
+            BiomeShapeType::Flat        => 0.025,
+            BiomeShapeType::VeryLow     => 0.2,
+            BiomeShapeType::Low         => 0.05,
+            BiomeShapeType::Medium      => 0.2,
+            BiomeShapeType::HillsLow    => 0.3,
+            BiomeShapeType::HillsMedium => 0.5,
+            BiomeShapeType::HillsHigh   => 0.55,
+            BiomeShapeType::Plateau     => 0.025,
         }
     }
 }
@@ -71,8 +104,39 @@ impl BiomeType {
 
     pub fn shape(&self) -> BiomeShapeType {
         match self {
-            BiomeType::Plain => BiomeShapeType::Low,
-            _ => BiomeShapeType::Low,
+            BiomeType::Ocean            => BiomeShapeType::DeepMedium,
+            BiomeType::DeepOcean        => BiomeShapeType::DeepHigh,
+            BiomeType::Plain            => BiomeShapeType::VeryLow,
+            BiomeType::Hills            => BiomeShapeType::HillsLow,
+
+            BiomeType::Desert           => BiomeShapeType::Low,
+            BiomeType::DesertHills      => BiomeShapeType::HillsLow,
+            BiomeType::Savanna          => BiomeShapeType::Low,
+            BiomeType::SavannaPlateau   => BiomeShapeType::Plateau,
+
+            BiomeType::Jungle           => BiomeShapeType::VeryLow, 
+            BiomeType::JungleHills      => BiomeShapeType::HillsLow,
+            BiomeType::Moutains         => BiomeShapeType::HillsMedium,
+            BiomeType::HighMoutains     => BiomeShapeType::HillsHigh,
+
+            BiomeType::Taiga            => BiomeShapeType::Medium,
+            BiomeType::TaigaHills       => BiomeShapeType::HillsLow,
+
+            BiomeType::Beach            => BiomeShapeType::Flat,
+            BiomeType::Forest           => BiomeShapeType::VeryLow,
+            BiomeType::ForestHills      => BiomeShapeType::HillsLow,
+            BiomeType::Swampland        => BiomeShapeType::DeepVeryLow,
+            BiomeType::IceBeach         => BiomeShapeType::Flat,
+            BiomeType::IcePlain         => BiomeShapeType::Medium,
+            BiomeType::IceHills         => BiomeShapeType::HillsLow,
+            BiomeType::IceForest        => BiomeShapeType::VeryLow,
+            BiomeType::IceForestHills   => BiomeShapeType::HillsLow,
+            BiomeType::IceMoutains      => BiomeShapeType::HillsMedium,
+            BiomeType::IceHighMoutains  => BiomeShapeType::HillsHigh,
+            BiomeType::IceTaiga         => BiomeShapeType::Medium,
+            BiomeType::IceTaigaHills    => BiomeShapeType::HillsLow,
+
+            BiomeType::River            => BiomeShapeType::DeepLow,
         }
     }
 
