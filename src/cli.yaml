@@ -1,0 +1,21 @@
+name: GlOPR
+version: "1.0"
+author: "Audran Doublet <audran.doublet@epita.fr>, Sami Issaadi <sami.issaadi@epita.fr>"
+about: Raytraced Minecraft-like game
+subcommands:
+    -   render_chunks:
+            about: run a DFSPH simulation of the given scene
+            args:
+                -   seed:
+                        long: seed
+                        value_name: seed
+                        help: world seed
+                        takes_value: true
+    -   play:
+            about: run OpenGL program
+            args:
+                -   seed:
+                        long: seed
+                        value_name: seed
+                        help: world seed
+                        takes_value: true

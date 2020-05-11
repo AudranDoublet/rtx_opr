@@ -9,5 +9,10 @@ edition = "2018"
 [dependencies]
 world = { path = "world" }
 perlin = { path = "perlin" }
-nalgebra = ""
-image = ""
+
+nalgebra = "0.21.0"
+image = "0.23.2"
+
+# CLI
+clap = {version = "~2.33.0", features = ["yaml"]}
+indicatif = "0.14.0"

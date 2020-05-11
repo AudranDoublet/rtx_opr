@@ -1,3 +1,8 @@
+#[macro_use]
+extern crate clap;
+
+use clap::App;
+
 mod biome_generator;
 
 use nalgebra::Vector3;
@@ -39,16 +44,29 @@ impl ChunkListener for MyChunkListener {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    biome_generator::generate_biome()?;
+    let conf = load_yaml!("cli.yaml");
 
-    let mut listener = MyChunkListener::new();
+    let matches = App::from_yaml(conf).get_matches();
 
-    let mut world = World::new(12381293);
-    let mut player = world.create_player(&mut listener);
+    if let Some(args) = matches.subcommand_matches("play") {
+        let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
 
-    // FIXME main loop
-    player.update(&mut world, &mut listener, Vector3::z(), Vector3::x(), Vec::new(), 0.1);
-    listener.update_renderer();
+        if seed == 0 {
+            //FIXME random seed ?
+        }
+
+        let mut listener = MyChunkListener::new();
+
+        let mut world = World::new(12381293);
+        let mut player = world.create_player(&mut listener);
+
+        // FIXME main loop
+        player.update(&mut world, &mut listener, Vector3::z(), Vector3::x(), Vec::new(), 0.1);
+        listener.update_renderer();
+    } else if let Some(args) = matches.subcommand_matches("render_chunks") {
+        let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
+        biome_generator::generate_biome(seed)?;
+    }
 
     Ok(())
 }
