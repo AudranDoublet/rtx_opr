@@ -1,0 +1,13 @@
+/home/audran/6_Image/glopr/world/target/debug/deps/quote-e9677c79f648db04.rmeta: /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/lib.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/ext.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/format.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/ident_fragment.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/to_tokens.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/runtime.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/spanned.rs
+
+/home/audran/6_Image/glopr/world/target/debug/deps/libquote-e9677c79f648db04.rlib: /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/lib.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/ext.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/format.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/ident_fragment.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/to_tokens.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/runtime.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/spanned.rs
+
+/home/audran/6_Image/glopr/world/target/debug/deps/quote-e9677c79f648db04.d: /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/lib.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/ext.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/format.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/ident_fragment.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/to_tokens.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/runtime.rs /home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/spanned.rs
+
+/home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/lib.rs:
+/home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/ext.rs:
+/home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/format.rs:
+/home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/ident_fragment.rs:
+/home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/to_tokens.rs:
+/home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/runtime.rs:
+/home/audran/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.4/src/spanned.rs:
