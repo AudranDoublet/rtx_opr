@@ -25,7 +25,7 @@ fn lerp(t: f32, a: f32, b: f32) -> f32 {
 
 #[inline]
 fn floor(v: f32) -> i32 {
-    (v.floor() as i32) % 256
+    (v.floor() as i32) & 255
 }
 
 #[inline]
