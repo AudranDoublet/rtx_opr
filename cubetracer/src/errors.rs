@@ -93,9 +93,10 @@ fn fmt(err: &GLError, f: &mut fmt::Formatter) -> fmt::Result {
                 The offending command is ignored and has no other side effect than to set the error flag."),
         GLError::UnknownError => f.write_str("This is an unknown error, may the Force be with you..."),
 
-        // FIXME: we should integrate the uniform var name into the error message
-        GLError::UniformNotFound { .. } => f.write_str("The following uniform could not be found in the shader: {} #FIXME"),
-        // FIXME-END
+        GLError::UniformNotFound { name } => f.write_fmt(format_args!(
+                "The following uniform could not be found in the shader: `{}`", 
+                name
+        )),
 
         GLError::ProgramError {program} => {
             let mut err_buf = make_error_buffer(GL_MAX_ERROR_LEN);
