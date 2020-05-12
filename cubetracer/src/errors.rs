@@ -92,12 +92,12 @@ fn fmt(err: &GLError, f: &mut fmt::Formatter) -> fmt::Result {
                     return value from `glCheckFramebufferStatus` is not GL_FRAMEBUFFER_COMPLETE). 
                 The offending command is ignored and has no other side effect than to set the error flag."),
         GLError::UnknownError => f.write_str("This is an unknown error, may the Force be with you..."),
-
         GLError::UniformNotFound { name } => f.write_fmt(format_args!(
-                "The following uniform could not be found in the shader: `{}`", 
+                "The following uniform could not be found in the shader: `{}`.
+                This either means that the variable really does not exist, or, that it has optimized and removed
+                by the driver because it did not contribute directly/indirectly to the output of the shader.",
                 name
         )),
-
         GLError::ProgramError {program} => {
             let mut err_buf = make_error_buffer(GL_MAX_ERROR_LEN);
             let mut err_length = 0;
