@@ -4,7 +4,6 @@ use gl::types::*;
 use std::{fmt, str};
 
 const GL_MAX_ERROR_LEN: usize = 512;
-#[derive(Debug)]
 pub enum GLError {
     InvalidEnum,
     InvalidValue,
@@ -73,51 +72,61 @@ macro_rules! glchk_expr {
     };
 }
 
+fn fmt(err: &GLError, f: &mut fmt::Formatter) -> fmt::Result {
+    match err {
+        GLError::InvalidEnum => f.write_str("An unacceptable value is specified for an enumerated argument. 
+                The offending command is ignored and has no other side effect than to set the error flag."),
+        GLError::InvalidValue => f.write_str("A numeric argument is out of range. 
+                The offending command is ignored and has no other side effect than to set the error flag."),
+        GLError::InvalidOperation => f.write_str("The specified operation is not allowed in the current state. 
+                The offending command is ignored and has no other side effect than to set the error flag."),
+        GLError::OutOfMemory => f.write_str("There is not enough memory left to execute the command. 
+                The state of the GL is undefined, except for the state of the error flags, after this error 
+                is recorded."),
+        GLError::StackUnderlow => f.write_str("Stack popping operation cannot be done because the stack is already 
+                at its lowest point."),
+        GLError::StackOverflow => f.write_str("Stack pushing operation cannot be done because it would overflow 
+            the limit of that stack's size."),
+        GLError::InvalidFrameBufferOperation => f.write_str("The command is trying to render to or read from the
+                framebuffer while the currently bound framebuffer is not framebuffer complete (i.e. the 
+                    return value from `glCheckFramebufferStatus` is not GL_FRAMEBUFFER_COMPLETE). 
+                The offending command is ignored and has no other side effect than to set the error flag."),
+        GLError::UnknownError => f.write_str("This is an unknown error, may the Force be with you..."),
+
+        // FIXME: we should integrate the uniform var name into the error message
+        GLError::UniformNotFound { .. } => f.write_str("The following uniform could not be found in the shader: {} #FIXME"),
+        // FIXME-END
+
+        GLError::ProgramError {program} => {
+            let mut err_buf = make_error_buffer(GL_MAX_ERROR_LEN);
+            let mut err_length = 0;
+
+            unsafe {gl::GetProgramInfoLog(*program, GL_MAX_ERROR_LEN as i32, &mut err_length, err_buf.as_mut_ptr() as *mut GLchar)};
+            err_buf.resize(err_length as usize, 0);
+
+            f.write_str(str::from_utf8(&err_buf).unwrap())
+        },
+        GLError::ShaderError {shader} => {
+            let mut err_buf = make_error_buffer(GL_MAX_ERROR_LEN);
+            let mut err_length = 0;
+
+            unsafe {gl::GetShaderInfoLog(*shader, GL_MAX_ERROR_LEN as i32, &mut err_length, err_buf.as_mut_ptr() as *mut GLchar)};
+            err_buf.resize(err_length as usize, 0);
+
+            f.write_str(str::from_utf8(&err_buf).unwrap())
+        },
+    }
+}
+
+impl fmt::Debug for GLError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt(self, f)
+    }
+}
+
 impl fmt::Display for GLError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            GLError::InvalidEnum => f.write_str("An unacceptable value is specified for an enumerated argument. 
-                    The offending command is ignored and has no other side effect than to set the error flag."),
-            GLError::InvalidValue => f.write_str("A numeric argument is out of range. 
-                    The offending command is ignored and has no other side effect than to set the error flag."),
-            GLError::InvalidOperation => f.write_str("The specified operation is not allowed in the current state. 
-                    The offending command is ignored and has no other side effect than to set the error flag."),
-            GLError::OutOfMemory => f.write_str("There is not enough memory left to execute the command. 
-                    The state of the GL is undefined, except for the state of the error flags, after this error 
-                    is recorded."),
-            GLError::StackUnderlow => f.write_str("Stack popping operation cannot be done because the stack is already 
-                    at its lowest point."),
-            GLError::StackOverflow => f.write_str("Stack pushing operation cannot be done because it would overflow 
-                the limit of that stack's size."),
-            GLError::InvalidFrameBufferOperation => f.write_str("The command is trying to render to or read from the
-                    framebuffer while the currently bound framebuffer is not framebuffer complete (i.e. the 
-                        return value from `glCheckFramebufferStatus` is not GL_FRAMEBUFFER_COMPLETE). 
-                    The offending command is ignored and has no other side effect than to set the error flag."),
-            GLError::UnknownError => f.write_str("This is an unknown error, may the Force be with you..."),
-
-            // FIXME: we should integrate the uniform var name into the error message
-            GLError::UniformNotFound { .. } => f.write_str("The following uniform could not be found in the shader: {} #FIXME"),
-            // FIXME-END
-
-            GLError::ProgramError {program} => {
-                let mut err_buf = make_error_buffer(GL_MAX_ERROR_LEN);
-                let mut err_length = 0;
-
-                unsafe {gl::GetProgramInfoLog(program, GL_MAX_ERROR_LEN as i32, &mut err_length, err_buf.as_mut_ptr() as *mut GLchar)};
-                err_buf.resize(err_length as usize, 0);
-
-                f.write_str(str::from_utf8(&err_buf).unwrap())
-            },
-            GLError::ShaderError {shader} => {
-                let mut err_buf = make_error_buffer(GL_MAX_ERROR_LEN);
-                let mut err_length = 0;
-
-                unsafe {gl::GetShaderInfoLog(shader, GL_MAX_ERROR_LEN as i32, &mut err_length, err_buf.as_mut_ptr() as *mut GLchar)};
-                err_buf.resize(err_length as usize, 0);
-
-                f.write_str(str::from_utf8(&err_buf).unwrap())
-            },
-        }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt(self, f)
     }
 }
 
@@ -127,12 +136,6 @@ fn make_error_buffer(capacity: usize) -> Vec<u8> {
 
     info_log
 }
-
-/*
-pub fn get_uniform_location(program: u32, var: &str) -> Result<u32, GLError> {
-    Ok(0)
-}
-*/
 
 pub fn gl_check_error_shader(shader: u32, err_type: gl::types::GLenum) -> Result<u32, GLError> {
     let mut success = gl::FALSE as GLint;
