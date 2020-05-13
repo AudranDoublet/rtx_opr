@@ -8,6 +8,7 @@ mod biome_generator;
 use nalgebra::Vector3;
 
 use world::{World, ChunkListener};
+use perlin::PerlinOctaves;
 
 pub struct MyChunkListener {
     pub loaded_chunks: Vec<(i64, i64)>,
@@ -22,7 +23,11 @@ impl MyChunkListener {
         }
     }
 
-    pub fn update_renderer(&mut self) {
+    pub fn update_renderer(&mut self, world: &World) {
+        for (x, z) in &self.loaded_chunks {
+            world.chunk(*x, *z).unwrap().dump_chunk_raw(&std::path::Path::new("./"));
+        }
+
         //FIXME
         self.clear();
     }
@@ -57,12 +62,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let mut listener = MyChunkListener::new();
 
-        let mut world = World::new(12381293);
+        let mut world = World::new(seed);
         let mut player = world.create_player(&mut listener);
 
         // FIXME main loop
         player.update(&mut world, &mut listener, Vector3::z(), Vector3::x(), Vec::new(), 0.1);
-        listener.update_renderer();
+        listener.update_renderer(&world);
     } else if let Some(args) = matches.subcommand_matches("render_chunks") {
         let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
         biome_generator::generate_biome(seed)?;

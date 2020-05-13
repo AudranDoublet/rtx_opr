@@ -2,6 +2,7 @@ use crate::AABB;
 use nalgebra::Vector3;
 
 #[derive(Copy, Clone, PartialEq)]
+#[repr(isize)]
 pub enum Block {
     Air,
     Water,

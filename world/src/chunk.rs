@@ -1,3 +1,7 @@
+use std::path::Path;
+use std::fs::File;
+use std::io::prelude::*;
+
 use nalgebra::{Vector2, Vector3};
 
 use crate::{Block, BiomeType, SEA_LEVEL, MAX_HEIGHT};
@@ -105,6 +109,19 @@ impl Chunk {
         }
 
         // FIXME
+    }
+
+    pub fn dump_chunk_raw(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+        let mut file = File::create(path.join(&Path::new( &format!("{}_{}.ck", self.coords.x, self.coords.y) )))?;
+        let mut blocks: [u8; COUNT as usize] = [0; COUNT as usize];
+
+        for i in 0..COUNT as usize {
+            blocks[i] = (self.blocks[i] as isize) as u8;
+        }
+
+        file.write_all(&blocks)?;
+
+        Ok(())
     }
 }
 

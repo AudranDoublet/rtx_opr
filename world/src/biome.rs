@@ -55,7 +55,7 @@ impl BiomeShapeType {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(isize)]
 pub enum BiomeType {
     Ocean = 0,
@@ -246,7 +246,7 @@ impl BiomeType {
                 continue;
             }
 
-            if *chunk.block_at_chunk(x, y, z) == Block::Stone{
+            if *chunk.block_at_chunk(x, y, z) != Block::Stone {
                 continue;
             }
 
