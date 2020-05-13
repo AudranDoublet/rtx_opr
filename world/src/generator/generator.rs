@@ -13,11 +13,11 @@ impl ChunkGenerator
         }
     }
 
-    pub fn generate(&mut self, chunk: &mut Chunk) {
+    pub fn generate(&mut self, chunk: &mut Box<Chunk>) {
         self.provider.generate_chunk(chunk);
     }
 
-    pub fn generate_xz(&mut self, x: i64, z: i64) -> Chunk {
+    pub fn generate_xz(&mut self, x: i64, z: i64) -> Box<Chunk> {
         let mut result = Chunk::new_empty(x, z);
 
         self.generate(&mut result);

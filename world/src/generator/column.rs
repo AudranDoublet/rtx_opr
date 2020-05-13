@@ -9,7 +9,7 @@ pub struct ColumnProvider
     perlins: [PerlinOctaves; 4],
     column_weights: [f32; 825],
     biome_provider: Box<Layer>,
-    zoomed_biome_provider: Box<Layer>,
+    unzoomed_biome_provider: Box<Layer>,
 }
 
 const BASE_SIZE: f32 = 8.5;
@@ -57,8 +57,8 @@ impl ColumnProvider
                 PerlinOctaves::new(16),
             ],
             column_weights: [0.0; 825],
-            biome_provider: b,
-            zoomed_biome_provider: z,
+            biome_provider: z,
+            unzoomed_biome_provider: b,
         }
     }
 
@@ -83,7 +83,7 @@ impl ColumnProvider
      * Create chunk general shape, with only stone and water
      */
     fn set_blocks(&mut self, cx: isize, cy: isize, chunk: &mut Chunk) {
-        let biomes = self.zoomed_biome_provider.generate(cx * 4 - 2, cy * 4 - 2, 10, 10);
+        let biomes = self.unzoomed_biome_provider.generate(cx * 4 - 2, cy * 4 - 2, 10, 10);
 
         self.generate_weights(&biomes, cx * 4, cy * 4);
 
@@ -176,7 +176,7 @@ impl ColumnProvider
                 let mut force = 0.0;
 
                 // compute depth and scale considering neighbouring biomes
-                let self_biome = biomes.biome(x + 2, z + 2);
+                let self_biome = biomes.biome(z + 2, x + 2);
 
                 for dz in -2..=2 {
                     for dx in -2..=2 {

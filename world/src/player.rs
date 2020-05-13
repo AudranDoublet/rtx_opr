@@ -75,7 +75,7 @@ impl<'a> Player<'a>
             .augment3(-PLAYER_SIZE/2., 0.0, -PLAYER_SIZE/2.)
     }
 
-    fn move_player(&mut self, world: &World, movement: Vector3<f32>, dt: f32) {
+    fn move_player(&mut self, world: &mut World, movement: Vector3<f32>, dt: f32) {
         self.velocity = self.velocity + Vector3::new(0.0, -self.gravity(), 0.0) * dt;
 
         let mut diff = (movement + self.velocity) * dt;
@@ -148,7 +148,7 @@ impl<'a> Player<'a>
         base * sprint
     }
 
-    pub fn update(&mut self, world: &World, camera_forward: Vector3<f32>, camera_right: Vector3<f32>, inputs: Vec<PlayerInput>, dt: f32) {
+    pub fn update(&mut self, world: &mut World, camera_forward: Vector3<f32>, camera_right: Vector3<f32>, inputs: Vec<PlayerInput>, dt: f32) {
         let mut directional_input: Vector2<f32> = Vector2::zeros();
         let mut jumping = false;
         let mut sprinting = false;
@@ -179,7 +179,7 @@ impl<'a> Player<'a>
         self.move_player(world, desired_move, dt);
     }
 
-    fn update_seen_chunks(&mut self, world: &World, position: Vector3<f32>) -> HashSet<Vector2<i64>> {
+    fn update_seen_chunks(&mut self, world: &World, position: Vector3<f32>) -> Vec<Vector2<i64>> {
         let (cx, cz) = worldf_to_chunk(position);
 
         let mut old_chunks = self.known_chunks.clone();
@@ -203,32 +203,34 @@ impl<'a> Player<'a>
             self.listener.chunk_unload(chunk.x, chunk.y);
         }
 
-        let diff = new_chunks.difference(&old_chunks).map(|v| *v).collect();
-        self.known_chunks = new_chunks;
+        let chunks = new_chunks.difference(&self.known_chunks).map(|v| *v).collect();
 
-        diff
+        self.known_chunks = new_chunks;
+        chunks
     }
 
-    pub fn set_position(&mut self, world: &World, position: Vector3<f32>) {
+    pub fn set_position(&mut self, world: &mut World, position: Vector3<f32>) {
         self.position = position;
 
         let dx = self.last_chunk_update.x - position.x;
         let dz = self.last_chunk_update.z - position.z;
 
         // update chunks only when the player moved half a chunk
-        let new_chunks = if dx*dx + dz*dz < 64. {
-            HashSet::new()
+        let new = if dx*dx + dz*dz < 64. {
+            vec![]
         } else {
             self.update_seen_chunks(world, position)
         };
 
-        self.known_chunks.iter()
-            .filter(|key| {
-                if let Some(mut v) = world.chunk_mut(key.x, key.y) {
-                    v.check_modified() || new_chunks.contains(*key)
+        self.known_chunks
+            .iter()
+            .filter(|v| {
+                if let Some(chunk) = world.chunk_mut(v.x, v.y) {
+                    chunk.decorated() && (chunk.check_modified() || new.contains(&chunk.coords()))
                 } else {
                     false
                 }
-            }).for_each(|k| self.listener.chunk_load(k.x, k.y));
+            })
+            .for_each(|v| self.listener.chunk_load(v.x, v.y));
     }
 }

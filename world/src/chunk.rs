@@ -4,7 +4,8 @@ use std::io::prelude::*;
 
 use nalgebra::{Vector2, Vector3};
 
-use crate::{Block, BiomeType, SEA_LEVEL, MAX_HEIGHT};
+use crate::{main_world, Block, BiomeType, SEA_LEVEL, MAX_HEIGHT};
+use crate::generator::decorators::decorator_random;
 
 const WIDTH: i64 = 16;
 const HEIGHT: i64 = MAX_HEIGHT;
@@ -20,17 +21,17 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub fn new_empty(x: i64, z: i64) -> Chunk {
-        Chunk {
+    pub fn new_empty(x: i64, z: i64) -> Box<Chunk> {
+        Box::new(Chunk {
             coords: Vector2::new(x, z),
             blocks: [Block::Air; COUNT as usize],
             decorated: false,
             biomes: [BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
             modified: true,
-        }
+        })
     }
 
-    pub fn new_example_chunk(x: i64, z: i64) -> Chunk {
+    pub fn new_example_chunk(x: i64, z: i64) -> Box<Chunk> {
         let mut chunk = Chunk::new_empty(x, z);
 
         chunk.decorated = true;
@@ -63,8 +64,22 @@ impl Chunk {
         }
     }
 
+    pub fn highest_y(&self, x: i64, z: i64) -> i64 {
+        let pos = self.position();
+        let x = x - pos.x;
+        let z = z - pos.y;
+
+        for y in (0..256).rev() {
+            if self.block_at_chunk(x, y, z) != Block::Air {
+                return y;
+            }
+        }
+
+        0
+    }
+
     pub fn block_at_chunk(&self, x: i64, y: i64, z: i64) -> Block {
-        if y < 0 || y > MAX_HEIGHT {
+        if y < 0 || y >= MAX_HEIGHT {
             Block::Air
         } else {
             self.blocks[
@@ -130,12 +145,25 @@ impl Chunk {
         result
     }
 
+    pub fn decorated(&self) -> bool {
+        self.decorated
+    }
+
     pub fn decorate(&mut self) {
         if self.decorated {
             return;
         }
 
-        // FIXME
+        self.decorated = true;
+
+        let biome = self.biome_at(0, 0);
+        let world = main_world();
+        let mut random = decorator_random(world, self.coords());
+
+        for decorator in biome.decorators().unwrap_or(&vec![]) {
+            let p = self.position();
+            decorator.decorate(world, &mut random, Vector3::new(p.x, 0, p.y));
+        }
     }
 
     pub fn dump_chunk_raw(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -153,7 +181,7 @@ impl Chunk {
 }
 
 pub fn world_to_chunk(position: Vector3<i64>) -> (i64, i64) {
-    (position.x / WIDTH, position.z / WIDTH)
+    (position.x >> 4, position.z >> 4)
 }
 
 pub fn worldf_to_chunk(position: Vector3<f32>) -> (i64, i64) {

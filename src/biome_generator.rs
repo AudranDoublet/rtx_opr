@@ -2,9 +2,9 @@ use world::BiomeType;
 use world::generator::layers::Layer;
 
 pub fn generate_biome(seed: isize) -> Result<(), Box<dyn std::error::Error>> {
-    let (mut generator, _) = Layer::create_generator(seed);
+    let (_, mut generator) = Layer::create_generator(seed);
 
-    let biome_count = 100;
+    let biome_count = 1;
     let width = biome_count * 16;
 
     let mut result = vec![0; width * width * 3];

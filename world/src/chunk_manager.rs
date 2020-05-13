@@ -35,7 +35,7 @@ impl ChunkManager {
 
         let chunk = self.generator.generate_xz(x, z);
 
-        main_world().add_chunk(Box::new(chunk));
+        main_world().add_chunk(chunk);
     }
 
     pub fn load_or_generate_chunk_and_neighborhood(&mut self, x: i64, z: i64) {

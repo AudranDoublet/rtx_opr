@@ -145,7 +145,7 @@ impl Layer {
 
         let mut zoomed = layer(lay.clone(), 9128, Box::new(LayerZoomVoronoi::new()));
 
-        for _ in 0..6
+        for _ in 0..5
         {
             zoomed = layer(zoomed, 3981 + 37, Box::new(LayerSmooth::new()));
             zoomed = layer(zoomed, 3981 + 37 * 2, Box::new(LayerSmooth::new()));

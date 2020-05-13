@@ -1,8 +1,30 @@
 extern crate rand;
 
+use std::collections::HashMap;
 use rand::prelude::*;
 
 use crate::{Chunk, Block, SEA_LEVEL};
+use crate::generator::decorators::*;
+
+lazy_static! {
+    static ref DECORATORS: HashMap<BiomeType, Vec<Box<dyn WorldDecorator + Sync>>> = {
+        let mut map = HashMap::new();
+
+        map.insert(BiomeType::Desert, vec![DecoratorTowerPlant::cactus(30)]);
+        map.insert(BiomeType::DesertHills, vec![DecoratorTowerPlant::cactus(30)]);
+        map.insert(BiomeType::Plain, vec![DecoratorPlantGroup::tallgrass(3)]);
+        map.insert(BiomeType::Hills, vec![DecoratorPlantGroup::tallgrass(3)]);
+        map.insert(BiomeType::Savanna, vec![DecoratorPlantGroup::tallgrass(9)]);
+        map.insert(BiomeType::SavannaPlateau, vec![DecoratorPlantGroup::tallgrass(9)]);
+
+        // common decorators
+        for (_, v) in map.iter_mut() {
+            v.push(DecoratorPlantGroup::tallgrass(1));
+        }
+
+        map
+    };
+}
 
 pub enum BiomeShapeType {
     DeepVeryLow,
@@ -55,7 +77,7 @@ impl BiomeShapeType {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[repr(isize)]
 pub enum BiomeType {
     Ocean = 0,
@@ -217,19 +239,41 @@ impl BiomeType {
     }
 
     pub fn top_layer(&self) -> Block {
-        Block::Air
+        match self {
+            BiomeType::IceTaiga
+                | BiomeType::IceTaigaHills
+                | BiomeType::IceHighMoutains
+                | BiomeType::IceMoutains
+                | BiomeType::IceForest
+                | BiomeType::IceHills
+                | BiomeType::IcePlain
+                | BiomeType::IceBeach => Block::Snow,
+            _ => Block::Air,
+        }
     }
 
     pub fn top_block(&self) -> Block {
-        Block::Grass
+        match self {
+            BiomeType::Desert | BiomeType::DesertHills => Block::Sand,
+            BiomeType::Beach | BiomeType::IceBeach => Block::Sand,
+            _ => Block::Grass,
+        }
     }
 
     pub fn column_block(&self) -> Block {
-        Block::Dirt
+        match self {
+            BiomeType::Desert | BiomeType::DesertHills => Block::Sand,
+            BiomeType::Beach | BiomeType::IceBeach => Block::Sand,
+            _ => Block::Dirt,
+        }
     }
 
     pub fn sub_column_block(&self) -> Option<Block> {
         None
+    }
+
+    pub fn decorators(&self) -> Option<&'static Vec<Box<dyn WorldDecorator + Sync>>> {
+        DECORATORS.get(self)
     }
 
     pub fn generate_column(&self, chunk: &mut Chunk, x: i64, z: i64) {
