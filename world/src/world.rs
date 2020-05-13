@@ -38,7 +38,7 @@ impl World {
         self.chunks.remove(&Vector2::new(x, z));
     }
 
-    pub fn block_at(&self, position: Vector3<i64>) -> Option<&Block> {
+    pub fn block_at(&self, position: Vector3<i64>) -> Option<Block> {
         if let Some(chunk) = self.chunk_at(position) {
             Some(chunk.block_at_vec(position))
         } else {

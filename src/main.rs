@@ -8,7 +8,6 @@ mod biome_generator;
 use nalgebra::Vector3;
 
 use world::{World, ChunkListener};
-use perlin::PerlinOctaves;
 
 pub struct MyChunkListener {
     pub loaded_chunks: Vec<(i64, i64)>,
@@ -23,10 +22,10 @@ impl MyChunkListener {
         }
     }
 
-    pub fn update_renderer(&mut self, world: &World) {
-        for (x, z) in &self.loaded_chunks {
-            world.chunk(*x, *z).unwrap().dump_chunk_raw(&std::path::Path::new("./"));
-        }
+    pub fn update_renderer(&mut self, _: &World) {
+       // for (x, z) in &self.loaded_chunks {
+       //     world.chunk(*x, *z).unwrap().dump_chunk_raw(&std::path::Path::new("./"));
+       // }
 
         //FIXME
         self.clear();

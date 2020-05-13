@@ -51,23 +51,31 @@ impl Chunk {
         &mut self.biomes[(x + z * WIDTH) as usize]
     }
 
-    pub fn block_at_chunk(&self, x: i64, y: i64, z: i64) -> &Block {
-        &self.blocks[
-            (x + z * WIDTH + y*WIDTH*WIDTH) as usize
-        ]
+    pub fn block_at_chunk(&self, x: i64, y: i64, z: i64) -> Block {
+        if y < 0 || y > MAX_HEIGHT {
+            Block::Air
+        } else {
+            self.blocks[
+                (x + z * WIDTH + y*WIDTH*WIDTH) as usize
+            ]
+        }
     }
 
     pub fn set_block_at_chunk(&mut self, x: i64, y: i64, z: i64, block: Block) {
+        if y < 0 || y > MAX_HEIGHT {
+            return;
+        }
+
         self.blocks[(x + z * WIDTH + y*WIDTH*WIDTH) as usize] = block
     }
 
-    pub fn block_at(&self, x: i64, y: i64, z: i64) -> &Block {
+    pub fn block_at(&self, x: i64, y: i64, z: i64) -> Block {
         let position = self.position();
 
         self.block_at_chunk(x - position.x, y, z - position.y)
     }
 
-    pub fn block_at_vec(&self, position: Vector3<i64>) -> &Block {
+    pub fn block_at_vec(&self, position: Vector3<i64>) -> Block {
         self.block_at(position.x, position.y, position.z)
     }
 
@@ -91,7 +99,7 @@ impl Chunk {
             'l: for y in 0..16 {
                 for z in 0..16 {
                     for x in 0..16 {
-                        if *self.block_at_chunk(x, vy + y, z) != Block::Air {
+                        if self.block_at_chunk(x, vy + y, z) != Block::Air {
                             result[vy as usize] = true;
                             break 'l;
                         }

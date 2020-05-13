@@ -241,12 +241,12 @@ impl BiomeType {
         let mut column_type = self.column_block();
 
         for y in (1..256).rev() {
-            if *chunk.block_at_chunk(x, y, z) == Block::Air {
+            if chunk.block_at_chunk(x, y, z) == Block::Air {
                 top = -1;
                 continue;
             }
 
-            if *chunk.block_at_chunk(x, y, z) != Block::Stone {
+            if chunk.block_at_chunk(x, y, z) != Block::Stone {
                 continue;
             }
 
