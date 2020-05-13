@@ -107,6 +107,6 @@ impl WinInput {
 
 impl Default for WinInput {
     fn default() -> Self {
-        WinInput::new(0.005, 0.01)
+        WinInput::new(0.005, 1.)
     }
 }

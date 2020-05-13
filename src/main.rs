@@ -68,7 +68,7 @@ fn set_cursor_middle_window(context: &CTX) {
 
 fn main() {
     // --- Configuration ---
-    let mut fps_counter = FrameCounter::new(60);
+    let mut frame_counter = FrameCounter::new(60);
     let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
 
     // --- World SetUp --
@@ -97,7 +97,7 @@ fn main() {
     gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
     context.window().set_cursor_visible(false);
-    //set_cursor_middle_window(&context);
+    set_cursor_middle_window(&context);
 
     let (width, height) = get_window_dim(&context);
 
@@ -121,6 +121,8 @@ fn main() {
             match event {
                 glutin::event::Event::LoopDestroyed => return,
                 glutin::event::Event::MainEventsCleared => {
+                    let delta_time = frame_counter.delta_time();
+
                     // --- Process inputs ---
                     if input_handler.updated(wininput::StateChange::MouseScroll) {
                         let fov = fov_range.start
@@ -129,7 +131,7 @@ fn main() {
                     }
 
                     if input_handler.updated(wininput::StateChange::MouseMotion) {
-                        let offset = input_handler.get_mouse_offset();
+                        let offset = input_handler.get_mouse_offset() * delta_time;
                         camera.reorient(offset);
                     }
 
@@ -162,7 +164,7 @@ fn main() {
 
                     context.swap_buffers().unwrap();
 
-                    if let Some(fps) = fps_counter.tick() {
+                    if let Some(fps) = frame_counter.tick() {
                         println!("fps: {}", fps);
                     }
                 }
