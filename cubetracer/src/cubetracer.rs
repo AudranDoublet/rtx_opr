@@ -4,41 +4,7 @@ extern crate glutin;
 use crate::errors::*;
 use crate::glchk_stmt;
 use crate::helper;
-
-// Correspondence Table indexes
-const GL_PROG_RAY_VAR_IDX_ROLL: usize = 0;
-const GL_PROG_RAY_VAR_LEN: usize = 1;
-
-pub struct CubeTracerArguments {
-    program: u32,
-    uniform_locations: [i32; GL_PROG_RAY_VAR_LEN],
-}
-
-impl CubeTracerArguments {
-    pub fn new(program: u32) -> Result<Self, GLError> {
-        let mut uniform_locations = [-1; GL_PROG_RAY_VAR_LEN];
-
-        uniform_locations[GL_PROG_RAY_VAR_IDX_ROLL] =
-            helper::get_uniform_location(program, "roll")?;
-
-        Ok(CubeTracerArguments {
-            program,
-            uniform_locations,
-        })
-    }
-
-    pub fn set_roll(&self, value: f32) -> Result<(), GLError> {
-        glchk_stmt!(
-            gl::ProgramUniform1f(
-                self.program,
-                self.uniform_locations[GL_PROG_RAY_VAR_IDX_ROLL],
-                value,
-            );
-        );
-
-        Ok(())
-    }
-}
+use crate::CubeTracerArguments;
 
 pub struct CubeTracer {
     program_raytracer: u32,

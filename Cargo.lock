@@ -267,6 +267,7 @@ dependencies = [
  "glutin 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "perlin 0.1.0",
+ "utils 0.1.0",
  "world 0.1.0",
 ]
 
@@ -859,6 +860,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "unicode-xid"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "utils"
+version = "0.1.0"
+dependencies = [
+ "glutin 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "void"

@@ -10,6 +10,7 @@ edition = "2018"
 cubetracer = { path = "cubetracer" }
 world = { path = "world" }
 perlin = { path = "perlin" }
+utils = { path = "utils" }
 
 # Math
 nalgebra = ""
