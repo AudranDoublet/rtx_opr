@@ -1,20 +1,20 @@
 #[macro_use]
 extern crate clap;
 
-use clap::App;
+mod biome_generator;
+mod dump;
 
 use std::sync::RwLock;
-
-mod biome_generator;
-
+use clap::App;
 use nalgebra::Vector3;
 
-use world::{World, ChunkListener};
+use world::{create_main_world, World, ChunkListener};
 
 pub struct MyChunkListener {
     pub loaded_chunks: RwLock<Vec<(i64, i64)>>,
     pub unloaded_chunks: RwLock<Vec<(i64, i64)>>,
 }
+
 
 impl MyChunkListener {
     pub fn new() -> MyChunkListener {
@@ -25,11 +25,6 @@ impl MyChunkListener {
     }
 
     pub fn update_renderer(&self, _: &World) {
-       // for (x, z) in &self.loaded_chunks {
-       //     world.chunk(*x, *z).unwrap().dump_chunk_raw(&std::path::Path::new("./"));
-       // }
-
-        //FIXME
         self.clear();
     }
 
@@ -56,23 +51,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(args) = matches.subcommand_matches("play") {
         let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
+        let view_distance = args.value_of("view-distance").unwrap_or("0").parse::<usize>()?;
 
         if seed == 0 {
             //FIXME random seed ?
         }
 
+        let world = create_main_world(seed);
         let listener = MyChunkListener::new();
 
-        let mut world = World::new(seed, &listener);
-        let mut player = world.create_player();
+        let mut player = world.create_player(view_distance, &listener);
 
         // FIXME main loop
-        player.update(&mut world, Vector3::z(), Vector3::x(), Vec::new(), 0.1);
+        player.update(world, Vector3::z(), Vector3::x(), Vec::new(), 0.1);
         listener.update_renderer(&world);
+
+        loop{}
     } else if let Some(args) = matches.subcommand_matches("render_chunks") {
         let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
         biome_generator::generate_biome(seed)?;
+    } else if let Some(args) = matches.subcommand_matches("dump") {
+        dump::dump_map(args)?;
     }
+
 
     Ok(())
 }

@@ -14,7 +14,9 @@ pub struct Chunk {
     coords: Vector2<i64>,
     blocks: [Block; COUNT as usize],
     biomes: [BiomeType; WIDTH as usize * WIDTH as usize],
+
     decorated: bool,
+    modified: bool,
 }
 
 impl Chunk {
@@ -24,6 +26,7 @@ impl Chunk {
             blocks: [Block::Air; COUNT as usize],
             decorated: false,
             biomes: [BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
+            modified: true,
         }
     }
 
@@ -51,6 +54,15 @@ impl Chunk {
         &mut self.biomes[(x + z * WIDTH) as usize]
     }
 
+    pub fn check_modified(&mut self) -> bool {
+        if self.modified {
+            self.modified = false;
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn block_at_chunk(&self, x: i64, y: i64, z: i64) -> Block {
         if y < 0 || y > MAX_HEIGHT {
             Block::Air
@@ -66,7 +78,14 @@ impl Chunk {
             return;
         }
 
+        self.modified = true;
         self.blocks[(x + z * WIDTH + y*WIDTH*WIDTH) as usize] = block
+    }
+
+    pub fn set_block(&mut self, x: i64, y: i64, z: i64, block: Block) {
+        let position = self.position();
+
+        self.set_block_at_chunk(x - position.x, y, z - position.y, block)
     }
 
     pub fn block_at(&self, x: i64, y: i64, z: i64) -> Block {

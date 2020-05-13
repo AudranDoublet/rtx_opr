@@ -9,4 +9,6 @@ edition = "2018"
 [dependencies]
 nalgebra = ""
 rand = ""
+dashmap = "3.10.0"
+
 perlin = { path = "../perlin" }
