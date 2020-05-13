@@ -11,6 +11,8 @@ pub struct Camera {
     forward: Vector3<f32>,
     left: Vector3<f32>,
 
+    rotation: Vector2<f32>,
+
     aspect_ratio: f32,
 }
 
@@ -38,6 +40,28 @@ impl Camera {
 
     pub fn left(&self) -> Vector3<f32> {
         self.left
+    }
+
+    pub fn reorient(&mut self, offset: Vector2<f32>) {
+        self.rotation += offset;
+        self.rotation.y = self
+            .rotation
+            .y
+            .clamp(-std::f32::consts::PI / 2.1, std::f32::consts::PI / 2.1);
+
+        self.update_axes();
+    }
+
+    fn update_axes(&mut self) {
+        let cos_rot_x = self.rotation.x.cos();
+        let cos_rot_y = self.rotation.y.cos();
+        let sin_rot_x = self.rotation.x.sin();
+        let sin_rot_y = self.rotation.y.sin();
+
+        self.forward =
+            Vector3::new(cos_rot_x * cos_rot_y, sin_rot_y, sin_rot_x * cos_rot_y).normalize();
+        self.left = Vector3::new(0., 1., 0.).cross(&self.forward);
+        self.up = self.forward.cross(&self.left);
     }
 
     pub fn get_virtual_screen_top_left(&self) -> Vector3<f32> {
@@ -69,22 +93,23 @@ impl Camera {
         width: f32,
         height: f32,
         origin: Vector3<f32>,
-        forward: Vector3<f32>,
-        up: Vector3<f32>,
+        rotation: Vector2<f32>,
         fov: f32,
         aspect_ratio: f32,
     ) -> Camera {
-        let up = up.normalize();
-        let forward = forward.normalize();
-
-        Camera {
+        let mut camera = Camera {
             image_size: Vector2::new(width, height),
             origin,
-            up,
-            forward,
-            left: forward.cross(&up),
+            rotation,
+            up: Vector3::zeros(),
+            forward: Vector3::zeros(),
+            left: Vector3::zeros(),
             aspect_ratio,
             virtual_screen_size: compute_virtual_screen_size(fov, aspect_ratio),
-        }
+        };
+
+        camera.update_axes();
+
+        camera
     }
 }

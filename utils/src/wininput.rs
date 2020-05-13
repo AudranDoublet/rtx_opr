@@ -15,9 +15,13 @@ type KeyStateArray = [ElementState; CST_MAX_NUMBER_KEY];
 
 pub struct WinInput {
     states_changes: StateChangeArray,
-    scroll_intensity: f32,
-    scroll: f32,
-    last_mouse_coords: Option<Vector2<f32>>,
+
+    mouse_scroll: f32,
+    mouse_scroll_sensitivity: f32,
+
+    mouse_motion_offset: Vector2<f32>,
+    mouse_motion_sensitivity: f32,
+
     keys_states: KeyStateArray,
 }
 
@@ -39,8 +43,8 @@ impl WinInput {
     fn handle_mouse_wheel(&mut self, input: MouseScrollDelta) {
         match input {
             MouseScrollDelta::LineDelta(dx, dy) => {
-                self.scroll += self.scroll_intensity * (dx + dy);
-                self.scroll = self.scroll.clamp(0., 1.);
+                self.mouse_scroll += self.mouse_scroll_sensitivity * (dx + dy);
+                self.mouse_scroll = self.mouse_scroll.clamp(0., 1.);
 
                 // FIXME: should update state only if scroll change from previous
                 self.set_state_updated(StateChange::MouseScroll);
@@ -50,10 +54,17 @@ impl WinInput {
         }
     }
 
-    fn handle_mouse_motion(&mut self, dx: f64, dy: f64) {}
+    fn handle_mouse_motion(&mut self, dx: f32, dy: f32) {
+        self.mouse_motion_offset = Vector2::new(dx, dy) * self.mouse_motion_sensitivity;
+        self.set_state_updated(StateChange::MouseMotion);
+    }
 
     pub fn get_scroll(&self) -> f32 {
-        self.scroll
+        self.mouse_scroll
+    }
+
+    pub fn get_mouse_offset(&self) -> Vector2<f32> {
+        self.mouse_motion_offset
     }
 
     pub fn is_pressed(&self, k: VirtualKeyCode) -> bool {
@@ -63,7 +74,9 @@ impl WinInput {
     pub fn on_device_event(&mut self, input: DeviceEvent) {
         match input {
             DeviceEvent::MouseWheel { delta } => self.handle_mouse_wheel(delta),
-            DeviceEvent::MouseMotion { delta: (dx, dy) } => self.handle_mouse_motion(dx, dy),
+            DeviceEvent::MouseMotion { delta: (dx, dy) } => {
+                self.handle_mouse_motion(dx as f32, dy as f32)
+            }
             _ => (),
         }
     }
@@ -78,11 +91,14 @@ impl WinInput {
         }
     }
 
-    pub fn new(scroll: f32, scroll_intensity: f32) -> Self {
+    pub fn new(mouse_scroll_sensitivity: f32, mouse_motion_sensitivity: f32) -> Self {
         WinInput {
-            scroll,
-            scroll_intensity,
-            last_mouse_coords: None,
+            mouse_scroll: 0.5,
+            mouse_scroll_sensitivity,
+
+            mouse_motion_offset: Vector2::zeros(),
+            mouse_motion_sensitivity,
+
             keys_states: [ElementState::Released; CST_MAX_NUMBER_KEY],
             states_changes: [false; CST_MAX_NUMBER_STATE_CHANGE],
         }
@@ -91,6 +107,6 @@ impl WinInput {
 
 impl Default for WinInput {
     fn default() -> Self {
-        WinInput::new(0.5, 0.005)
+        WinInput::new(0.005, 0.01)
     }
 }

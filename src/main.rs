@@ -3,11 +3,12 @@
 use cubetracer;
 
 use gl;
+use glutin::dpi;
 use glutin::event;
 use glutin::event::VirtualKeyCode as KeyCode;
 use glutin::event::WindowEvent;
 use glutin::{ContextBuilder, ContextWrapper, GlRequest, PossiblyCurrent};
-use nalgebra::Vector3;
+use nalgebra::{Vector2, Vector3};
 use utils::fpscounter::FPSCounter;
 use utils::wininput;
 
@@ -53,6 +54,18 @@ fn get_window_dim(context: &CTX) -> (u32, u32) {
     (dim.width, dim.height)
 }
 
+fn set_cursor_middle_window(context: &CTX) {
+    let window = context.window();
+
+    let window_size = window.inner_size();
+    let center = dpi::Position::new(dpi::LogicalPosition::new(
+        window_size.width as f32 / 2.,
+        window_size.height as f32 / 2.,
+    ));
+
+    window.set_cursor_position(center).unwrap();
+}
+
 fn main() {
     // --- Configuration ---
     let mut fps_counter = FPSCounter::new(60);
@@ -84,6 +97,7 @@ fn main() {
     gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
     context.window().set_cursor_visible(false);
+    //set_cursor_middle_window(&context);
 
     let (width, height) = get_window_dim(&context);
 
@@ -91,8 +105,7 @@ fn main() {
         width as f32,
         height as f32,
         Vector3::zeros(),
-        Vector3::z(),
-        Vector3::y(),
+        Vector2::new(std::f32::consts::PI / 2.0, 0.0),
         fov_range.start + (fov_range.end - fov_range.start) / 2.,
         16. / 9.,
     );
@@ -114,6 +127,13 @@ fn main() {
                             + input_handler.get_scroll() * (fov_range.end - fov_range.start);
                         camera.set_fov(fov)
                     }
+
+                    if input_handler.updated(wininput::StateChange::MouseMotion) {
+                        let offset = input_handler.get_mouse_offset();
+                        camera.reorient(offset);
+                    }
+
+                    set_cursor_middle_window(&context);
 
                     // --- Update States ---
 
@@ -153,6 +173,7 @@ fn main() {
                     }
                     glutin::event::WindowEvent::Resized(physical_size) => {
                         context.resize(physical_size);
+                        set_cursor_middle_window(&context);
 
                         camera.set_image_size(
                             physical_size.width as f32,

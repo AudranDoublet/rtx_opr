@@ -1,3 +1,5 @@
+#![feature(clamp)]
+
 mod camera;
 mod cubetracer;
 mod cubetracerargs;
