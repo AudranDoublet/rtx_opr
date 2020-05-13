@@ -135,6 +135,21 @@ fn main() {
                         camera.reorient(offset);
                     }
 
+                    // FIXME: this is only for debugging purpose, remove me later
+                    if input_handler.is_pressed(KeyCode::W) {
+                        camera.origin += camera.forward() * delta_time;
+                    }
+                    if input_handler.is_pressed(KeyCode::A) {
+                        camera.origin += camera.left() * delta_time;
+                    }
+                    if input_handler.is_pressed(KeyCode::S) {
+                        camera.origin -= camera.forward() * delta_time;
+                    }
+                    if input_handler.is_pressed(KeyCode::D) {
+                        camera.origin -= Vector3::x() * delta_time;
+                    }
+                    // FIXME-END
+
                     set_cursor_middle_window(&context);
 
                     // --- Update States ---
