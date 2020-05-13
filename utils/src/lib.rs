@@ -1,4 +1,4 @@
 #![feature(clamp)]
 
-pub mod fpscounter;
+pub mod framecounter;
 pub mod wininput;

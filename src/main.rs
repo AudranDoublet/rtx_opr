@@ -9,7 +9,7 @@ use glutin::event::VirtualKeyCode as KeyCode;
 use glutin::event::WindowEvent;
 use glutin::{ContextBuilder, ContextWrapper, GlRequest, PossiblyCurrent};
 use nalgebra::{Vector2, Vector3};
-use utils::fpscounter::FPSCounter;
+use utils::framecounter::FrameCounter;
 use utils::wininput;
 
 use world::{ChunkListener, World};
@@ -68,7 +68,7 @@ fn set_cursor_middle_window(context: &CTX) {
 
 fn main() {
     // --- Configuration ---
-    let mut fps_counter = FPSCounter::new(60);
+    let mut fps_counter = FrameCounter::new(60);
     let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
 
     // --- World SetUp --
