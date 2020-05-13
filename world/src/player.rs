@@ -13,18 +13,6 @@ const SPEED: f32 = 1.0;
 const WATER_SPEED: f32 = 1.0;
 const WATER_Y_SPEED: f32 = 1.0;
 
-pub trait ChunkListener {
-    /**
-     * Called when a chunk is loaded or modified
-     */
-    fn chunk_load(&mut self, x: i64, y: i64);
-
-    /**
-     * Called when a chunk is unloaded
-     */
-    fn chunk_unload(&mut self, x: i64, y: i64);
-}
-
 pub enum PlayerInput {
     Jump,
     SprintToggle,
@@ -71,7 +59,7 @@ impl Player
             .augment3(-PLAYER_SIZE/2., 0.0, -PLAYER_SIZE/2.)
     }
 
-    fn move_player(&mut self, world: &mut World, movement: Vector3<f32>, listener: &mut dyn ChunkListener, dt: f32) {
+    fn move_player(&mut self, world: &mut World, movement: Vector3<f32>, dt: f32) {
         self.velocity = self.velocity + Vector3::new(0.0, -self.gravity(), 0.0) * dt;
 
         let mut diff = (movement + self.velocity) * dt;
@@ -102,7 +90,7 @@ impl Player
         self.grounded = save_y < 0.0 && diff.y > save_y;
 
         /* move */
-        self.set_position(world, listener, self.position + diff);
+        self.set_position(world, self.position + diff);
     }
 
     pub fn on_ground(&self) -> bool {
@@ -144,7 +132,7 @@ impl Player
         base * sprint
     }
 
-    pub fn update(&mut self, world: &mut World, listener: &mut dyn ChunkListener, camera_forward: Vector3<f32>, camera_right: Vector3<f32>, inputs: Vec<PlayerInput>, dt: f32) {
+    pub fn update(&mut self, world: &mut World, camera_forward: Vector3<f32>, camera_right: Vector3<f32>, inputs: Vec<PlayerInput>, dt: f32) {
         let mut directional_input: Vector2<f32> = Vector2::zeros();
         let mut jumping = false;
         let mut sprinting = false;
@@ -172,10 +160,10 @@ impl Player
         }
 
         desired_move *= self.movement_speed();
-        self.move_player(world, desired_move, listener, dt);
+        self.move_player(world, desired_move, dt);
     }
 
-    pub fn set_position(&mut self, world: &mut World, listener: &mut dyn ChunkListener, position: Vector3<f32>) {
+    pub fn set_position(&mut self, world: &mut World, position: Vector3<f32>) {
         self.position = position;
 
         let dx = self.last_chunk_update.x - position.x;
@@ -202,12 +190,10 @@ impl Player
 
         for chunk in &new_chunks {
             world.generate_chunk(chunk.x, chunk.y);
-            listener.chunk_load(chunk.x, chunk.y);
         }
 
         for chunk in &old_chunks {
             world.unload_chunk(chunk.x, chunk.y);
-            listener.chunk_unload(chunk.x, chunk.y);
         }
 
         self.known_chunks = new_chunks;
