@@ -8,7 +8,8 @@ use glutin::event::VirtualKeyCode as KeyCode;
 use glutin::event::WindowEvent;
 use glutin::{ContextBuilder, ContextWrapper, GlRequest, PossiblyCurrent};
 use nalgebra::Vector3;
-use utils::{FPSCounter, WinInput};
+use utils::fpscounter::FPSCounter;
+use utils::wininput;
 
 use world::{ChunkListener, World};
 type CTX = ContextWrapper<PossiblyCurrent, glutin::window::Window>;
@@ -55,9 +56,7 @@ fn get_window_dim(context: &CTX) -> (u32, u32) {
 fn main() {
     // --- Configuration ---
     let mut fps_counter = FPSCounter::new(60);
-    let fov_steps = std::f32::consts::PI / 64.;
-    let mut fov = std::f32::consts::PI / 2.;
-    let keyboard_steps = 0.1;
+    let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
 
     // --- World SetUp --
     let mut listener = MyChunkListener::new();
@@ -68,7 +67,7 @@ fn main() {
     //listener.update_renderer();
 
     // --- Window Helper ---
-    let mut input_handler = WinInput::new();
+    let mut input_handler = wininput::WinInput::default();
 
     // --- Build Window ---
     let event_loop = glutin::event_loop::EventLoop::new();
@@ -94,14 +93,12 @@ fn main() {
         Vector3::zeros(),
         Vector3::z(),
         Vector3::y(),
-        std::f32::consts::PI / 2.,
+        fov_range.start + (fov_range.end - fov_range.start) / 2.,
         16. / 9.,
     );
 
     // --- Cube Tracer ---
     let mut cubetracer = cubetracer::CubeTracer::new(width, height).unwrap();
-
-    let mut frame = 0;
 
     // --- Main loop ---
     event_loop.run(
@@ -109,14 +106,18 @@ fn main() {
             *control_flow = glutin::event_loop::ControlFlow::Poll;
 
             match event {
-                glutin::event::Event::LoopDestroyed => {
-                    return;
-                }
+                glutin::event::Event::LoopDestroyed => return,
                 glutin::event::Event::MainEventsCleared => {
-                    // -- Update Cube Tracer program arguments --
-                    cubetracer.args.set_camera(&camera).unwrap();
+                    // --- Process inputs ---
+                    if input_handler.updated(wininput::StateChange::MouseScroll) {
+                        let fov = fov_range.start
+                            + input_handler.get_scroll() * (fov_range.end - fov_range.start);
+                        camera.set_fov(fov)
+                    }
 
-                    // -- Update World --
+                    // --- Update States ---
+
+                    // - World -
                     /*
                     player.update(
                         &mut world,
@@ -127,39 +128,28 @@ fn main() {
                         0.1,
                     );
                     */
-                    let v: Vec<KeyCode> = vec![KeyCode::W, KeyCode::S, KeyCode::A, KeyCode::D]
-                        .into_iter()
-                        .filter(|k| input_handler.is_pressed(*k))
-                        .collect();
-                    if v.len() > 0 {
-                        println!("pushed_keys: {:?}", v);
-                    }
 
-                    let (width, height) = get_window_dim(&context);
-                    cubetracer.compute_image(width, height).unwrap();
+                    // - Cube Tracer -
+                    cubetracer.args.set_camera(&camera).unwrap();
 
                     context.window().request_redraw();
                 }
-                glutin::event::Event::RedrawRequested(_) => {
-                    context.swap_buffers().unwrap();
+                event::Event::RedrawRequested(_) => {
+                    let (width, height) = get_window_dim(&context);
+
+                    cubetracer.compute_image(width, height).unwrap();
                     cubetracer.draw().unwrap();
+
+                    context.swap_buffers().unwrap();
 
                     if let Some(fps) = fps_counter.tick() {
                         println!("fps: {}", fps);
                     }
                 }
+                event::Event::DeviceEvent { event, .. } => input_handler.on_device_event(event),
                 event::Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::KeyboardInput { input, .. } => input_handler.update(input),
-                    WindowEvent::MouseWheel { delta, .. } => {
-                        match delta {
-                            glutin::event::MouseScrollDelta::LineDelta(dx, dy) => {
-                                fov += (dx + dy) * fov_steps
-                            }
-                            _ => panic!("unexpected"),
-                        };
-
-                        fov = fov.clamp(std::f32::consts::PI / 16., std::f32::consts::PI / 2.);
-                        camera.set_fov(fov);
+                    WindowEvent::KeyboardInput { input, .. } => {
+                        input_handler.on_keyboard_input(input)
                     }
                     glutin::event::WindowEvent::Resized(physical_size) => {
                         context.resize(physical_size);
@@ -174,14 +164,12 @@ fn main() {
                             .unwrap();
                     }
                     glutin::event::WindowEvent::CloseRequested => {
-                        *control_flow = glutin::event_loop::ControlFlow::Exit;
+                        *control_flow = glutin::event_loop::ControlFlow::Exit
                     }
                     _ => (),
                 },
                 _ => (),
             };
-
-            frame += 1;
         },
     )
 }

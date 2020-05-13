@@ -1,5 +1,4 @@
-mod fpscounter;
-mod wininput;
+#![feature(clamp)]
 
-pub use fpscounter::*;
-pub use wininput::*;
+pub mod fpscounter;
+pub mod wininput;
