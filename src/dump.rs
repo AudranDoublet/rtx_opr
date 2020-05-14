@@ -65,13 +65,20 @@ pub fn dump_map(args: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let world = create_main_world(seed);
     let listener = DumpChunkListener::new();
 
-    let mut player = world.create_player(view_distance, &listener);
+    let mut player = world.create_player(&listener, view_distance);
     let mut known = HashSet::new();
 
     let max = (2 * view_distance).pow(2);
 
     while listener.update_renderer(&world, &folder, &mut known)? < max {
-        player.update(world, Vector3::z(), Vector3::x(), Vec::new(), 0.1);
+        player.update(
+            world,
+            &listener,
+            Vector3::z(),
+            Vector3::x(),
+            Vec::new(),
+            0.1,
+        );
     }
 
     Ok(())

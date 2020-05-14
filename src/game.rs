@@ -28,11 +28,11 @@ impl MyChunkListener {
         }
     }
 
-    pub fn update_renderer(&self, _: &World) {
-        self.clear();
+    pub fn _update_renderer(&self, _: &World) {
+        self._clear();
     }
 
-    pub fn clear(&self) {
+    pub fn _clear(&self) {
         self.loaded_chunks.write().unwrap().clear();
         self.unloaded_chunks.write().unwrap().clear();
     }
@@ -74,11 +74,7 @@ pub fn game(seed: isize, view_distance: usize) {
     let listener = MyChunkListener::new();
 
     let world = create_main_world(seed);
-    let mut player = world.create_player(view_distance, &listener);
-
-    // FIXME main loop
-    player.update(world, Vector3::z(), Vector3::x(), Vec::new(), 0.1);
-    listener.update_renderer(&world);
+    let mut player = world.create_player(&listener, view_distance);
 
     // --- Window Helper ---
     let mut input_handler = wininput::WinInput::default();
@@ -155,15 +151,16 @@ pub fn game(seed: isize, view_distance: usize) {
 
                     // --- Update States ---
 
-                    // - World -
+                    player.set_position(world, &listener, camera.origin);
+
                     /*
                     player.update(
-                        &mut world,
-                        &mut listener,
+                        world,
+                        &listener,
                         camera.forward(),
                         -camera.left(),
                         Vec::new(),
-                        0.1,
+                        delta_time,
                     );
                     */
 
