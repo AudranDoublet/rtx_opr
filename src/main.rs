@@ -146,7 +146,7 @@ fn main() {
                         camera.origin -= camera.forward() * delta_time;
                     }
                     if input_handler.is_pressed(KeyCode::D) {
-                        camera.origin -= Vector3::x() * delta_time;
+                        camera.origin -= camera.left() * delta_time;
                     }
                     // FIXME-END
 
