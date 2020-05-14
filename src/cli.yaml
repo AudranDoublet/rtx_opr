@@ -1,0 +1,44 @@
+name: GlOPR
+version: "1.0"
+author: "Audran Doublet <audran.doublet@epita.fr>, Sami Issaadi <sami.issaadi@epita.fr>"
+about: Raytraced Minecraft-like game
+subcommands:
+    -   render_chunks:
+            about: run a DFSPH simulation of the given scene
+            args:
+                -   seed:
+                        long: seed
+                        value_name: seed
+                        help: world seed
+                        takes_value: true
+    -   play:
+            about: run OpenGL program
+            args:
+                -   seed:
+                        long: seed
+                        value_name: seed
+                        help: world seed
+                        takes_value: true
+                -   view-distance:
+                        long: view-distance
+                        value_name: view-distance
+                        help: player's view distance
+                        takes_value: true
+    -   dump:
+            about: dump map in a very simple format
+            args:
+                -   seed:
+                        long: seed
+                        value_name: seed
+                        help: world seed
+                        takes_value: true
+                -   view-distance:
+                        long: view-distance
+                        value_name: view-distance
+                        help: player's view distance
+                        takes_value: true
+                -   folder:
+                        long: folder 
+                        value_name: folder
+                        help: dump folder
+                        takes_value: true

@@ -1,2 +1,5 @@
 **/target/
 **/*.rs.bk
+target/
+/*.png
+/map_dump/

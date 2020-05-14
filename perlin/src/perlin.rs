@@ -24,8 +24,21 @@ fn lerp(t: f32, a: f32, b: f32) -> f32 {
 }
 
 #[inline]
-fn floor(v: f32) -> i32 {
-    (v.floor() as i32) & 255
+fn ifloor(v: f32) -> i32 {
+    let res = v as i32;
+
+    if v < res as f32 {
+        res - 1
+    } else {
+        res
+    }
+}
+
+#[inline]
+fn floor(v: f32) -> (usize, f32) {
+    let res = ifloor(v); 
+
+    ((res & 255) as usize, v - res as f32)
 }
 
 #[inline]
@@ -52,21 +65,21 @@ impl PerlinNoise
 
         PerlinNoise {
             random: Vector3::new(
-                        rng.gen_range(0., 256.),
-                        rng.gen_range(0., 256.),
-                        rng.gen_range(0., 256.),
+                rng.gen::<f32>() * 256.,
+                rng.gen::<f32>() * 256.,
+                rng.gen::<f32>() * 256.,
             ),
             perlin_values: values,
         }
     }
 
     fn gradient2d(&self, pos: usize, x: f32, y: f32) -> f32 {
-        let pos = pos % 16;
+        let pos = pos & 15;
         GRAD_4[pos] * x + GRAD_5[pos] * y
     }
 
     fn gradient(&self, pos: usize, x: f32, y: f32, z: f32) -> f32 {
-        let pos = pos % 16;
+        let pos = pos & 15;
         GRAD_1[pos] * x + GRAD_2[pos] * y + GRAD_3[pos] * z
     }
 
@@ -79,14 +92,11 @@ impl PerlinNoise
         for dx in 0..size.x {
             let x = position.x + dx as f32 * amplitude.x + self.random.x;
 
-            let norm_x = floor(x) as usize;
-
-            let x = x.fract();
+            let (norm_x, x) = floor(x);
 
             for dz in 0..size.z {
                 let z = position.z + dz as f32 * amplitude.z + self.random.z;
-                let norm_z = floor(z) as usize;
-                let z = z.fract();
+                let (norm_z, z) = floor(z);
 
                 let p1 = self.perlin_values[self.perlin_values[norm_x]] + norm_z;
                 let p2 = self.perlin_values[self.perlin_values[norm_x+ 1]] + norm_z;
@@ -125,20 +135,17 @@ impl PerlinNoise
 
         for dx in 0..size.x {
             let x = position.x + dx as f32 * amplitude.x + self.random.x;
-            let norm_x = floor(x) as usize;
-            let x = x.fract();
+            let (norm_x, x) = floor(x);
 
             for dz in 0..size.z {
                 let z = position.z + dz as f32 * amplitude.z + self.random.z;
 
-                let norm_z = floor(z) as usize;
-                let z = z.fract();
+                let (norm_z, z) = floor(z);
 
                 for dy in 0..size.y {
                     let y = position.y + dy as f32 * amplitude.y + self.random.y;
 
-                    let norm_y = floor(y) as usize;
-                    let y = y.fract();
+                    let (norm_y, y) = floor(y);
 
                     if dy == 0 || norm_y != last_y {
                         last_y = norm_y;
@@ -184,7 +191,10 @@ impl PerlinOctaves
 
         for octave in &self.octaves {
             let amp = amplitude * freq;
-            let pos = position.component_mul(&amp);
+            let mut pos = position.component_mul(&amp);
+
+            pos.x += (-ifloor(pos.x) + ifloor(pos.x) % 16777216) as f32;
+            pos.x += (-ifloor(pos.z) + ifloor(pos.z) % 16777216) as f32;
 
             octave.noise(&mut result, pos, size, freq, amp);
             freq /= 2.0;

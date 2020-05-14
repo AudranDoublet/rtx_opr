@@ -1,12 +1,7 @@
 use crate::generator::layers::{LayerData, LayerImpl, LayerResult};
 
-pub struct LayerZoomVornoi {
-}
-
-impl LayerZoomVornoi {
-    pub fn new() -> LayerZoomVornoi {
-        LayerZoomVornoi { }
-    }
+#[derive(Clone)]
+pub struct LayerZoomVoronoi {
 }
 
 #[inline]
@@ -39,7 +34,13 @@ fn smallest(p: (isize, isize), values: [isize; 4], keys: [(f32, f32); 4]) -> isi
     values[id]
 }
 
-impl LayerImpl for LayerZoomVornoi {
+impl LayerZoomVoronoi {
+    pub fn new() -> LayerZoomVoronoi {
+        LayerZoomVoronoi {}
+    }
+}
+
+impl LayerImpl for LayerZoomVoronoi {
     fn generate(&self, data: &mut LayerData, x: isize, y: isize, result: &mut LayerResult) {
         let x = x - 2;
         let y = y - 2;
@@ -88,5 +89,9 @@ impl LayerImpl for LayerZoomVornoi {
                 parent_values[1] = parent_values[3];
             }
         }
+    }
+
+    fn clone_layer(&self) -> Box<dyn LayerImpl> {
+        Box::new(self.clone())
     }
 }

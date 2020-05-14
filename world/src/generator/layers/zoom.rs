@@ -1,5 +1,6 @@
 use crate::generator::layers::{LayerData, LayerImpl, LayerResult};
 
+#[derive(Clone)]
 pub struct LayerZoom {
     fuzzy: bool,
 }
@@ -68,5 +69,9 @@ impl LayerImpl for LayerZoom {
                 b = d;
             }
         }
+    }
+
+    fn clone_layer(&self) -> Box<dyn LayerImpl> {
+        Box::new(self.clone())
     }
 }
