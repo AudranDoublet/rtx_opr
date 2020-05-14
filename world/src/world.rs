@@ -1,11 +1,11 @@
 use nalgebra::{Vector2, Vector3};
 
-use std::thread;
 use std::sync::mpsc;
+use std::thread;
 
 use std::collections::HashMap;
 
-use crate::{Player, ChunkListener, Chunk, Block, world_to_chunk, ChunkManager};
+use crate::{world_to_chunk, Block, Chunk, ChunkListener, ChunkManager, Player};
 
 pub static mut WORLD: Option<Box<World>> = None;
 
@@ -16,17 +16,13 @@ pub fn create_main_world(seed: isize) -> &'static mut Box<World> {
         WORLD = Some(Box::new(World::new(tx, seed)));
     }
 
-    thread::spawn(move || {
-        ChunkManager::new(seed, rx)
-    });
+    thread::spawn(move || ChunkManager::new(seed, rx));
 
     main_world()
 }
 
 pub fn main_world() -> &'static mut Box<World> {
-    unsafe {
-        WORLD.as_mut().unwrap()
-    }
+    unsafe { WORLD.as_mut().unwrap() }
 }
 
 pub struct World {
@@ -81,11 +77,15 @@ impl World {
     }
 
     pub fn generate_chunk(&self, x: i64, z: i64) {
-        self.sender.send((true, x, z)).expect("error while sending load chunk request");
+        self.sender
+            .send((true, x, z))
+            .expect("error while sending load chunk request");
     }
 
     pub fn unload_chunk(&self, x: i64, z: i64) {
-        self.sender.send((false, x, z)).expect("error while sending load chunk request");
+        self.sender
+            .send((false, x, z))
+            .expect("error while sending load chunk request");
     }
 
     pub fn highest_y(&self, x: i64, z: i64) -> i64 {
@@ -122,9 +122,9 @@ impl World {
         self.unsafe_block_at(Vector3::new(x, y, z))
     }
 
-    pub fn create_player<'a>(&mut self, view_distance: usize, listener: &'a dyn ChunkListener) -> Player<'a> {
-        let mut player = Player::new(view_distance, listener);
-        player.set_position(self, Vector3::new(0.0, 100.0, 0.0));
+    pub fn create_player(&mut self, listener: &dyn ChunkListener, view_distance: usize) -> Player {
+        let mut player = Player::new(view_distance);
+        player.set_position(self, listener, Vector3::new(0.0, 100.0, 0.0));
 
         player
     }

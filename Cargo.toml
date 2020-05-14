@@ -7,12 +7,23 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+cubetracer = { path = "cubetracer" }
 world = { path = "world" }
 perlin = { path = "perlin" }
+utils = { path = "utils" }
 
+# Math
 nalgebra = "0.21.0"
+
+# Image
 image = "0.23.2"
+
+# Rendering
+gl = "*"
+glutin = "0.24.0"
 
 # CLI
 clap = {version = "~2.33.0", features = ["yaml"]}
 indicatif = "0.14.0"
+tui = "0.9"
+termion = "1.5"
