@@ -219,6 +219,7 @@ impl<'a> Player<'a>
         let new = if dx*dx + dz*dz < 64. {
             vec![]
         } else {
+            self.last_chunk_update = position;
             self.update_seen_chunks(world, position)
         };
 
