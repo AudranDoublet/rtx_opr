@@ -6,6 +6,7 @@ extern crate clap;
 mod biome_generator;
 mod dump;
 mod game;
+mod termidraw;
 
 use clap::App;
 
@@ -25,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             //FIXME random seed ?
         }
 
-        game::game(seed, view_distance);
+        game::game(seed, view_distance)?;
     } else if let Some(args) = matches.subcommand_matches("render_chunks") {
         let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
         biome_generator::generate_biome(seed)?;

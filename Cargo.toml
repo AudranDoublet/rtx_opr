@@ -25,3 +25,5 @@ glutin = "0.24.0"
 # CLI
 clap = {version = "~2.33.0", features = ["yaml"]}
 indicatif = "0.14.0"
+tui = "0.9"
+termion = "1.5"

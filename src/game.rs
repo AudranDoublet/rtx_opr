@@ -1,5 +1,6 @@
 use cubetracer;
 
+use crate::termidraw::TermiDrawer;
 use gl;
 use glutin::dpi;
 use glutin::event;
@@ -11,6 +12,8 @@ use utils::framecounter::FrameCounter;
 use utils::wininput;
 
 use std::sync::RwLock;
+use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use tui::{backend::TermionBackend, Terminal};
 
 use world::{create_main_world, ChunkListener, World};
 type CTX = ContextWrapper<PossiblyCurrent, glutin::window::Window>;
@@ -65,10 +68,18 @@ fn set_cursor_middle_window(context: &CTX) {
     window.set_cursor_position(center).unwrap();
 }
 
-pub fn game(seed: isize, view_distance: usize) {
+pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error::Error>> {
     // --- Configuration ---
-    let mut frame_counter = FrameCounter::new(60);
     let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
+
+    // --- debug tools SetUp ---
+    let stdout = std::io::stdout().into_raw_mode()?;
+    let stdout = MouseTerminal::from(stdout);
+    let stdout = AlternateScreen::from(stdout);
+    let backend = TermionBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    terminal.hide_cursor()?;
+    let mut termidrawer = TermiDrawer::new();
 
     // --- World SetUp --
     let listener = MyChunkListener::new();
@@ -111,6 +122,8 @@ pub fn game(seed: isize, view_distance: usize) {
     let mut cubetracer = cubetracer::CubeTracer::new(width, height).unwrap();
 
     // --- Main loop ---
+    let mut frame_counter = FrameCounter::new(60);
+
     event_loop.run(
         move |event, _, control_flow: &mut glutin::event_loop::ControlFlow| {
             *control_flow = glutin::event_loop::ControlFlow::Poll;
@@ -152,6 +165,14 @@ pub fn game(seed: isize, view_distance: usize) {
                     // --- Update States ---
 
                     player.set_position(world, &listener, camera.origin);
+                    termidrawer.update_var(
+                        "player_position".to_string(),
+                        format!("{:?}", camera.origin.data),
+                    );
+                    termidrawer.update_var(
+                        "forward".to_string(),
+                        format!("{:?}", camera.forward().data),
+                    );
 
                     /*
                     player.update(
@@ -178,8 +199,11 @@ pub fn game(seed: isize, view_distance: usize) {
                     context.swap_buffers().unwrap();
 
                     if let Some(fps) = frame_counter.tick() {
-                        println!("fps: {}", fps);
+                        termidrawer.update_var("fps".to_string(), format!("{}", fps));
+                        termidrawer.update_fps(fps as f64);
                     }
+
+                    termidrawer.draw(&mut terminal).unwrap();
                 }
                 event::Event::DeviceEvent { event, .. } => input_handler.on_device_event(event),
                 event::Event::WindowEvent { event, .. } => match event {
