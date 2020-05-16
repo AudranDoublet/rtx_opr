@@ -60,14 +60,12 @@ impl Camera {
 
         self.forward =
             Vector3::new(cos_rot_x * cos_rot_y, sin_rot_y, sin_rot_x * cos_rot_y).normalize();
-        self.left = Vector3::new(0., 1., 0.).cross(&self.forward);
-        self.up = self.forward.cross(&self.left);
+        self.left = -self.forward.cross(&Vector3::new(0., 1., 0.)).normalize();
+        self.up = self.left.cross(&self.forward).normalize();
     }
 
     pub fn get_virtual_screen_top_left(&self) -> Vector3<f32> {
-        let screen_center = self.origin + self.forward;
-
-        screen_center
+        self.forward
             + 0.5 * self.left * self.virtual_screen_size.x
             + 0.5 * self.up * self.virtual_screen_size.y
     }
