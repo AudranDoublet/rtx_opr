@@ -1,5 +1,3 @@
-use cubetracer;
-
 use crate::termidraw::TermiDrawer;
 use gl;
 use glutin::dpi;
@@ -11,43 +9,33 @@ use nalgebra::{Vector2, Vector3};
 use utils::framecounter::FrameCounter;
 use utils::wininput;
 
-use std::sync::RwLock;
-use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use std::collections::HashSet;
+
+use termion::{raw::IntoRawMode, screen::AlternateScreen};
 use tui::{backend::TermionBackend, Terminal};
 
-use world::{create_main_world, ChunkListener, World};
+use world::{create_main_world, Chunk, ChunkListener, Player};
 type CTX = ContextWrapper<PossiblyCurrent, glutin::window::Window>;
 
 pub struct MyChunkListener {
-    pub loaded_chunks: RwLock<Vec<(i64, i64)>>,
-    pub unloaded_chunks: RwLock<Vec<(i64, i64)>>,
+    pub chunks: HashSet<(i32, i32)>,
 }
 
 impl MyChunkListener {
     pub fn new() -> MyChunkListener {
         MyChunkListener {
-            loaded_chunks: RwLock::new(Vec::new()),
-            unloaded_chunks: RwLock::new(Vec::new()),
+            chunks: HashSet::new(),
         }
-    }
-
-    pub fn _update_renderer(&self, _: &World) {
-        self._clear();
-    }
-
-    pub fn _clear(&self) {
-        self.loaded_chunks.write().unwrap().clear();
-        self.unloaded_chunks.write().unwrap().clear();
     }
 }
 
 impl ChunkListener for MyChunkListener {
-    fn chunk_load(&self, x: i64, y: i64) {
-        self.loaded_chunks.write().unwrap().push((x, y));
+    fn chunk_load(&mut self, x: i32, y: i32) {
+        self.chunks.insert((x, y));
     }
 
-    fn chunk_unload(&self, x: i64, y: i64) {
-        self.unloaded_chunks.write().unwrap().push((x, y));
+    fn chunk_unload(&mut self, x: i32, y: i32) {
+        self.chunks.remove(&(x, y));
     }
 }
 
@@ -71,21 +59,22 @@ fn set_cursor_middle_window(context: &CTX) {
 pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error::Error>> {
     // --- Configuration ---
     let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
+    let mut movement_speed: f32 = 50.0;
+
+    // --- World SetUp --
+    let mut listener = MyChunkListener::new();
+
+    let world = create_main_world(seed);
+    let mut player = Player::new(view_distance);
+    player.set_position(world, &mut listener, Vector3::zeros());
 
     // --- debug tools SetUp ---
     let stdout = std::io::stdout().into_raw_mode()?;
-    let stdout = MouseTerminal::from(stdout);
     let stdout = AlternateScreen::from(stdout);
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     terminal.hide_cursor()?;
-    let mut termidrawer = TermiDrawer::new();
-
-    // --- World SetUp --
-    let listener = MyChunkListener::new();
-
-    let world = create_main_world(seed);
-    let mut player = world.create_player(&listener, view_distance);
+    let mut termidrawer = TermiDrawer::new(30);
 
     // --- Window Helper ---
     let mut input_handler = wininput::WinInput::default();
@@ -105,21 +94,21 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
     gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
     context.window().set_cursor_visible(false);
-    set_cursor_middle_window(&context);
+    //set_cursor_middle_window(&context);
 
     let (width, height) = get_window_dim(&context);
 
     let mut camera = cubetracer::Camera::new(
         width as f32,
         height as f32,
-        Vector3::zeros(),
+        Vector3::new(0., 0., 0.),
         Vector2::new(std::f32::consts::PI / 2.0, 0.0),
         fov_range.start + (fov_range.end - fov_range.start) / 2.,
         16. / 9.,
     );
 
     // --- Cube Tracer ---
-    let mut cubetracer = cubetracer::CubeTracer::new(width, height).unwrap();
+    let mut cubetracer = cubetracer::CubeTracer::new(width, height, view_distance).unwrap();
 
     // --- Main loop ---
     let mut frame_counter = FrameCounter::new(60);
@@ -146,17 +135,26 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
                     }
 
                     // FIXME: this is only for debugging purpose, remove me later
+                    if input_handler.is_pressed(KeyCode::PageUp) {
+                        movement_speed += 0.25;
+                        movement_speed = movement_speed.min(100.0);
+                    } else if input_handler.is_pressed(KeyCode::PageDown) {
+                        movement_speed -= 0.25;
+                        movement_speed = movement_speed.max(0.5);
+                    }
+
+                    let speed = movement_speed * delta_time;
                     if input_handler.is_pressed(KeyCode::W) {
-                        camera.origin += camera.forward() * delta_time;
+                        camera.origin += camera.forward() * speed;
                     }
                     if input_handler.is_pressed(KeyCode::A) {
-                        camera.origin += camera.left() * delta_time;
+                        camera.origin += camera.left() * speed;
                     }
                     if input_handler.is_pressed(KeyCode::S) {
-                        camera.origin -= camera.forward() * delta_time;
+                        camera.origin -= camera.forward() * speed;
                     }
                     if input_handler.is_pressed(KeyCode::D) {
-                        camera.origin -= camera.left() * delta_time;
+                        camera.origin -= camera.left() * speed;
                     }
                     // FIXME-END
 
@@ -164,15 +162,42 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
 
                     // --- Update States ---
 
-                    player.set_position(world, &listener, camera.origin);
+                    let player_chunks_updated =
+                        player.set_position(world, &mut listener, camera.origin);
+
+                    termidrawer.update_var(
+                        "screen_top_left".to_string(),
+                        format!("{:?}", camera.get_virtual_screen_top_left().data),
+                    );
                     termidrawer.update_var(
                         "player_position".to_string(),
                         format!("{:?}", camera.origin.data),
                     );
                     termidrawer.update_var(
-                        "forward".to_string(),
+                        "v_forward".to_string(),
                         format!("{:?}", camera.forward().data),
                     );
+
+                    termidrawer
+                        .update_var("v_left".to_string(), format!("{:?}", camera.left().data));
+                    termidrawer.update_var("v_up".to_string(), format!("{:?}", camera.up().data));
+                    termidrawer.update_var("speed".to_string(), format!("{:?}", movement_speed));
+
+                    if player_chunks_updated {
+                        let chunks: Vec<&Box<Chunk>> = listener
+                            .chunks
+                            .iter()
+                            .map(|c| world.chunk(c.0, c.1).unwrap())
+                            .collect();
+                        //let chunks = world.get_ref_chunks().values().collect();
+
+                        //cubetracer.args.set_chunks(chunks).unwrap();
+                        termidrawer.update_var(
+                            "nb_chunks_listener".to_string(),
+                            format!("{:?}", chunks.len()),
+                        );
+                        termidrawer.log(format!("> chunks : {:?}", listener.chunks));
+                    }
 
                     /*
                     player.update(

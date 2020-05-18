@@ -21,11 +21,11 @@ pub use tower_plant::*;
 pub use plant_group::*;
 
 pub trait WorldDecorator {
-    fn decorate(&self, world: &mut World, random: &mut StdRng, position: Vector3<i64>);
+    fn decorate(&self, world: &mut World, random: &mut StdRng, position: Vector3<i32>);
 }
 
-pub fn decorator_random(world: &World, position: Vector2<i64>) -> StdRng {
-    let seed = (world.seed() as i64 | position.x | position.y) + position.x + position.y;
+pub fn decorator_random(world: &World, position: Vector2<i32>) -> StdRng {
+    let seed = (world.seed() as i32 | position.x | position.y) + position.x + position.y;
 
     SeedableRng::seed_from_u64(seed as u64)
 }

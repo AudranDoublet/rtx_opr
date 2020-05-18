@@ -1,12 +1,10 @@
-use crate::{Chunk, generator::ColumnProvider};
+use crate::{generator::ColumnProvider, Chunk};
 
-pub struct ChunkGenerator
-{
+pub struct ChunkGenerator {
     provider: ColumnProvider,
 }
 
-impl ChunkGenerator
-{
+impl ChunkGenerator {
     pub fn new(seed: isize) -> ChunkGenerator {
         ChunkGenerator {
             provider: ColumnProvider::new(seed),
@@ -17,7 +15,7 @@ impl ChunkGenerator
         self.provider.generate_chunk(chunk);
     }
 
-    pub fn generate_xz(&mut self, x: i64, z: i64) -> Box<Chunk> {
+    pub fn generate_xz(&mut self, x: i32, z: i32) -> Box<Chunk> {
         let mut result = Chunk::new_empty(x, z);
 
         self.generate(&mut result);

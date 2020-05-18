@@ -6,7 +6,7 @@ pub struct ChunkManager {
 }
 
 impl ChunkManager {
-    pub fn new(seed: isize, channel: mpsc::Receiver<(bool, i64, i64)>) {
+    pub fn new(seed: isize, channel: mpsc::Receiver<(bool, i32, i32)>) {
         let mut manager = ChunkManager {
             generator: ChunkGenerator::new(seed),
         };
@@ -20,13 +20,13 @@ impl ChunkManager {
         }
     }
 
-    pub fn unload_chunk(&self, x: i64, z: i64) {
+    pub fn unload_chunk(&self, x: i32, z: i32) {
         //FIXME save
 
         main_world().remove_chunk(x, z)
     }
 
-    pub fn load_or_generate_chunk(&mut self, x: i64, z: i64) {
+    pub fn load_or_generate_chunk(&mut self, x: i32, z: i32) {
         //FIXME load if exists
 
         if main_world().chunk_loaded(x, z) {
@@ -38,7 +38,7 @@ impl ChunkManager {
         main_world().add_chunk(chunk);
     }
 
-    pub fn load_or_generate_chunk_and_neighborhood(&mut self, x: i64, z: i64) {
+    pub fn load_or_generate_chunk_and_neighborhood(&mut self, x: i32, z: i32) {
         for dz in -1..=1 {
             for dx in -1..=1 {
                 if dx == 0 && dz == 0 {

@@ -26,13 +26,13 @@ pub fn main_world() -> &'static mut Box<World> {
 }
 
 pub struct World {
-    chunks: HashMap<Vector2<i64>, Box<Chunk>>,
-    sender: mpsc::Sender<(bool, i64, i64)>,
+    chunks: HashMap<Vector2<i32>, Box<Chunk>>,
+    sender: mpsc::Sender<(bool, i32, i32)>,
     seed: isize,
 }
 
 impl World {
-    pub fn new(sender: mpsc::Sender<(bool, i64, i64)>, seed: isize) -> World {
+    pub fn new(sender: mpsc::Sender<(bool, i32, i32)>, seed: isize) -> World {
         World {
             chunks: HashMap::new(),
             seed,
@@ -44,25 +44,29 @@ impl World {
         self.seed
     }
 
-    pub fn chunk_loaded(&self, x: i64, z: i64) -> bool {
+    pub fn get_ref_chunks(&self) -> &HashMap<Vector2<i32>, Box<Chunk>> {
+        &self.chunks
+    }
+
+    pub fn chunk_loaded(&self, x: i32, z: i32) -> bool {
         self.chunks.contains_key(&Vector2::new(x, z))
     }
 
-    pub fn chunk(&self, x: i64, z: i64) -> Option<&Box<Chunk>> {
+    pub fn chunk(&self, x: i32, z: i32) -> Option<&Box<Chunk>> {
         self.chunks.get(&Vector2::new(x, z))
     }
 
-    pub fn chunk_mut(&mut self, x: i64, z: i64) -> Option<&mut Box<Chunk>> {
+    pub fn chunk_mut(&mut self, x: i32, z: i32) -> Option<&mut Box<Chunk>> {
         self.chunks.get_mut(&Vector2::new(x, z))
     }
 
-    pub fn chunk_at(&self, position: Vector3<i64>) -> Option<&Box<Chunk>> {
+    pub fn chunk_at(&self, position: Vector3<i32>) -> Option<&Box<Chunk>> {
         let (x, z) = world_to_chunk(position);
 
         self.chunk(x, z)
     }
 
-    pub fn chunk_mut_at(&mut self, position: Vector3<i64>) -> Option<&mut Box<Chunk>> {
+    pub fn chunk_mut_at(&mut self, position: Vector3<i32>) -> Option<&mut Box<Chunk>> {
         let (x, z) = world_to_chunk(position);
 
         self.chunk_mut(x, z)
@@ -72,23 +76,23 @@ impl World {
         self.chunks.insert(chunk.coords(), chunk);
     }
 
-    pub fn remove_chunk(&mut self, x: i64, z: i64) {
+    pub fn remove_chunk(&mut self, x: i32, z: i32) {
         self.chunks.remove(&Vector2::new(x, z));
     }
 
-    pub fn generate_chunk(&self, x: i64, z: i64) {
+    pub fn generate_chunk(&self, x: i32, z: i32) {
         self.sender
             .send((true, x, z))
             .expect("error while sending load chunk request");
     }
 
-    pub fn unload_chunk(&self, x: i64, z: i64) {
+    pub fn unload_chunk(&self, x: i32, z: i32) {
         self.sender
             .send((false, x, z))
             .expect("error while sending load chunk request");
     }
 
-    pub fn highest_y(&self, x: i64, z: i64) -> i64 {
+    pub fn highest_y(&self, x: i32, z: i32) -> i32 {
         if let Some(chunk) = self.chunk_at(Vector3::new(x, 0, z)) {
             chunk.highest_y(x, z)
         } else {
@@ -96,7 +100,7 @@ impl World {
         }
     }
 
-    pub fn block_at(&self, position: Vector3<i64>) -> Option<Block> {
+    pub fn block_at(&self, position: Vector3<i32>) -> Option<Block> {
         if let Some(chunk) = self.chunk_at(position) {
             Some(chunk.block_at_vec(position))
         } else {
@@ -104,25 +108,29 @@ impl World {
         }
     }
 
-    pub fn set_block_at(&mut self, position: Vector3<i64>, block: Block) {
+    pub fn set_block_at(&mut self, position: Vector3<i32>, block: Block) {
         if let Some(chunk) = self.chunk_mut_at(position) {
             chunk.set_block(position.x, position.y, position.z, block)
         }
     }
 
-    pub fn set_block_at_coords(&mut self, x: i64, y: i64, z: i64, block: Block) {
+    pub fn set_block_at_coords(&mut self, x: i32, y: i32, z: i32, block: Block) {
         self.set_block_at(Vector3::new(x, y, z), block)
     }
 
-    pub fn unsafe_block_at(&self, position: Vector3<i64>) -> Block {
+    pub fn unsafe_block_at(&self, position: Vector3<i32>) -> Block {
         self.block_at(position).unwrap_or(Block::Air)
     }
 
-    pub fn unsafe_block_at_coords(&self, x: i64, y: i64, z: i64) -> Block {
+    pub fn unsafe_block_at_coords(&self, x: i32, y: i32, z: i32) -> Block {
         self.unsafe_block_at(Vector3::new(x, y, z))
     }
 
-    pub fn create_player(&mut self, listener: &dyn ChunkListener, view_distance: usize) -> Player {
+    pub fn create_player(
+        &mut self,
+        listener: &mut dyn ChunkListener,
+        view_distance: usize,
+    ) -> Player {
         let mut player = Player::new(view_distance);
         player.set_position(self, listener, Vector3::new(0.0, 100.0, 0.0));
 

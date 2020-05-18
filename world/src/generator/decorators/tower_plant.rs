@@ -22,7 +22,7 @@ impl DecoratorTowerPlant {
         }, count)
     }
 
-    fn is_empty_arround(&self, world: &World, position: Vector3<i64>) -> bool {
+    fn is_empty_arround(&self, world: &World, position: Vector3<i32>) -> bool {
         for dx in -1..=1 {
             for dz in -1..=1 {
                 if world.unsafe_block_at(Vector3::new(position.x + dx, position.y, position.z + dz)) != Block::Air {
@@ -36,7 +36,7 @@ impl DecoratorTowerPlant {
 }
 
 impl WorldDecorator for DecoratorTowerPlant {
-    fn decorate(&self, world: &mut World, random: &mut StdRng, position: Vector3<i64>) {
+    fn decorate(&self, world: &mut World, random: &mut StdRng, position: Vector3<i32>) {
         for _ in 0..10 {
             let dx = position.x + random.gen_range(0, 8) - random.gen_range(0, 8);
             let dy = position.y + random.gen_range(0, 4) - random.gen_range(0, 4);
@@ -56,7 +56,7 @@ impl WorldDecorator for DecoratorTowerPlant {
                 continue;
             }
 
-            for vy in 0..size as i64 {
+            for vy in 0..size as i32 {
                 world.set_block_at_coords(dx, dy + vy, dz, self.block_type);
             }
         }

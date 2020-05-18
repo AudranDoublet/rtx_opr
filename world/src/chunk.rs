@@ -1,27 +1,48 @@
-use std::path::Path;
+use std::cmp::Ordering;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::Path;
 
 use nalgebra::{Vector2, Vector3};
 
-use crate::{main_world, Block, BiomeType, SEA_LEVEL, MAX_HEIGHT};
 use crate::generator::decorators::decorator_random;
+use crate::{main_world, BiomeType, Block, MAX_HEIGHT, SEA_LEVEL};
 
-const WIDTH: i64 = 16;
-const HEIGHT: i64 = MAX_HEIGHT;
-const COUNT: i64 = WIDTH * WIDTH * HEIGHT;
+const WIDTH: i32 = 16;
+const HEIGHT: i32 = MAX_HEIGHT;
+const COUNT: i32 = WIDTH * WIDTH * HEIGHT;
 
 pub struct Chunk {
-    coords: Vector2<i64>,
-    blocks: [Block; COUNT as usize],
+    coords: Vector2<i32>,
+    pub blocks: [Block; COUNT as usize],
     biomes: [BiomeType; WIDTH as usize * WIDTH as usize],
 
     decorated: bool,
     modified: bool,
 }
 
+impl Ord for Chunk {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.coords.data.cmp(&other.coords.data)
+    }
+}
+
+impl PartialOrd for Chunk {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Chunk {
+    fn eq(&self, other: &Self) -> bool {
+        self.coords == other.coords
+    }
+}
+
+impl Eq for Chunk {}
+
 impl Chunk {
-    pub fn new_empty(x: i64, z: i64) -> Box<Chunk> {
+    pub fn new_empty(x: i32, z: i32) -> Box<Chunk> {
         Box::new(Chunk {
             coords: Vector2::new(x, z),
             blocks: [Block::Air; COUNT as usize],
@@ -31,7 +52,7 @@ impl Chunk {
         })
     }
 
-    pub fn new_example_chunk(x: i64, z: i64) -> Box<Chunk> {
+    pub fn new_example_chunk(x: i32, z: i32) -> Box<Chunk> {
         let mut chunk = Chunk::new_empty(x, z);
 
         chunk.decorated = true;
@@ -47,11 +68,11 @@ impl Chunk {
         chunk
     }
 
-    pub fn biome_at(&self, x: i64, z: i64) -> &BiomeType {
+    pub fn biome_at(&self, x: i32, z: i32) -> &BiomeType {
         &self.biomes[(x + z * WIDTH) as usize]
     }
 
-    pub fn biome_at_mut(&mut self, x: i64, z: i64) -> &mut BiomeType {
+    pub fn biome_at_mut(&mut self, x: i32, z: i32) -> &mut BiomeType {
         &mut self.biomes[(x + z * WIDTH) as usize]
     }
 
@@ -64,7 +85,7 @@ impl Chunk {
         }
     }
 
-    pub fn highest_y(&self, x: i64, z: i64) -> i64 {
+    pub fn highest_y(&self, x: i32, z: i32) -> i32 {
         let pos = self.position();
         let x = x - pos.x;
         let z = z - pos.y;
@@ -78,62 +99,57 @@ impl Chunk {
         0
     }
 
-    pub fn block_at_chunk(&self, x: i64, y: i64, z: i64) -> Block {
+    pub fn block_at_chunk(&self, x: i32, y: i32, z: i32) -> Block {
         if y < 0 || y >= MAX_HEIGHT {
             Block::Air
         } else {
-            self.blocks[
-                (x + z * WIDTH + y*WIDTH*WIDTH) as usize
-            ]
+            self.blocks[(x + z * WIDTH + y * WIDTH * WIDTH) as usize]
         }
     }
 
-    pub fn set_block_at_chunk(&mut self, x: i64, y: i64, z: i64, block: Block) {
+    pub fn set_block_at_chunk(&mut self, x: i32, y: i32, z: i32, block: Block) {
         if y < 0 || y > MAX_HEIGHT {
             return;
         }
 
         self.modified = true;
-        self.blocks[(x + z * WIDTH + y*WIDTH*WIDTH) as usize] = block
+        self.blocks[(x + z * WIDTH + y * WIDTH * WIDTH) as usize] = block
     }
 
-    pub fn set_block(&mut self, x: i64, y: i64, z: i64, block: Block) {
+    pub fn set_block(&mut self, x: i32, y: i32, z: i32, block: Block) {
         let position = self.position();
 
         self.set_block_at_chunk(x - position.x, y, z - position.y, block)
     }
 
-    pub fn block_at(&self, x: i64, y: i64, z: i64) -> Block {
+    pub fn block_at(&self, x: i32, y: i32, z: i32) -> Block {
         let position = self.position();
 
         self.block_at_chunk(x - position.x, y, z - position.y)
     }
 
-    pub fn block_at_vec(&self, position: Vector3<i64>) -> Block {
+    pub fn block_at_vec(&self, position: Vector3<i32>) -> Block {
         self.block_at(position.x, position.y, position.z)
     }
 
-    pub fn coords(&self) -> Vector2<i64> {
+    pub fn coords(&self) -> Vector2<i32> {
         self.coords
     }
 
-    pub fn position(&self) -> Vector2<i64> {
-        Vector2::new(
-            WIDTH * self.coords.x,
-            WIDTH * self.coords.y,
-        )
+    pub fn position(&self) -> Vector2<i32> {
+        Vector2::new(WIDTH * self.coords.x, WIDTH * self.coords.y)
     }
 
     pub fn chunk_filled_metadata(&self) -> [bool; 16] {
         let mut result = [false; 16];
 
         for vy in 0..16 {
-            let vy = vy * 16;
+            let base_y = vy * 16;
 
             'l: for y in 0..16 {
                 for z in 0..16 {
                     for x in 0..16 {
-                        if self.block_at_chunk(x, vy + y, z) != Block::Air {
+                        if self.block_at_chunk(x, base_y + y, z) != Block::Air {
                             result[vy as usize] = true;
                             break 'l;
                         }
@@ -167,7 +183,10 @@ impl Chunk {
     }
 
     pub fn dump_chunk_raw(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        let mut file = File::create(path.join(&Path::new( &format!("{}_{}.ck", self.coords.x, self.coords.y) )))?;
+        let mut file = File::create(path.join(&Path::new(&format!(
+            "{}_{}.ck",
+            self.coords.x, self.coords.y
+        ))))?;
         let mut blocks: [u8; COUNT as usize] = [0; COUNT as usize];
 
         for i in 0..COUNT as usize {
@@ -180,18 +199,18 @@ impl Chunk {
     }
 }
 
-pub fn world_to_chunk(position: Vector3<i64>) -> (i64, i64) {
+pub fn world_to_chunk(position: Vector3<i32>) -> (i32, i32) {
     (position.x >> 4, position.z >> 4)
 }
 
-pub fn worldf_to_chunk(position: Vector3<f32>) -> (i64, i64) {
-    world_to_chunk(Vector3::new(position.x as i64, position.y as i64, position.z as i64))
+pub fn worldf_to_chunk(position: Vector3<f32>) -> (i32, i32) {
+    world_to_chunk(Vector3::new(
+        position.x as i32,
+        position.y as i32,
+        position.z as i32,
+    ))
 }
 
-pub fn ivec_to_f(p: Vector3<i64>) -> Vector3<f32> {
-    Vector3::new(
-        p.x as f32,
-        p.y as f32,
-        p.z as f32,
-    )
+pub fn ivec_to_f(p: Vector3<i32>) -> Vector3<f32> {
+    Vector3::new(p.x as f32, p.y as f32, p.z as f32)
 }

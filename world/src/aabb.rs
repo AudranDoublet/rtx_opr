@@ -6,9 +6,9 @@ pub struct AABB {
 }
 
 pub struct AABBIterator {
-    min: Vector3<i64>,
-    max: Vector3<i64>,
-    curr: Vector3<i64>,
+    min: Vector3<i32>,
+    max: Vector3<i32>,
+    curr: Vector3<i32>,
 }
 
 impl AABB {
@@ -28,8 +28,8 @@ impl AABB {
     }
 
     pub fn blocks(&self) -> AABBIterator {
-        let min = Vector3::new(self.min.x as i64, self.min.y as i64, self.min.z as i64);
-        let max = Vector3::new(self.max.x as i64, self.max.y as i64, self.max.z as i64);
+        let min = Vector3::new(self.min.x as i32, self.min.y as i32, self.min.z as i32);
+        let max = Vector3::new(self.max.x as i32, self.max.y as i32, self.max.z as i32);
 
         AABBIterator {
             min: min,
@@ -99,7 +99,7 @@ impl AABB {
 }
 
 impl Iterator for AABBIterator {
-    type Item = Vector3<i64>;
+    type Item = Vector3<i32>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.curr.z > self.max.z {

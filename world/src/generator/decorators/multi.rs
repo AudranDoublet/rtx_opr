@@ -18,7 +18,7 @@ impl DecoratorMulti {
 }
 
 impl WorldDecorator for DecoratorMulti {
-    fn decorate(&self, world: &mut World, random: &mut StdRng, position: Vector3<i64>) {
+    fn decorate(&self, world: &mut World, random: &mut StdRng, position: Vector3<i32>) {
         for _ in 0..self.count {
             let dx = position.x + random.gen_range(0, 16);
             let dz = position.z + random.gen_range(0, 16);

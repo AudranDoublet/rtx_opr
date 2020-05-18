@@ -19,5 +19,5 @@ pub use player::*;
 pub use biome::*;
 pub use chunk_manager::*;
 
-pub const SEA_LEVEL: i64 = 63;
-pub const MAX_HEIGHT: i64 = 256;
+pub const SEA_LEVEL: i32 = 63;
+pub const MAX_HEIGHT: i32 = 256;

@@ -26,7 +26,7 @@ impl DecoratorPlantGroup {
 }
 
 impl WorldDecorator for DecoratorPlantGroup {
-    fn decorate(&self, world: &mut World, random: &mut StdRng, position: Vector3<i64>) {
+    fn decorate(&self, world: &mut World, random: &mut StdRng, position: Vector3<i32>) {
         let mut y = position.y;
 
         while y > 0 && world.unsafe_block_at_coords(position.x, y, position.z) == Block::Air {

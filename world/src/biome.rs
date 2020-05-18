@@ -276,8 +276,8 @@ impl BiomeType {
         DECORATORS.get(self)
     }
 
-    pub fn generate_column(&self, chunk: &mut Chunk, x: i64, z: i64) {
-        let top_column_height: i64 = (3. + rand::thread_rng().gen::<f32>() * 0.25) as i64;
+    pub fn generate_column(&self, chunk: &mut Chunk, x: i32, z: i32) {
+        let top_column_height: i32 = (3. + rand::thread_rng().gen::<f32>() * 0.25) as i32;
 
         let mut top = -1;
         let mut first = true;

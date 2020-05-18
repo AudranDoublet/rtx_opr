@@ -9,8 +9,8 @@ use std::path::Path;
 use world::{create_main_world, ChunkListener, World};
 
 pub struct DumpChunkListener {
-    pub loaded_chunks: RwLock<Vec<(i64, i64)>>,
-    pub unloaded_chunks: RwLock<Vec<(i64, i64)>>,
+    pub loaded_chunks: RwLock<Vec<(i32, i32)>>,
+    pub unloaded_chunks: RwLock<Vec<(i32, i32)>>,
 }
 
 impl DumpChunkListener {
@@ -25,7 +25,7 @@ impl DumpChunkListener {
         &self,
         world: &World,
         path: &Path,
-        known: &mut HashSet<(i64, i64)>,
+        known: &mut HashSet<(i32, i32)>,
     ) -> Result<usize, Box<dyn std::error::Error>> {
         for (x, z) in &*self.loaded_chunks.read().unwrap() {
             known.insert((*x, *z));
@@ -43,11 +43,11 @@ impl DumpChunkListener {
 }
 
 impl ChunkListener for DumpChunkListener {
-    fn chunk_load(&self, x: i64, y: i64) {
+    fn chunk_load(&mut self, x: i32, y: i32) {
         self.loaded_chunks.write().unwrap().push((x, y));
     }
 
-    fn chunk_unload(&self, x: i64, y: i64) {
+    fn chunk_unload(&mut self, x: i32, y: i32) {
         self.unloaded_chunks.write().unwrap().push((x, y));
     }
 }
@@ -57,15 +57,15 @@ pub fn dump_map(args: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let folder = Path::new(args.value_of("folder").unwrap_or("./map_dump"));
     let view_distance = args
         .value_of("view-distance")
-        .unwrap_or("0")
+        .unwrap_or("10")
         .parse::<usize>()?;
 
     std::fs::create_dir_all(&folder)?;
 
     let world = create_main_world(seed);
-    let listener = DumpChunkListener::new();
+    let mut listener = DumpChunkListener::new();
 
-    let mut player = world.create_player(&listener, view_distance);
+    let mut player = world.create_player(&mut listener, view_distance);
     let mut known = HashSet::new();
 
     let max = (2 * view_distance).pow(2);
@@ -73,7 +73,7 @@ pub fn dump_map(args: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     while listener.update_renderer(&world, &folder, &mut known)? < max {
         player.update(
             world,
-            &listener,
+            &mut listener,
             Vector3::z(),
             Vector3::x(),
             Vec::new(),

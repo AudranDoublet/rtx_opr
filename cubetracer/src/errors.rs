@@ -15,6 +15,7 @@ pub enum GLError {
     UnknownError,
 
     UniformNotFound { name: String },
+    SSBONotFound { name: String },
 
     ProgramError { program: u32 },
     ShaderError { shader: u32 },
@@ -94,6 +95,12 @@ fn fmt(err: &GLError, f: &mut fmt::Formatter) -> fmt::Result {
         GLError::UnknownError => f.write_str("This is an unknown error, may the Force be with you..."),
         GLError::UniformNotFound { name } => f.write_fmt(format_args!(
                 "The following uniform could not be found in the shader: `{}`.
+                This either means that the variable really does not exist, or, that it has optimized and removed
+                by the driver because it did not contribute directly/indirectly to the output of the shader.",
+                name
+        )),
+        GLError::SSBONotFound { name } => f.write_fmt(format_args!(
+                "The following SSBO could not be found in the shader: `{}`.
                 This either means that the variable really does not exist, or, that it has optimized and removed
                 by the driver because it did not contribute directly/indirectly to the output of the shader.",
                 name

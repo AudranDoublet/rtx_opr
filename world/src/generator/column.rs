@@ -1,11 +1,10 @@
 use nalgebra::Vector3;
 use perlin::PerlinOctaves;
 
-use crate::{Chunk, Block, SEA_LEVEL};
 use crate::generator::layers::{Layer, LayerResult};
+use crate::{Block, Chunk, SEA_LEVEL};
 
-pub struct ColumnProvider
-{
+pub struct ColumnProvider {
     perlins: [PerlinOctaves; 4],
     column_weights: [f32; 825],
     biome_provider: Box<Layer>,
@@ -41,11 +40,10 @@ fn main_noise_scale() -> Vector3<f32> {
 }
 
 fn nearby_column_mult(x: isize, y: isize) -> f32 {
-    10. / ((x*x + y*y) as f32 + 0.2).sqrt() 
+    10. / ((x * x + y * y) as f32 + 0.2).sqrt()
 }
 
-impl ColumnProvider
-{
+impl ColumnProvider {
     pub fn new(seed: isize) -> ColumnProvider {
         let (b, z) = Layer::create_generator(seed);
 
@@ -62,7 +60,7 @@ impl ColumnProvider
         }
     }
 
-    pub fn generate_chunk(&mut self, chunk: &mut Chunk) {
+    pub fn generate_chunk(&mut self, chunk: &mut Box<Chunk>) {
         let cx = chunk.coords().x as isize;
         let cy = chunk.coords().y as isize;
 
@@ -72,18 +70,21 @@ impl ColumnProvider
 
         for x in 0..16 {
             for z in 0..16 {
-                biomes.biome(x, z).generate_column(chunk, x as i64, z as i64);
-                *chunk.biome_at_mut(x as i64, z as i64) = biomes.biome(x, z);
+                biomes
+                    .biome(x, z)
+                    .generate_column(chunk, x as i32, z as i32);
+                *chunk.biome_at_mut(x as i32, z as i32) = biomes.biome(x, z);
             }
         }
-
     }
 
     /**
      * Create chunk general shape, with only stone and water
      */
-    fn set_blocks(&mut self, cx: isize, cy: isize, chunk: &mut Chunk) {
-        let biomes = self.unzoomed_biome_provider.generate(cx * 4 - 2, cy * 4 - 2, 10, 10);
+    fn set_blocks(&mut self, cx: isize, cy: isize, chunk: &mut Box<Chunk>) {
+        let biomes = self
+            .unzoomed_biome_provider
+            .generate(cx * 4 - 2, cy * 4 - 2, 10, 10);
 
         self.generate_weights(&biomes, cx * 4, cy * 4);
 
@@ -125,9 +126,9 @@ impl ColumnProvider
                     v7 += v7_step;
                     let weight = v7;
 
-                    let x = (x * 4 + dx) as i64;
-                    let y = (y * 8 + dy) as i64;
-                    let z = (z * 4 + dz) as i64;
+                    let x = (x * 4 + dx) as i32;
+                    let y = (y * 8 + dy) as i32;
+                    let z = (z * 4 + dz) as i32;
 
                     let block_type = match weight {
                         w if w > 0.0 => Block::Stone,
@@ -150,9 +151,7 @@ impl ColumnProvider
     }
 
     fn column_weight_at(&self, x: usize, y: usize, z: usize) -> f32 {
-        self.column_weights[
-            (x * 5 + z) * 33 + y
-        ]
+        self.column_weights[(x * 5 + z) * 33 + y]
     }
 
     fn generate_weights(&mut self, biomes: &LayerResult, x: isize, z: isize) {
@@ -160,7 +159,11 @@ impl ColumnProvider
         let noise_size = Vector3::new(5, 33, 5);
         let amplitude = noise_amplitude();
 
-        let noise1 = self.perlins[0].noise(position, noise_size, amplitude.component_div(&main_noise_scale()));
+        let noise1 = self.perlins[0].noise(
+            position,
+            noise_size,
+            amplitude.component_div(&main_noise_scale()),
+        );
         let noise2 = self.perlins[1].noise(position, noise_size, amplitude);
         let noise3 = self.perlins[2].noise(position, noise_size, amplitude);
 
@@ -211,16 +214,17 @@ impl ColumnProvider
                     depth_noise = depth_noise.max(-1.);
                     depth_noise /= 2.8;
                 } else {
-                    depth_noise  = depth_noise.min(1.) / 8.;
+                    depth_noise = depth_noise.min(1.) / 8.;
                 }
 
                 let final_depth = (depth + 0.2 * depth_noise) * BASE_SIZE / 2. + BASE_SIZE;
 
                 // compute final values
                 for y in 0..33 {
-                    let threshold = match (y as f32 - final_depth) * Y_STRETCH * 128. / 256. / scale {
+                    let threshold = match (y as f32 - final_depth) * Y_STRETCH * 128. / 256. / scale
+                    {
                         t if t < 0.0 => 4. * t,
-                        t            => t,
+                        t => t,
                     };
 
                     let a = noise2[id_3d] / 512.;
