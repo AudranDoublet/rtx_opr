@@ -1,0 +1,201 @@
+#version 430 core
+// FIXME: We should implement an `#include` system to split this code into multiple sources
+
+// FIXME: Should be configurable before compilation instead of being hardcoded
+layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+
+/* ************************************************************
+ * > -0- Types
+ * ************************************************************/
+
+struct VirtualScreen {
+    vec3 top_left;
+    vec3 left, up; // normalized and scaled left/up screen axes
+};
+
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+    vec3 direction_inv;
+};
+
+struct ChunkCollision {
+    ivec3 coords_chunk; // eq=ivec3(-1) if no collision
+    vec3 coords_collision; 
+};
+
+
+/* ************************************************************
+ * > -1- Variables
+ * ************************************************************/
+    /* > -A- Constants */
+const float CST_EPSILON = 1e-4;
+const uint CST_CHUNK_WIDTH = 16;
+const uint CST_CHUNK_HEIGHT = 256;
+const vec3 CST_WORLD_TO_LOCAL_VEC = vec3(CST_CHUNK_WIDTH);
+const vec3 CST_WORLD_TO_LOCAL_VEC_INV = 1 / CST_WORLD_TO_LOCAL_VEC;
+// FIXME: should be a variable, or at least be dynamically set before shader compilation from
+// cpu program (parse + replace)
+const uint CST_VIEW_DISTANCE = 10;
+const uint CST_NB_CHUNKS_X = (2*CST_VIEW_DISTANCE);
+const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
+
+    /* > -B- Inputs */
+buffer in_cl_data_0 {
+    uint in_cl_data_filled[CST_NB_CHUNKS_XZ * 16];
+};
+buffer in_cl_data_1 {
+    uint in_cl_data_blocks[CST_NB_CHUNKS_XZ * (CST_CHUNK_WIDTH*CST_CHUNK_WIDTH*CST_CHUNK_HEIGHT)];
+};
+uniform struct VirtualScreen in_uni_screen;
+uniform vec3 in_uni_origin; // camera origin
+uniform ivec3 in_uni_cl_min_coords; // chunks min coord
+    /* > -C- Outputs */
+layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
+
+
+/* ************************************************************
+ * > -2- Helpers (abr: "h")
+ * ************************************************************/
+    /* > -A- Float Operations (abr: "f") */
+float h_f_inv_safe(float v) {
+    return v == 0.0 ? 1e15 : (1 / v);
+}
+    /* > -B- Vector Operations (abr: "v") */
+float h_v_component_min(vec3 v) {
+    return min(min(v.x, v.y), v.z); 
+}
+float h_v_component_max(vec3 v) {
+    return max(max(v.x, v.y), v.z); 
+}
+vec3 h_v_inv_safe(vec3 v) {
+    return vec3(h_f_inv_safe(v.x), h_f_inv_safe(v.y), h_f_inv_safe(v.z));
+}
+vec3 h_v_inv(vec3 v) {
+    // WANING: this entirely rely on GLSL 4.30 (see: 4.7.1 Range and Precision)
+    // https://www.khronos.org/registry/OpenGL/specs/gl/GLSLangSpec.4.30.pdf
+    // We have the guarantee that a division will lead to (+/-)Inf, which is
+    // OK for the usages here and should be slightly faster than the safe
+    // version.
+    return vec3(1) / v;
+}
+
+    /* > -C Array Operations (abr: "a") */
+uint h_a_2d_to_1d(ivec2 coords, uint width) {
+    return coords.x + coords.y * width;
+}
+uint h_a_3d_to_1d(ivec3 coords, uint width, uint height) {
+    return coords.x + (coords.y + coords.z * height) * width;
+}
+
+
+/* ************************************************************
+ * > -3- Section: Ray (abr: "ray")
+ * ************************************************************/
+
+vec3 ray_direction(vec2 pixel) {
+    return normalize(in_uni_screen.top_left 
+        - pixel.x * in_uni_screen.left
+        - pixel.y * in_uni_screen.up);
+}
+
+struct Ray ray_make(vec2 pixel) {
+    vec3 r_dir = ray_direction(pixel);
+    vec3 r_dir_inv = h_v_inv(r_dir);
+
+    return Ray(in_uni_origin, r_dir, r_dir_inv);
+}
+
+/* ************************************************************
+ * > -3- Section: World
+ * ************************************************************/
+
+/* ************************************************************
+ * > -4- Section: Chunks Load (abr: "cl")
+ * ************************************************************/
+    /* > -A- Chunks */
+bool cl_is_filled_block(ivec3 p) {
+    return in_cl_data_filled[h_a_3d_to_1d(p, CST_NB_CHUNKS_X, 16)] != 0;
+}
+
+// Checks if the given point (in chunk referential)is inside the current chunk load
+bool cl_is_inside(ivec3 p) {
+    return p.x >= 0 && p.x < (2*CST_VIEW_DISTANCE)
+        && p.y >= 0 && p.y < (CST_CHUNK_WIDTH) 
+        && p.z >= 0 && p.z < (2*CST_VIEW_DISTANCE);
+}
+
+// Checks if the chunk at the given coords is empty
+bool cl_is_empty(ivec3 p) {
+    return cl_is_inside(p)
+        && cl_is_filled_block(p);
+}
+
+// Returns the coords of the point (world ref) in the referential of the current chunk load
+vec3 cl_into_referential(vec3 p_world) {
+    return p_world * CST_WORLD_TO_LOCAL_VEC_INV - in_uni_cl_min_coords;
+}
+
+#define DRAW_RAY(R, MAX_ITER, FCT_VALID_POS)\
+    vec3 sgn = sign(R.direction);\
+    vec3 dt_dist = abs(R.direction_inv);\
+    ivec3 ref_pos = ivec3(floor(R.origin));\
+    ivec3 steps = ivec3(sgn);\
+    vec3 side_dist = (sgn * (ref_pos - R.origin) + sgn * 0.5 + 0.5) * dt_dist;\
+    bvec3 mask;\
+    uint i = 0;\
+    for (; i < MAX_ITER && FCT_VALID_POS(ref_pos); i++) {\
+        mask = lessThanEqual(side_dist.xyz, min(side_dist.yzx, side_dist.zxy));\
+        side_dist += vec3(mask) * dt_dist;\
+        ref_pos += ivec3(vec3(mask)) * steps;\
+    }
+
+bvec3 cl_cast_ray(struct Ray r) {
+    r.origin = cl_into_referential(r.origin);
+
+    DRAW_RAY(r, CST_VIEW_DISTANCE, cl_is_empty)
+
+    //return i < CST_VIEW_DISTANCE ? chunk_pos : ivec3(-1);
+    return mask;
+}
+
+    /* > -B- Blocks */
+
+/* ************************************************************
+ * > -5- Section: Intersections
+ * ************************************************************/
+
+
+/* ************************************************************
+ * > -6- Section: Ray Tracer
+ * ************************************************************/
+
+vec3 cast_ray(struct Ray r) {
+    vec3 color;
+
+
+
+
+    return color;
+}
+
+
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    struct Ray ray = ray_make(vec2(pixel));
+
+    bvec3 mask = cl_cast_ray(ray);
+    vec3 color = vec3(0);
+    if (mask.x) {
+        color = vec3(0.5);
+    }
+    if (mask.y) {
+        color = vec3(1.0);
+    }
+    if (mask.z) {
+        color = vec3(0.75);
+    }
+
+    imageStore(out_uni_frame, pixel, vec4(color, 1));
+}
