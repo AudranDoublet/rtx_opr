@@ -48,7 +48,7 @@ buffer in_cl_data_0 {
 buffer in_cl_data_1 {
     uint in_cl_data_blocks[CST_NB_CHUNKS_XZ * (CST_CHUNK_WIDTH*CST_CHUNK_WIDTH*CST_CHUNK_HEIGHT)];
 };
-uniform struct VirtualScreen in_uni_screen;
+uniform VirtualScreen in_uni_screen;
 uniform vec3 in_uni_origin; // camera origin
 uniform ivec3 in_uni_cl_min_coords; // chunks min coord
     /* > -C- Outputs */
@@ -100,7 +100,7 @@ vec3 ray_direction(vec2 pixel) {
         - pixel.y * in_uni_screen.up);
 }
 
-struct Ray ray_make(vec2 pixel) {
+Ray ray_make(vec2 pixel) {
     vec3 r_dir = ray_direction(pixel);
     vec3 r_dir_inv = h_v_inv(r_dir);
 
@@ -151,7 +151,7 @@ vec3 cl_into_referential(vec3 p_world) {
         ref_pos += ivec3(vec3(mask)) * steps;\
     }
 
-bvec3 cl_cast_ray(struct Ray r) {
+bvec3 cl_cast_ray(Ray r) {
     r.origin = cl_into_referential(r.origin);
 
     DRAW_RAY(r, CST_VIEW_DISTANCE, cl_is_empty)
@@ -171,7 +171,7 @@ bvec3 cl_cast_ray(struct Ray r) {
  * > -6- Section: Ray Tracer
  * ************************************************************/
 
-vec3 cast_ray(struct Ray r) {
+vec3 cast_ray(Ray r) {
     vec3 color;
 
 
@@ -183,7 +183,7 @@ vec3 cast_ray(struct Ray r) {
 
 void main() {
     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
-    struct Ray ray = ray_make(vec2(pixel));
+    Ray ray = ray_make(vec2(pixel));
 
     bvec3 mask = cl_cast_ray(ray);
     vec3 color = vec3(0);
