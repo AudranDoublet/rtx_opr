@@ -68,8 +68,7 @@ pub fn get_ssbo_location(program: u32, var_name: &str) -> Result<i32, GLError> {
 }
 pub fn build_program_raytracer(_view_size: usize) -> Result<u32, GLError> {
     let shader_compute = glchk_expr!(gl::CreateShader(gl::COMPUTE_SHADER));
-    let c_str_vert =
-        CString::new(include_str!("../shaders/raytracer/main.comp").as_bytes()).unwrap();
+    let c_str_vert = CString::new(include_str!("../shaders/raytracer.comp").as_bytes()).unwrap();
 
     glchk_stmt!(
         gl::ShaderSource(shader_compute, 1, &c_str_vert.as_ptr(), ptr::null());
