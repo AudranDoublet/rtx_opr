@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
         let view_distance = args
             .value_of("view-distance")
-            .unwrap_or("0")
+            .unwrap_or("2")
             .parse::<usize>()?;
 
         if seed == 0 {

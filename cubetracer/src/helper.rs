@@ -50,7 +50,23 @@ pub fn get_uniform_location(program: u32, var_name: &str) -> Result<i32, GLError
     }
 }
 
-pub fn build_program_raytracer() -> Result<u32, GLError> {
+pub fn get_ssbo_location(program: u32, var_name: &str) -> Result<i32, GLError> {
+    let c_var_name = CString::new(var_name).unwrap();
+    let loc = glchk_expr!(gl::GetProgramResourceIndex(
+        program,
+        gl::SHADER_STORAGE_BLOCK,
+        c_var_name.as_ptr()
+    )) as i32;
+
+    if loc == -1 {
+        Err(GLError::UniformNotFound {
+            name: var_name.to_string(),
+        })
+    } else {
+        Ok(loc)
+    }
+}
+pub fn build_program_raytracer(_view_size: usize) -> Result<u32, GLError> {
     let shader_compute = glchk_expr!(gl::CreateShader(gl::COMPUTE_SHADER));
     let c_str_vert =
         CString::new(include_str!("../shaders/raytracer/main.comp").as_bytes()).unwrap();
@@ -71,6 +87,50 @@ pub fn build_program_raytracer() -> Result<u32, GLError> {
     gl_check_error_program(program, gl::LINK_STATUS)
 }
 
+pub fn update_ssbo_data<T>(ssbo: u32, data: &[T]) -> Result<(), GLError> {
+    glchk_stmt!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER,ssbo););
+
+    let dst: *mut c_void = glchk_expr!(gl::MapBuffer(gl::SHADER_STORAGE_BUFFER, gl::WRITE_ONLY));
+
+    unsafe {
+        ptr::copy(
+            data.as_ptr() as *const c_void,
+            dst,
+            data.len() * mem::size_of::<T>(),
+        );
+    }
+
+    glchk_expr!(gl::UnmapBuffer(gl::SHADER_STORAGE_BUFFER));
+    glchk_stmt!(
+        gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, 0);
+    );
+
+    Ok(())
+}
+
+pub fn make_ssbo<T>(program: u32, var_name: &str, initial_data: &Vec<T>) -> Result<u32, GLError> {
+    let mut ssbo = 0;
+
+    glchk_stmt!(
+        gl::GenBuffers(1, &mut ssbo);
+        gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, ssbo);
+        gl::BufferData(
+            gl::SHADER_STORAGE_BUFFER,
+            (initial_data.len() * mem::size_of::<T>()) as GLsizeiptr,
+            initial_data.as_ptr() as *const c_void,
+            gl::DYNAMIC_READ,
+        );
+        gl::BindBufferBase(
+            gl::SHADER_STORAGE_BUFFER,
+            get_ssbo_location(program, var_name)? as u32,
+            ssbo
+        );
+        gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, 0);
+    );
+
+    Ok(ssbo)
+}
+
 pub fn make_quad_vao(program: u32) -> Result<u32, GLError> {
     let vertices: [f32; 8] = [-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0];
 
@@ -86,7 +146,7 @@ pub fn make_quad_vao(program: u32) -> Result<u32, GLError> {
         gl::BufferData(
             gl::ARRAY_BUFFER,
             (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-            &vertices[0] as *const f32 as *const c_void,
+            vertices.as_ptr() as *const c_void,
             gl::STREAM_DRAW,
         );
     );

@@ -16,8 +16,8 @@ pub struct CubeTracer {
 }
 
 impl CubeTracer {
-    pub fn new(width: u32, height: u32) -> Result<Self, GLError> {
-        let prog_raytracer_id = helper::build_program_raytracer()?;
+    pub fn new(width: u32, height: u32, view_size: usize) -> Result<Self, GLError> {
+        let prog_raytracer_id = helper::build_program_raytracer(view_size)?;
         let prog_quad_screen_id = helper::build_program_quad()?;
 
         let program_raytracer = prog_raytracer_id;
@@ -32,7 +32,7 @@ impl CubeTracer {
             vao_quad_screen,
             texture_raytracer,
 
-            args: CubeTracerArguments::new(program_raytracer)?,
+            args: CubeTracerArguments::new(program_raytracer, view_size)?,
         })
     }
 

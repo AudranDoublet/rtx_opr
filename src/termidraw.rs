@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::convert::Into;
 use std::iter::once;
 use tui::{
@@ -6,11 +6,14 @@ use tui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     symbols,
-    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Paragraph, Text},
+    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, List, Paragraph, Text},
     Terminal,
 };
 
 pub struct TermiDrawer {
+    messages: VecDeque<String>,
+    messages_max_nb: usize,
+
     variables: HashMap<String, String>,
 
     fps_range: std::ops::Range<f64>,
@@ -18,11 +21,21 @@ pub struct TermiDrawer {
 }
 
 impl TermiDrawer {
-    pub fn new() -> Self {
+    pub fn new(messages_max_nb: usize) -> Self {
         TermiDrawer {
+            messages: VecDeque::new(),
+            messages_max_nb,
+
             variables: HashMap::new(),
             fps_track: Vec::new(),
             fps_range: std::f64::MAX..std::f64::MIN,
+        }
+    }
+
+    pub fn log(&mut self, msg: String) {
+        self.messages.push_back(msg);
+        if self.messages.len() > self.messages_max_nb {
+            self.messages.pop_front();
         }
     }
 
@@ -57,27 +70,40 @@ impl TermiDrawer {
                 .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
                 .split(size);
 
-            let text: Vec<Text> = self
-                .variables
-                .iter()
-                .map(|(key, value)| {
-                    (
-                        Text::styled(key, Style::default().modifier(Modifier::BOLD)),
-                        Text::raw(format!(" {}\n", value)),
-                    )
-                })
-                .flat_map(|tup| once(tup.0).chain(once(tup.1)))
-                .collect();
+            {
+                let chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .margin(1)
+                    .constraints([Constraint::Percentage(30), Constraint::Percentage(70)].as_ref())
+                    .split(chunks[0]);
 
-            let block = Block::default()
-                .borders(Borders::ALL)
-                .title_style(Style::default().modifier(Modifier::BOLD));
+                let text: Vec<Text> = self
+                    .variables
+                    .iter()
+                    .map(|(key, value)| {
+                        (
+                            Text::styled(key, Style::default().modifier(Modifier::BOLD)),
+                            Text::raw(format!(" {}\n", value)),
+                        )
+                    })
+                    .flat_map(|tup| once(tup.0).chain(once(tup.1)))
+                    .collect();
 
-            let paragraph = Paragraph::new(text.iter())
-                .block(block.clone().title("Debug Variables"))
-                .alignment(Alignment::Left)
-                .wrap(true);
-            f.render_widget(paragraph, chunks[0]);
+                let block = Block::default()
+                    .borders(Borders::ALL)
+                    .title_style(Style::default().modifier(Modifier::BOLD));
+
+                let paragraph = Paragraph::new(text.iter())
+                    .block(block.clone().title("Debug Variables"))
+                    .alignment(Alignment::Left)
+                    .wrap(true);
+                f.render_widget(paragraph, chunks[0]);
+
+                let logs = List::new(self.messages.iter().map(|s| Text::raw(format!("{}", s))))
+                    .block(Block::default().borders(Borders::ALL).title("Logs"));
+
+                f.render_widget(logs, chunks[1]);
+            }
 
             let (x_bounds, y_bounds, fps_data) = self.fps_data();
 

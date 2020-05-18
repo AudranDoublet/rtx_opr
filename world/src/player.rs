@@ -26,16 +26,16 @@ pub trait ChunkListener {
     /**
      * Called when a chunk is loaded or modified
      */
-    fn chunk_load(&self, x: i64, y: i64);
+    fn chunk_load(&mut self, x: i32, y: i32);
 
     /**
      * Called when a chunk is unloaded
      */
-    fn chunk_unload(&self, x: i64, y: i64);
+    fn chunk_unload(&mut self, x: i32, y: i32);
 }
 
 pub struct Player {
-    view_distance: i64,
+    view_distance: i32,
     position: Vector3<f32>,
     sprinting: bool,
     grounded: bool,
@@ -44,13 +44,13 @@ pub struct Player {
 
     /** Chunk provider */
     last_chunk_update: Vector3<f32>,
-    known_chunks: HashSet<Vector2<i64>>,
+    pub known_chunks: HashSet<Vector2<i32>>,
 }
 
 impl Player {
     pub fn new(view_distance: usize) -> Player {
         Player {
-            view_distance: view_distance as i64,
+            view_distance: view_distance as i32,
             position: Vector3::zeros(),
             velocity: Vector3::zeros(),
 
@@ -72,7 +72,7 @@ impl Player {
     fn move_player(
         &mut self,
         world: &mut World,
-        listener: &dyn ChunkListener,
+        listener: &mut dyn ChunkListener,
         movement: Vector3<f32>,
         dt: f32,
     ) {
@@ -152,7 +152,7 @@ impl Player {
     pub fn update(
         &mut self,
         world: &mut World,
-        listener: &dyn ChunkListener,
+        listener: &mut dyn ChunkListener,
         camera_forward: Vector3<f32>,
         camera_right: Vector3<f32>,
         inputs: Vec<PlayerInput>,
@@ -192,9 +192,9 @@ impl Player {
     fn update_seen_chunks(
         &mut self,
         world: &World,
-        listener: &dyn ChunkListener,
+        listener: &mut dyn ChunkListener,
         position: Vector3<f32>,
-    ) -> Vec<Vector2<i64>> {
+    ) -> Vec<Vector2<i32>> {
         let (cx, cz) = worldf_to_chunk(position);
 
         let mut old_chunks = self.known_chunks.clone();
@@ -230,20 +230,20 @@ impl Player {
     pub fn set_position(
         &mut self,
         world: &mut World,
-        listener: &dyn ChunkListener,
+        listener: &mut dyn ChunkListener,
         position: Vector3<f32>,
-    ) {
+    ) -> bool {
         self.position = position;
 
         let dx = self.last_chunk_update.x - position.x;
         let dz = self.last_chunk_update.z - position.z;
 
         // update chunks only when the player moved half a chunk
-        let new = if dx * dx + dz * dz < 64. {
-            vec![]
+        let (new, updated) = if dx * dx + dz * dz < 64. {
+            (vec![], false)
         } else {
             self.last_chunk_update = position;
-            self.update_seen_chunks(world, listener, position)
+            (self.update_seen_chunks(world, listener, position), true)
         };
 
         self.known_chunks
@@ -256,5 +256,7 @@ impl Player {
                 }
             })
             .for_each(|v| listener.chunk_load(v.x, v.y));
+
+        updated
     }
 }
