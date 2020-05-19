@@ -1,7 +1,7 @@
 extern crate gl;
 
 use crate::errors::*;
-use crate::{glchk_expr, glchk_stmt};
+use crate::{glchk_expr, glchk_stmt, ConfigurableShader};
 
 use std::ffi::{c_void, CString};
 use std::{mem, ptr};
@@ -67,15 +67,7 @@ pub fn get_ssbo_location(program: u32, var_name: &str) -> Result<i32, GLError> {
     }
 }
 pub fn build_program_raytracer(_view_size: usize) -> Result<u32, GLError> {
-    let shader_compute = glchk_expr!(gl::CreateShader(gl::COMPUTE_SHADER));
-    let c_str_vert = CString::new(include_str!("../shaders/raytracer.comp").as_bytes()).unwrap();
-
-    glchk_stmt!(
-        gl::ShaderSource(shader_compute, 1, &c_str_vert.as_ptr(), ptr::null());
-        gl::CompileShader(shader_compute);
-    );
-
-    gl_check_error_shader(shader_compute, gl::COMPILE_STATUS)?;
+    let shader_compute = ConfigurableShader::new(include_str!("../shaders/raytracer.comp")).build(gl::COMPUTE_SHADER)?;
 
     let program = glchk_expr!(gl::CreateProgram());
     glchk_stmt!(
@@ -163,29 +155,14 @@ pub fn make_quad_vao(program: u32) -> Result<u32, GLError> {
 
 pub fn build_program_quad() -> Result<u32, GLError> {
     let program = glchk_expr!(gl::CreateProgram());
-    let shader_vertex = glchk_expr!(gl::CreateShader(gl::VERTEX_SHADER));
 
-    let c_str_vert = CString::new(include_str!("../shaders/vertex.glsl").as_bytes()).unwrap();
-
-    glchk_stmt!(
-        gl::ShaderSource(shader_vertex, 1, &c_str_vert.as_ptr(), ptr::null());
-        gl::CompileShader(shader_vertex);
-    );
-
-    gl_check_error_shader(shader_vertex, gl::COMPILE_STATUS)?;
+    let shader_vertex = ConfigurableShader::new(include_str!("../shaders/vertex.glsl")).build(gl::VERTEX_SHADER)?;
 
     glchk_stmt!(
         gl::AttachShader(program, shader_vertex);
     );
 
-    let shader_fragment = glchk_expr!(gl::CreateShader(gl::FRAGMENT_SHADER));
-    let c_str_vert = CString::new(include_str!("../shaders/fragment.glsl").as_bytes()).unwrap();
-
-    glchk_stmt!(
-        gl::ShaderSource(shader_fragment, 1, &c_str_vert.as_ptr(), ptr::null());
-        gl::CompileShader(shader_fragment);
-    );
-    gl_check_error_shader(shader_fragment, gl::COMPILE_STATUS)?;
+    let shader_fragment = ConfigurableShader::new(include_str!("../shaders/fragment.glsl")).build(gl::FRAGMENT_SHADER)?;
 
     glchk_stmt!(
         gl::AttachShader(program, shader_fragment);
