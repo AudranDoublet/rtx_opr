@@ -66,8 +66,11 @@ pub fn get_ssbo_location(program: u32, var_name: &str) -> Result<i32, GLError> {
         Ok(loc)
     }
 }
-pub fn build_program_raytracer(_view_size: usize) -> Result<u32, GLError> {
-    let shader_compute = ConfigurableShader::new(include_str!("../shaders/raytracer.comp")).build(gl::COMPUTE_SHADER)?;
+pub fn build_program_raytracer(view_size: usize) -> Result<u32, GLError> {
+    let mut shader_compute = ConfigurableShader::new(include_str!("../shaders/raytracer.comp"));
+    shader_compute.var("CST_VIEW_DISTANCE", view_size);
+
+    let shader_compute = shader_compute.build(gl::COMPUTE_SHADER)?;
 
     let program = glchk_expr!(gl::CreateProgram());
     glchk_stmt!(
@@ -156,13 +159,15 @@ pub fn make_quad_vao(program: u32) -> Result<u32, GLError> {
 pub fn build_program_quad() -> Result<u32, GLError> {
     let program = glchk_expr!(gl::CreateProgram());
 
-    let shader_vertex = ConfigurableShader::new(include_str!("../shaders/vertex.glsl")).build(gl::VERTEX_SHADER)?;
+    let shader_vertex =
+        ConfigurableShader::new(include_str!("../shaders/vertex.glsl")).build(gl::VERTEX_SHADER)?;
 
     glchk_stmt!(
         gl::AttachShader(program, shader_vertex);
     );
 
-    let shader_fragment = ConfigurableShader::new(include_str!("../shaders/fragment.glsl")).build(gl::FRAGMENT_SHADER)?;
+    let shader_fragment = ConfigurableShader::new(include_str!("../shaders/fragment.glsl"))
+        .build(gl::FRAGMENT_SHADER)?;
 
     glchk_stmt!(
         gl::AttachShader(program, shader_fragment);

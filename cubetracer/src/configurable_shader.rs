@@ -5,11 +5,10 @@ use std::ffi::CString;
 use crate::errors::*;
 use crate::{glchk_expr, glchk_stmt};
 
-use std::ptr;
 use std::collections::HashMap;
+use std::ptr;
 
-pub struct ConfigurableShader
-{
+pub struct ConfigurableShader {
     shader: String,
 }
 
@@ -21,8 +20,9 @@ impl ConfigurableShader {
     }
 
     pub fn var<T: std::fmt::Display>(&mut self, name: &str, value: T) -> &mut ConfigurableShader {
-        let str_value = format!("<<<{}>>>", value);
-        self.shader = self.shader.replace(name, &str_value);
+        self.shader = self
+            .shader
+            .replace(&format!("<<<{}>>>", name), &format!("{}", value));
 
         self
     }

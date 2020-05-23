@@ -35,9 +35,7 @@ const uint CST_CHUNK_WIDTH = 16;
 const uint CST_CHUNK_HEIGHT = 256;
 const vec3 CST_WORLD_TO_LOCAL_VEC = vec3(CST_CHUNK_WIDTH);
 const vec3 CST_WORLD_TO_LOCAL_VEC_INV = 1 / CST_WORLD_TO_LOCAL_VEC;
-// FIXME: should be a variable, or at least be dynamically set before shader compilation from
-// cpu program (parse + replace)
-const uint CST_VIEW_DISTANCE = 2;
+const uint CST_VIEW_DISTANCE = <<<CST_VIEW_DISTANCE>>>;
 const uint CST_NB_CHUNKS_X = (2*CST_VIEW_DISTANCE);
 const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
 
