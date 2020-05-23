@@ -1,6 +1,6 @@
 use crate::{ivec_to_f, worldf_to_chunk, World, AABB};
 use nalgebra::{Vector2, Vector3};
-use std::collections::HashSet;
+use std::{collections::HashSet, rc::Rc};
 
 const GRAVITY: f32 = 9.81;
 const WATER_GRAVITY: f32 = 1.5;
@@ -250,6 +250,7 @@ impl Player {
             .iter()
             .filter(|v| {
                 if let Some(chunk) = world.chunk_mut(v.x, v.y) {
+                    let chunk = unsafe { Rc::get_mut_unchecked(chunk) };
                     chunk.decorated() && (chunk.check_modified() || new.contains(&chunk.coords()))
                 } else {
                     false

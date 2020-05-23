@@ -1,7 +1,4 @@
-use std::cmp::Ordering;
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::Path;
+use std::{cmp::Ordering, fs::File, io::prelude::*, path::Path, rc::Rc};
 
 use nalgebra::{Vector2, Vector3};
 
@@ -42,8 +39,8 @@ impl PartialEq for Chunk {
 impl Eq for Chunk {}
 
 impl Chunk {
-    pub fn new_empty(x: i32, z: i32) -> Box<Chunk> {
-        Box::new(Chunk {
+    pub fn new_empty(x: i32, z: i32) -> Rc<Chunk> {
+        Rc::new(Chunk {
             coords: Vector2::new(x, z),
             blocks: [Block::Air; COUNT as usize],
             decorated: false,
@@ -52,15 +49,16 @@ impl Chunk {
         })
     }
 
-    pub fn new_example_chunk(x: i32, z: i32) -> Box<Chunk> {
+    pub fn new_example_chunk(x: i32, z: i32) -> Rc<Chunk> {
         let mut chunk = Chunk::new_empty(x, z);
+        let mut_chunk = unsafe { Rc::get_mut_unchecked(&mut chunk) };
 
-        chunk.decorated = true;
+        mut_chunk.decorated = true;
 
         for x in 0..WIDTH {
             for z in 0..WIDTH {
                 for y in 0..SEA_LEVEL {
-                    chunk.set_block_at_chunk(x, y, z, Block::Grass);
+                    mut_chunk.set_block_at_chunk(x, y, z, Block::Grass);
                 }
             }
         }

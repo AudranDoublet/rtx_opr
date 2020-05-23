@@ -1,10 +1,10 @@
 extern crate rand;
 
-use std::collections::HashMap;
 use rand::prelude::*;
+use std::collections::HashMap;
 
-use crate::{Chunk, Block, SEA_LEVEL};
 use crate::generator::decorators::*;
+use crate::{Block, Chunk, SEA_LEVEL};
 
 lazy_static! {
     static ref DECORATORS: HashMap<BiomeType, Vec<Box<dyn WorldDecorator + Sync>>> = {
@@ -45,34 +45,34 @@ impl BiomeShapeType {
     pub fn elevation(&self) -> f32 {
         match self {
             BiomeShapeType::DeepVeryLow => -0.2,
-            BiomeShapeType::DeepLow     => -0.5,
-            BiomeShapeType::DeepMedium  => -1.0,
-            BiomeShapeType::DeepHigh    => -1.8,
-            BiomeShapeType::Flat        => 0.0,
-            BiomeShapeType::VeryLow     => 0.1,
-            BiomeShapeType::Low         => 0.125,
-            BiomeShapeType::Medium      => 0.2,
-            BiomeShapeType::HillsLow    => 0.45,
+            BiomeShapeType::DeepLow => -0.5,
+            BiomeShapeType::DeepMedium => -1.0,
+            BiomeShapeType::DeepHigh => -1.8,
+            BiomeShapeType::Flat => 0.0,
+            BiomeShapeType::VeryLow => 0.1,
+            BiomeShapeType::Low => 0.125,
+            BiomeShapeType::Medium => 0.2,
+            BiomeShapeType::HillsLow => 0.45,
             BiomeShapeType::HillsMedium => 1.0,
-            BiomeShapeType::HillsHigh   => 1.2,
-            BiomeShapeType::Plateau     => 1.5,
+            BiomeShapeType::HillsHigh => 1.2,
+            BiomeShapeType::Plateau => 1.5,
         }
     }
 
     pub fn depth(&self) -> f32 {
         match self {
             BiomeShapeType::DeepVeryLow => 0.1,
-            BiomeShapeType::DeepLow     => 0.0,
-            BiomeShapeType::DeepMedium  => 0.1,
-            BiomeShapeType::DeepHigh    => 0.1,
-            BiomeShapeType::Flat        => 0.025,
-            BiomeShapeType::VeryLow     => 0.2,
-            BiomeShapeType::Low         => 0.05,
-            BiomeShapeType::Medium      => 0.2,
-            BiomeShapeType::HillsLow    => 0.3,
+            BiomeShapeType::DeepLow => 0.0,
+            BiomeShapeType::DeepMedium => 0.1,
+            BiomeShapeType::DeepHigh => 0.1,
+            BiomeShapeType::Flat => 0.025,
+            BiomeShapeType::VeryLow => 0.2,
+            BiomeShapeType::Low => 0.05,
+            BiomeShapeType::Medium => 0.2,
+            BiomeShapeType::HillsLow => 0.3,
             BiomeShapeType::HillsMedium => 0.5,
-            BiomeShapeType::HillsHigh   => 0.55,
-            BiomeShapeType::Plateau     => 0.025,
+            BiomeShapeType::HillsHigh => 0.55,
+            BiomeShapeType::Plateau => 0.025,
         }
     }
 }
@@ -126,45 +126,45 @@ impl BiomeType {
 
     pub fn shape(&self) -> BiomeShapeType {
         match self {
-            BiomeType::Ocean            => BiomeShapeType::DeepMedium,
-            BiomeType::DeepOcean        => BiomeShapeType::DeepHigh,
-            BiomeType::Plain            => BiomeShapeType::VeryLow,
-            BiomeType::Hills            => BiomeShapeType::HillsLow,
+            BiomeType::Ocean => BiomeShapeType::DeepMedium,
+            BiomeType::DeepOcean => BiomeShapeType::DeepHigh,
+            BiomeType::Plain => BiomeShapeType::VeryLow,
+            BiomeType::Hills => BiomeShapeType::HillsLow,
 
-            BiomeType::Desert           => BiomeShapeType::Low,
-            BiomeType::DesertHills      => BiomeShapeType::HillsLow,
-            BiomeType::Savanna          => BiomeShapeType::Low,
-            BiomeType::SavannaPlateau   => BiomeShapeType::Plateau,
+            BiomeType::Desert => BiomeShapeType::Low,
+            BiomeType::DesertHills => BiomeShapeType::HillsLow,
+            BiomeType::Savanna => BiomeShapeType::Low,
+            BiomeType::SavannaPlateau => BiomeShapeType::Plateau,
 
-            BiomeType::Jungle           => BiomeShapeType::VeryLow, 
-            BiomeType::JungleHills      => BiomeShapeType::HillsLow,
-            BiomeType::Moutains         => BiomeShapeType::HillsMedium,
-            BiomeType::HighMoutains     => BiomeShapeType::HillsHigh,
+            BiomeType::Jungle => BiomeShapeType::VeryLow,
+            BiomeType::JungleHills => BiomeShapeType::HillsLow,
+            BiomeType::Moutains => BiomeShapeType::HillsMedium,
+            BiomeType::HighMoutains => BiomeShapeType::HillsHigh,
 
-            BiomeType::Taiga            => BiomeShapeType::Medium,
-            BiomeType::TaigaHills       => BiomeShapeType::HillsLow,
+            BiomeType::Taiga => BiomeShapeType::Medium,
+            BiomeType::TaigaHills => BiomeShapeType::HillsLow,
 
-            BiomeType::Beach            => BiomeShapeType::Flat,
-            BiomeType::Forest           => BiomeShapeType::VeryLow,
-            BiomeType::ForestHills      => BiomeShapeType::HillsLow,
-            BiomeType::Swampland        => BiomeShapeType::DeepVeryLow,
-            BiomeType::IceBeach         => BiomeShapeType::Flat,
-            BiomeType::IcePlain         => BiomeShapeType::Medium,
-            BiomeType::IceHills         => BiomeShapeType::HillsLow,
-            BiomeType::IceForest        => BiomeShapeType::VeryLow,
-            BiomeType::IceForestHills   => BiomeShapeType::HillsLow,
-            BiomeType::IceMoutains      => BiomeShapeType::HillsMedium,
-            BiomeType::IceHighMoutains  => BiomeShapeType::HillsHigh,
-            BiomeType::IceTaiga         => BiomeShapeType::Medium,
-            BiomeType::IceTaigaHills    => BiomeShapeType::HillsLow,
+            BiomeType::Beach => BiomeShapeType::Flat,
+            BiomeType::Forest => BiomeShapeType::VeryLow,
+            BiomeType::ForestHills => BiomeShapeType::HillsLow,
+            BiomeType::Swampland => BiomeShapeType::DeepVeryLow,
+            BiomeType::IceBeach => BiomeShapeType::Flat,
+            BiomeType::IcePlain => BiomeShapeType::Medium,
+            BiomeType::IceHills => BiomeShapeType::HillsLow,
+            BiomeType::IceForest => BiomeShapeType::VeryLow,
+            BiomeType::IceForestHills => BiomeShapeType::HillsLow,
+            BiomeType::IceMoutains => BiomeShapeType::HillsMedium,
+            BiomeType::IceHighMoutains => BiomeShapeType::HillsHigh,
+            BiomeType::IceTaiga => BiomeShapeType::Medium,
+            BiomeType::IceTaigaHills => BiomeShapeType::HillsLow,
 
-            BiomeType::River            => BiomeShapeType::DeepLow,
+            BiomeType::River => BiomeShapeType::DeepLow,
         }
     }
 
     pub fn color(&self) -> (u8, u8, u8) {
         match self {
-            BiomeType::Ocean => (0, 119,190),
+            BiomeType::Ocean => (0, 119, 190),
             BiomeType::DeepOcean => (0, 71, 114),
             BiomeType::Plain => (119, 190, 0),
 
@@ -241,13 +241,13 @@ impl BiomeType {
     pub fn top_layer(&self) -> Block {
         match self {
             BiomeType::IceTaiga
-                | BiomeType::IceTaigaHills
-                | BiomeType::IceHighMoutains
-                | BiomeType::IceMoutains
-                | BiomeType::IceForest
-                | BiomeType::IceHills
-                | BiomeType::IcePlain
-                | BiomeType::IceBeach => Block::Snow,
+            | BiomeType::IceTaigaHills
+            | BiomeType::IceHighMoutains
+            | BiomeType::IceMoutains
+            | BiomeType::IceForest
+            | BiomeType::IceHills
+            | BiomeType::IcePlain
+            | BiomeType::IceBeach => Block::Snow,
             _ => Block::Air,
         }
     }
@@ -348,10 +348,33 @@ impl BiomeGroup {
     pub fn biomes(&self) -> Vec<BiomeType> {
         //FIXME roofed & birch forests ?
         match self {
-            BiomeGroup::Warm => vec![BiomeType::Desert, BiomeType::Desert, BiomeType::Savanna, BiomeType::Plain],
-            BiomeGroup::Temperate => vec![BiomeType::Jungle, BiomeType::Forest, BiomeType::Forest, BiomeType::Moutains, BiomeType::Plain, BiomeType::Forest, BiomeType::Swampland],
-            BiomeGroup::Cold => vec![BiomeType::Forest, BiomeType::Moutains, BiomeType::Taiga, BiomeType::Plain],
-            BiomeGroup::Iced => vec![BiomeType::IcePlain, BiomeType::IceForest, BiomeType::IceTaiga, BiomeType::IceMoutains],
+            BiomeGroup::Warm => vec![
+                BiomeType::Desert,
+                BiomeType::Desert,
+                BiomeType::Savanna,
+                BiomeType::Plain,
+            ],
+            BiomeGroup::Temperate => vec![
+                BiomeType::Jungle,
+                BiomeType::Forest,
+                BiomeType::Forest,
+                BiomeType::Moutains,
+                BiomeType::Plain,
+                BiomeType::Forest,
+                BiomeType::Swampland,
+            ],
+            BiomeGroup::Cold => vec![
+                BiomeType::Forest,
+                BiomeType::Moutains,
+                BiomeType::Taiga,
+                BiomeType::Plain,
+            ],
+            BiomeGroup::Iced => vec![
+                BiomeType::IcePlain,
+                BiomeType::IceForest,
+                BiomeType::IceTaiga,
+                BiomeType::IceMoutains,
+            ],
         }
     }
 }

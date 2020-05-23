@@ -6,7 +6,7 @@ use crate::helper;
 use crate::Camera;
 
 use nalgebra::{Vector2, Vector3};
-use std::mem;
+use std::{mem, rc::Rc};
 
 use world::{Block, Chunk};
 
@@ -60,7 +60,7 @@ impl CubeTracerArguments {
         })
     }
 
-    pub fn set_chunks(&self, mut chunks: Vec<&Box<Chunk>>) -> Result<Vector2<i32>, GLError> {
+    pub fn set_chunks(&self, mut chunks: Vec<Rc<Chunk>>) -> Result<Vector2<i32>, GLError> {
         let nb_chunks_x = 2 * self.view_size;
         let nb_chunks_xz = nb_chunks_x.pow(2);
 
