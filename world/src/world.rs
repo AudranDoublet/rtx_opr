@@ -1,9 +1,6 @@
 use nalgebra::{Vector2, Vector3};
 
-use std::sync::mpsc;
-use std::thread;
-
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc, sync::mpsc, thread};
 
 use crate::{world_to_chunk, Block, Chunk, ChunkListener, ChunkManager, Player};
 
@@ -26,7 +23,7 @@ pub fn main_world() -> &'static mut Box<World> {
 }
 
 pub struct World {
-    chunks: HashMap<Vector2<i32>, Box<Chunk>>,
+    chunks: HashMap<Vector2<i32>, Rc<Chunk>>,
     sender: mpsc::Sender<(bool, i32, i32)>,
     seed: isize,
 }
@@ -44,7 +41,7 @@ impl World {
         self.seed
     }
 
-    pub fn get_ref_chunks(&self) -> &HashMap<Vector2<i32>, Box<Chunk>> {
+    pub fn get_ref_chunks(&self) -> &HashMap<Vector2<i32>, Rc<Chunk>> {
         &self.chunks
     }
 
@@ -52,27 +49,27 @@ impl World {
         self.chunks.contains_key(&Vector2::new(x, z))
     }
 
-    pub fn chunk(&self, x: i32, z: i32) -> Option<&Box<Chunk>> {
+    pub fn chunk(&self, x: i32, z: i32) -> Option<&Rc<Chunk>> {
         self.chunks.get(&Vector2::new(x, z))
     }
 
-    pub fn chunk_mut(&mut self, x: i32, z: i32) -> Option<&mut Box<Chunk>> {
+    pub fn chunk_mut(&mut self, x: i32, z: i32) -> Option<&mut Rc<Chunk>> {
         self.chunks.get_mut(&Vector2::new(x, z))
     }
 
-    pub fn chunk_at(&self, position: Vector3<i32>) -> Option<&Box<Chunk>> {
+    pub fn chunk_at(&self, position: Vector3<i32>) -> Option<&Rc<Chunk>> {
         let (x, z) = world_to_chunk(position);
 
         self.chunk(x, z)
     }
 
-    pub fn chunk_mut_at(&mut self, position: Vector3<i32>) -> Option<&mut Box<Chunk>> {
+    pub fn chunk_mut_at(&mut self, position: Vector3<i32>) -> Option<&mut Rc<Chunk>> {
         let (x, z) = world_to_chunk(position);
 
         self.chunk_mut(x, z)
     }
 
-    pub fn add_chunk(&mut self, chunk: Box<Chunk>) {
+    pub fn add_chunk(&mut self, chunk: Rc<Chunk>) {
         self.chunks.insert(chunk.coords(), chunk);
     }
 
@@ -110,6 +107,7 @@ impl World {
 
     pub fn set_block_at(&mut self, position: Vector3<i32>, block: Block) {
         if let Some(chunk) = self.chunk_mut_at(position) {
+            let chunk = unsafe { Rc::get_mut_unchecked(chunk) };
             chunk.set_block(position.x, position.y, position.z, block)
         }
     }

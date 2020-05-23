@@ -9,7 +9,7 @@ use nalgebra::{Vector2, Vector3};
 use utils::framecounter::FrameCounter;
 use utils::wininput;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, rc::Rc};
 
 use termion::{raw::IntoRawMode, screen::AlternateScreen};
 use tui::{backend::TermionBackend, Terminal};
@@ -120,7 +120,7 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
         16. / 9.,
     );
 
-    // --- Cube Tracer ---
+    // --- Cube Tracer -i-
     let mut cubetracer = cubetracer::CubeTracer::new(width, height, view_distance).unwrap();
 
     // --- Main loop ---
@@ -220,10 +220,10 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
                     }
 
                     if listener.has_been_updated() {
-                        let chunks: Vec<&Box<Chunk>> = listener
+                        let chunks: Vec<Rc<Chunk>> = listener
                             .chunks
                             .iter()
-                            .map(|c| world.chunk(c.0, c.1).unwrap())
+                            .map(|c| world.chunk(c.0, c.1).unwrap().clone())
                             .collect();
 
                         __debug_min_coords = cubetracer.args.set_chunks(chunks).unwrap();

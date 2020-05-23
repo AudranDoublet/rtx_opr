@@ -1,6 +1,8 @@
 use nalgebra::Vector3;
 use perlin::PerlinOctaves;
 
+use std::rc::Rc;
+
 use crate::generator::layers::{Layer, LayerResult};
 use crate::{Block, Chunk, SEA_LEVEL};
 
@@ -60,7 +62,9 @@ impl ColumnProvider {
         }
     }
 
-    pub fn generate_chunk(&mut self, chunk: &mut Box<Chunk>) {
+    pub fn generate_chunk(&mut self, chunk: &mut Rc<Chunk>) {
+        let chunk = unsafe { Rc::get_mut_unchecked(chunk) };
+
         let cx = chunk.coords().x as isize;
         let cy = chunk.coords().y as isize;
 
@@ -81,7 +85,7 @@ impl ColumnProvider {
     /**
      * Create chunk general shape, with only stone and water
      */
-    fn set_blocks(&mut self, cx: isize, cy: isize, chunk: &mut Box<Chunk>) {
+    fn set_blocks(&mut self, cx: isize, cy: isize, chunk: &mut Chunk) {
         let biomes = self
             .unzoomed_biome_provider
             .generate(cx * 4 - 2, cy * 4 - 2, 10, 10);

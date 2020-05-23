@@ -2,7 +2,7 @@ use crate::AABB;
 use nalgebra::Vector3;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[repr(isize)]
+#[repr(u32)]
 pub enum Block {
     Air,
     Water,
@@ -41,8 +41,8 @@ impl Block {
 
     pub fn aabb(&self, position: Vector3<f32>) -> Option<AABB> {
         let base = match self {
-            Block::Air  => None,
-            _           => Some(AABB::new(Vector3::zeros(), Vector3::new(1., 1., 1.))),
+            Block::Air => None,
+            _ => Some(AABB::new(Vector3::zeros(), Vector3::new(1., 1., 1.))),
         };
 
         if let Some(base) = base {

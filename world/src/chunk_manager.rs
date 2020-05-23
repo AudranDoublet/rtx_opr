@@ -1,5 +1,5 @@
-use std::sync::mpsc;
 use crate::{generator::ChunkGenerator, main_world};
+use std::{rc::Rc, sync::mpsc};
 
 pub struct ChunkManager {
     generator: ChunkGenerator,
@@ -50,6 +50,6 @@ impl ChunkManager {
         }
 
         self.load_or_generate_chunk(x, z);
-        main_world().chunk_mut(x, z).unwrap().decorate();
+        unsafe { Rc::get_mut_unchecked(&mut main_world().chunk_mut(x, z).unwrap()) }.decorate();
     }
 }
