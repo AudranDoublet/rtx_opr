@@ -232,18 +232,18 @@ impl Player {
         world: &mut World,
         listener: &mut dyn ChunkListener,
         position: Vector3<f32>,
-    ) -> bool {
+    ) {
         self.position = position;
 
         let dx = self.last_chunk_update.x - position.x;
         let dz = self.last_chunk_update.z - position.z;
 
         // update chunks only when the player moved half a chunk
-        let (new, updated) = if dx * dx + dz * dz < 64. {
-            (vec![], false)
+        let new = if dx * dx + dz * dz < 64. {
+            vec![]
         } else {
             self.last_chunk_update = position;
-            (self.update_seen_chunks(world, listener, position), true)
+            self.update_seen_chunks(world, listener, position)
         };
 
         self.known_chunks
@@ -256,7 +256,5 @@ impl Player {
                 }
             })
             .for_each(|v| listener.chunk_load(v.x, v.y));
-
-        updated
     }
 }

@@ -6,6 +6,7 @@ use crate::helper;
 use crate::Camera;
 
 use nalgebra::{Vector2, Vector3};
+use std::mem;
 
 use world::{Block, Chunk};
 
@@ -19,8 +20,7 @@ const VARS_LEN: usize = 5;
 
 pub struct CubeTracerArguments {
     program: u32,
-    ssbo_raytracer_cl_filled: u32,
-    ssbo_raytracer_cl_blocks: u32,
+    ssbo_raytracer_cl: u32,
     view_size: usize,
     uniform_locations: [i32; VARS_LEN],
 }
@@ -30,12 +30,13 @@ impl CubeTracerArguments {
         let mut uniform_locations = [-1; VARS_LEN];
 
         let nb_chunks = (2 * view_size).pow(2);
-        let ssbo_raytracer_cl_filled =
-            helper::make_ssbo(program, "in_cl_data_0", &vec![true; nb_chunks * 16])?;
-        let ssbo_raytracer_cl_blocks = helper::make_ssbo(
+        let cl_nb_blocks = 16 * 16 * 256;
+        let cl_nb_filled = 16;
+
+        let ssbo_raytracer_cl = helper::make_ssbo(
             program,
-            "in_cl_data_1",
-            &vec![0 as u32; nb_chunks * 16 * 16 * 256],
+            "shader_data",
+            nb_chunks * (cl_nb_filled + cl_nb_blocks) * mem::size_of::<u32>(),
         )?;
 
         // Camera variables
@@ -53,21 +54,21 @@ impl CubeTracerArguments {
 
         Ok(CubeTracerArguments {
             program,
-            ssbo_raytracer_cl_filled,
-            ssbo_raytracer_cl_blocks,
+            ssbo_raytracer_cl,
             view_size,
             uniform_locations,
         })
     }
 
-    pub fn set_chunks(&self, mut chunks: Vec<&Box<Chunk>>) -> Result<(), GLError> {
+    pub fn set_chunks(&self, mut chunks: Vec<&Box<Chunk>>) -> Result<Vector2<i32>, GLError> {
         let nb_chunks_x = 2 * self.view_size;
         let nb_chunks_xz = nb_chunks_x.pow(2);
 
-        let mut chunks_filled = vec![[0 as u32; 16]; nb_chunks_xz];
-        let mut chunks_blocks = vec![[Block::Air as u32; 16 * 16 * 256]; nb_chunks_xz];
-
+        assert!(chunks.len() <= nb_chunks_xz as usize);
         chunks.sort_unstable();
+
+        let mut chunks_blocks = vec![[Block::Air as u32; 16 * 16 * 256]; nb_chunks_xz];
+        let mut chunks_filled = vec![[false as u32; 16]; nb_chunks_xz];
 
         let mut cl_min_coords = Vector2::new(std::i32::MAX, std::i32::MAX);
         chunks.iter().map(|c| c.coords()).for_each(|c| {
@@ -75,12 +76,12 @@ impl CubeTracerArguments {
             cl_min_coords.y = cl_min_coords.y.min(c.y);
         });
 
-        chunks.iter().for_each(|_c| {
-            /*
+        chunks.iter().for_each(|c| {
             let coord = c.coords() - cl_min_coords;
             let coord = (coord.x as usize, coord.y as usize);
 
             let xz = coord.0 + coord.1 * nb_chunks_x;
+
             // -- Fill blocks --
             c.blocks.iter().enumerate().for_each(|(i, &b)| {
                 chunks_blocks[xz][i] = b as u32;
@@ -93,20 +94,39 @@ impl CubeTracerArguments {
                 .for_each(|(y, &filled)| {
                     chunks_filled_cur[y] = filled as u32;
                 });
-            */
         });
 
+        helper::update_ssbo_partial(self.ssbo_raytracer_cl, 0, &chunks_filled)?;
+        helper::update_ssbo_partial(
+            self.ssbo_raytracer_cl,
+            16 * chunks_filled.len() * mem::size_of::<u32>(),
+            &chunks_blocks,
+        )?;
+
+        /*
         helper::update_ssbo_data(self.ssbo_raytracer_cl_blocks, &chunks_blocks)?;
         helper::update_ssbo_data(self.ssbo_raytracer_cl_filled, &chunks_filled)?;
+        */
 
-        self.set_vector_3i(
-            VAR_IDX_CL_MIN_COORDS,
-            Vector3::new(cl_min_coords.x, 0, cl_min_coords.y),
-        )?;
+        self.set_vector_2i(VAR_IDX_CL_MIN_COORDS, cl_min_coords)?;
+
+        Ok(cl_min_coords)
+    }
+
+    fn set_vector_2i(&self, var_idx: usize, value: Vector2<i32>) -> Result<(), GLError> {
+        glchk_stmt!(
+            gl::ProgramUniform2iv(
+                self.program,
+                self.uniform_locations[var_idx],
+                1,
+                value.data.as_ptr(),
+            );
+        );
 
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn set_vector_3i(&self, var_idx: usize, value: Vector3<i32>) -> Result<(), GLError> {
         glchk_stmt!(
             gl::ProgramUniform3iv(

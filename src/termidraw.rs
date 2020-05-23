@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::convert::Into;
 use std::iter::once;
 use tui::{
@@ -14,25 +14,32 @@ pub struct TermiDrawer {
     messages: VecDeque<String>,
     messages_max_nb: usize,
 
-    variables: HashMap<String, String>,
+    ignore: bool,
+
+    variables: BTreeMap<String, String>,
 
     fps_range: std::ops::Range<f64>,
     fps_track: Vec<(f64, f64)>,
 }
 
 impl TermiDrawer {
-    pub fn new(messages_max_nb: usize) -> Self {
+    pub fn new(messages_max_nb: usize, ignore: bool) -> Self {
         TermiDrawer {
             messages: VecDeque::new(),
             messages_max_nb,
 
-            variables: HashMap::new(),
+            ignore,
+
+            variables: BTreeMap::new(),
             fps_track: Vec::new(),
             fps_range: std::f64::MAX..std::f64::MIN,
         }
     }
 
     pub fn log(&mut self, msg: String) {
+        if self.ignore {
+            return;
+        }
         self.messages.push_back(msg);
         if self.messages.len() > self.messages_max_nb {
             self.messages.pop_front();
@@ -47,10 +54,17 @@ impl TermiDrawer {
     }
 
     pub fn update_var(&mut self, name: String, value: String) {
+        if self.ignore {
+            return;
+        }
         self.variables.insert(name, value);
     }
 
     pub fn update_fps(&mut self, fps: f64) {
+        if self.ignore {
+            return;
+        }
+
         let idx = self.fps_track.len();
         self.fps_range.start = self.fps_range.start.min((fps - fps * 0.01).floor());
         self.fps_range.end = self.fps_range.end.max((fps + fps * 0.01).ceil());
@@ -61,6 +75,10 @@ impl TermiDrawer {
         &mut self,
         terminal: &mut Terminal<TermionBackend<W>>,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        if self.ignore {
+            return Ok(());
+        }
+
         terminal.draw(|mut f| {
             let size = f.size();
 

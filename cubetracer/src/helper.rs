@@ -81,20 +81,18 @@ pub fn build_program_raytracer(view_size: usize) -> Result<u32, GLError> {
     gl_check_error_program(program, gl::LINK_STATUS)
 }
 
-pub fn update_ssbo_data<T>(ssbo: u32, data: &[T]) -> Result<(), GLError> {
-    glchk_stmt!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER,ssbo););
+pub fn _update_ssbo_data<T>(ssbo: u32, data: &[T]) -> Result<(), GLError> {
+    glchk_stmt!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, ssbo););
 
     let dst: *mut c_void = glchk_expr!(gl::MapBuffer(gl::SHADER_STORAGE_BUFFER, gl::WRITE_ONLY));
 
     unsafe {
-        ptr::copy(
-            data.as_ptr() as *const c_void,
-            dst,
-            data.len() * mem::size_of::<T>(),
-        );
+        ptr::copy_nonoverlapping(data.as_ptr() as *const c_void, dst, data.len());
     }
 
-    glchk_expr!(gl::UnmapBuffer(gl::SHADER_STORAGE_BUFFER));
+    let unmapped = glchk_expr!(gl::UnmapBuffer(gl::SHADER_STORAGE_BUFFER));
+    assert!(unmapped > 0);
+
     glchk_stmt!(
         gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, 0);
     );
@@ -102,7 +100,34 @@ pub fn update_ssbo_data<T>(ssbo: u32, data: &[T]) -> Result<(), GLError> {
     Ok(())
 }
 
-pub fn make_ssbo<T>(program: u32, var_name: &str, initial_data: &Vec<T>) -> Result<u32, GLError> {
+pub fn _update_ssbo<T>(ssbo: u32, data: &Vec<T>) -> Result<(), GLError> {
+    glchk_stmt!(
+        gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, ssbo);
+        gl::BufferData(
+            gl::SHADER_STORAGE_BUFFER,
+            (data.len() * mem::size_of::<T>()) as GLsizeiptr,
+            data.as_ptr() as *const c_void,
+            gl::STREAM_DRAW,
+        );
+    );
+    Ok(())
+}
+
+pub fn update_ssbo_partial<T>(ssbo: u32, offset: usize, data: &Vec<T>) -> Result<(), GLError> {
+    glchk_stmt!(
+        gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, ssbo);
+        gl::BufferSubData(
+            gl::SHADER_STORAGE_BUFFER,
+            offset as GLintptr,
+            (data.len() * mem::size_of::<T>()) as GLsizeiptr,
+            data.as_ptr() as *const c_void
+        );
+    );
+
+    Ok(())
+}
+
+pub fn make_ssbo(program: u32, var_name: &str, size: usize) -> Result<u32, GLError> {
     let mut ssbo = 0;
 
     glchk_stmt!(
@@ -110,9 +135,9 @@ pub fn make_ssbo<T>(program: u32, var_name: &str, initial_data: &Vec<T>) -> Resu
         gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, ssbo);
         gl::BufferData(
             gl::SHADER_STORAGE_BUFFER,
-            (initial_data.len() * mem::size_of::<T>()) as GLsizeiptr,
-            initial_data.as_ptr() as *const c_void,
-            gl::DYNAMIC_READ,
+            size as GLsizeiptr,
+            ptr::null(),
+            gl::STREAM_DRAW,
         );
         gl::BindBufferBase(
             gl::SHADER_STORAGE_BUFFER,
@@ -141,7 +166,7 @@ pub fn make_quad_vao(program: u32) -> Result<u32, GLError> {
             gl::ARRAY_BUFFER,
             (vertices.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
             vertices.as_ptr() as *const c_void,
-            gl::STREAM_DRAW,
+            gl::STATIC_DRAW,
         );
     );
 
