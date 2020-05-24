@@ -4,12 +4,12 @@ use std::{collections::HashSet, rc::Rc};
 
 const GRAVITY: f32 = 9.81;
 const WATER_GRAVITY: f32 = 1.5;
-const JUMP_FORCE: f32 = 9.81;
+const JUMP_FORCE: f32 = 6.;
 const PLAYER_SIZE: f32 = 0.5;
 const PLAYER_HEIGHT: f32 = 1.8;
 
 const SPRINT_SPEED_MULTIPLIER: f32 = 1.5;
-const SPEED: f32 = 1.0;
+const SPEED: f32 = 5.0;
 const WATER_SPEED: f32 = 1.0;
 const WATER_Y_SPEED: f32 = 1.0;
 
@@ -78,12 +78,16 @@ impl Player {
     ) {
         self.velocity = self.velocity + Vector3::new(0.0, -self.gravity(), 0.0) * dt;
 
+        if self.grounded && self.velocity.y < 0.0 {
+            self.velocity.y = 0.0;
+        }
+
         let mut diff = (movement + self.velocity) * dt;
 
         /* apply collisions */
         let mut collider = self.collider();
         let blocks: Vec<AABB> = collider
-            .extend(diff)
+            .augment(diff)
             .blocks()
             .filter_map(|v| world.block_at(v)?.aabb(ivec_to_f(v)))
             .collect();
@@ -108,6 +112,14 @@ impl Player {
 
         /* move */
         self.set_position(world, listener, self.position + diff);
+    }
+
+    pub fn head_position(&self) -> Vector3<f32> {
+        self.position + Vector3::new(0.0, 1.5, 0.0)
+    }
+
+    pub fn position(&self) -> Vector3<f32> {
+        self.position
     }
 
     pub fn on_ground(&self) -> bool {

@@ -1,5 +1,6 @@
 use nalgebra::Vector3;
 
+#[derive(Debug)]
 pub struct AABB {
     min: Vector3<f32>,
     max: Vector3<f32>,
@@ -28,8 +29,8 @@ impl AABB {
     }
 
     pub fn blocks(&self) -> AABBIterator {
-        let min = Vector3::new(self.min.x as i32, self.min.y as i32, self.min.z as i32);
-        let max = Vector3::new(self.max.x as i32, self.max.y as i32, self.max.z as i32);
+        let min = Vector3::new(self.min.x.floor() as i32, self.min.y.floor() as i32, self.min.z.floor() as i32);
+        let max = Vector3::new(self.max.x.ceil() as i32, self.max.y.ceil() as i32, self.max.z.ceil() as i32);
 
         AABBIterator {
             min: min,
@@ -73,6 +74,7 @@ impl AABB {
         let c3 = (coord + 2) % 3;
 
         if self.intersects_coord(other, c2) && self.intersects_coord(other, c3) {
+
             if offset > 0.0 && other.max[coord] <= self.min[coord] {
                 let diff = self.min[coord] - other.max[coord];
 

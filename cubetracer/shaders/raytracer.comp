@@ -259,10 +259,10 @@ vec4 cast_ray(Ray r) {
 
         if (_i > 0) {
             float t = BBoxIntersect(world_chunk_pos_min, world_chunk_pos_max, r);
-
             r_block.origin += r.direction * (t + 0.0001);
-            r_block.origin -= vec3(var_cur_chunk.x, 0, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;
         }
+
+        r_block.origin -= vec3(var_cur_chunk.x, 0, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;
 
         DRAW_RAY(r_block, CST_CHUNK_HEIGHT, bl_is_inside, bl_value, {
             return vec4(CST_BLOCK_COLORS[out_value], 1);

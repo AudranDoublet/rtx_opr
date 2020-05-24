@@ -14,7 +14,7 @@ use std::{collections::HashSet, rc::Rc};
 use termion::{raw::IntoRawMode, screen::AlternateScreen};
 use tui::{backend::TermionBackend, Terminal};
 
-use world::{create_main_world, Chunk, ChunkListener, Player};
+use world::{create_main_world, Chunk, ChunkListener, Player, PlayerInput};
 type CTX = ContextWrapper<PossiblyCurrent, glutin::window::Window>;
 
 pub struct MyChunkListener {
@@ -78,8 +78,7 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
     let mut listener = MyChunkListener::new();
 
     let world = create_main_world(seed);
-    let mut player = Player::new(view_distance);
-    player.set_position(world, &mut listener, Vector3::zeros());
+    let mut player = world.create_player(&mut listener, view_distance);
 
     // --- debug tools SetUp ---
     let stdout = std::io::stdout().into_raw_mode()?;
@@ -158,18 +157,26 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
                         movement_speed = movement_speed.max(0.5);
                     }
 
+                    let mut inputs = vec![];
+
                     let speed = movement_speed * delta_time;
                     if input_handler.is_pressed(KeyCode::W) {
-                        camera.origin += camera.forward() * speed;
+                        inputs.push(PlayerInput::MoveFoward);
                     }
                     if input_handler.is_pressed(KeyCode::A) {
-                        camera.origin += camera.left() * speed;
+                        inputs.push(PlayerInput::MoveLeft);
                     }
                     if input_handler.is_pressed(KeyCode::S) {
-                        camera.origin -= camera.forward() * speed;
+                        inputs.push(PlayerInput::MoveBackward);
                     }
                     if input_handler.is_pressed(KeyCode::D) {
-                        camera.origin -= camera.left() * speed;
+                        inputs.push(PlayerInput::MoveRight);
+                    }
+                    if input_handler.is_pressed(KeyCode::Space) {
+                        inputs.push(PlayerInput::Jump);
+                    }
+                    if input_handler.is_pressed(KeyCode::LControl) {
+                        inputs.push(PlayerInput::SprintToggle);
                     }
                     camera.origin.y = camera.origin.y.clamp(0.0, 255.9);
                     // FIXME-END
@@ -178,7 +185,9 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
 
                     // --- Update States ---
 
-                    player.set_position(world, &mut listener, camera.origin);
+                    player.update(world, &mut listener, camera.forward(), camera.left(), inputs, delta_time);
+                    camera.origin = player.head_position();
+                    //player.set_position(world, &mut listener, camera.origin);
 
                     termidrawer.update_var(
                         "screen_top_left".to_string(),
