@@ -180,7 +180,6 @@ vec4 sky_color(Ray r) {
         uint out_value = FCT_GET_VAL(out_pos);\
         if (out_value != 0) {\
             {BOCK;}\
-            break;\
         }\
         _mask = lessThanEqual(out_side_dist.xyz, min(out_side_dist.yzx, out_side_dist.zxy));\
         out_side_dist += vec3(_mask) * _dt_dist;\
@@ -258,15 +257,9 @@ vec4 cast_ray(Ray r) {
 
         Ray r_block = r;
         float t = BBoxIntersect(world_chunk_pos_min, world_chunk_pos_max, r);
-        if (t <= 0) {
-            return vec4(0, 1, 1, 1);
-        }
-        r_block.origin += r.direction * t;
-        r_block.origin -= vec3(world_chunk_pos_min.x, 0, world_chunk_pos_min.y);
 
-        if (!bl_is_inside(ivec3(floor(r_block.origin)))) {
-                return vec4(1, 0, 0, 1);
-        }
+        r_block.origin += r.direction * (t + 0.0001);
+        r_block.origin -= vec3(var_cur_chunk.x, 0, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;
 
         DRAW_RAY(r_block, CST_CHUNK_HEIGHT, bl_is_inside, bl_value, {
             return vec4(CST_BLOCK_COLORS[out_value], 1);
