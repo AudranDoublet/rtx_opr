@@ -209,7 +209,17 @@ impl Player {
             }
         }
 
-        for chunk in &new_chunks {
+        let curr_chunk = Vector2::new(cx, cz);
+        let mut new_chunks_vec: Vec<&Vector2<i32>> = new_chunks.iter().collect();
+
+        new_chunks_vec.sort_by(|a, b| {
+            let va = *a - curr_chunk;
+            let vb = *b - curr_chunk;
+
+            (va.x*va.x + va.y*va.y).cmp(&(vb.x*vb.x + vb.y*vb.y))
+        });
+
+        for chunk in new_chunks_vec {
             world.generate_chunk(chunk.x, chunk.y);
         }
 
