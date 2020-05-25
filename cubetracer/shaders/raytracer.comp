@@ -56,6 +56,37 @@ struct Ray {
     vec3 direction_inv;
 };
 
+struct Material {
+    int type;
+    ivec2 texture_coords[6];
+};
+
+#define TEX_UNIQUE(v) (v), (v), (v), (v), (v), (v)
+#define TEX_COLUMN(v, w, z) (v), (w), (v), (v), (z), (v)
+#define MATERIAL_EMPTY() Material(0, ivec2[6]( TEX_UNIQUE(ivec2(0, 0)) ))
+#define MATERIAL_U(u, v) Material(1, ivec2[6]( TEX_UNIQUE(ivec2(u, v)) ))
+#define MATERIAL_C(u, v, u2, v2, u3, v3) Material(1, ivec2[6]( TEX_COLUMN(ivec2(u, v), ivec2(u2, v2), ivec2(u3, v3)) ))
+
+const Material CST_BLOCK_MATERIALS[] = {
+    MATERIAL_EMPTY(),
+    MATERIAL_U(1, 1),
+    MATERIAL_U(3, 0),               // Stone
+    MATERIAL_C(0, 0, 1, 0, 2, 0),   // Grass
+    MATERIAL_U(2, 0),               // Dirt
+    MATERIAL_U(0, 1),               // Gravel
+    MATERIAL_U(8, 0),               // Sand
+    MATERIAL_C(0, 2, 1, 2, 1, 2),   // Cactus
+    MATERIAL_U(2, 1),               // Snow
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+};
+
 /* ************************************************************
  * > -1- Variables
  * ************************************************************/
@@ -70,6 +101,8 @@ uniform vec3 in_uni_origin; // camera origin
 uniform ivec2 in_uni_cl_min_coords; // chunks min coord in 
 
 uniform ivec3 in_uni_highlighted_block;
+
+uniform sampler2D in_uni_texture;
 
     /* > -B- Outputs */
 layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
@@ -290,14 +323,24 @@ vec2 bbox_uv(const vec3 boxMin, const vec3 boxMax, const Ray r, float t, int fac
     vec3 diff = boxMax - boxMin;
 
     if (face == 0 || face == 3) {
-        return vec2((pos.z - boxMin.z) / diff.z, (pos.y - boxMin.y) / diff.y);
+        return vec2((pos.z - boxMin.z) / diff.z, 1 - (pos.y - boxMin.y) / diff.y);
     }
 
     if (face == 1 || face == 4) {
         return vec2((pos.x - boxMin.x) / diff.x, (pos.z - boxMin.z) / diff.z);
     }
 
-    return vec2((pos.x - boxMin.x) / diff.x, (pos.y - boxMin.y) / diff.y);
+    return vec2((pos.x - boxMin.x) / diff.x, 1 - (pos.y - boxMin.y) / diff.y);
+}
+
+vec2 texture_coords(ivec2 pos, vec2 uv) {
+    vec2 size = vec2(1.0 / 16, 1.0 / 16); // FIXME remove hardcoded width/height
+
+    return vec2(float(pos.x) * size.x, float(pos.y) * size.y) + uv * size;
+}
+
+vec4 texture_color(ivec2 pos, vec2 uv) {
+    return texture(in_uni_texture, texture_coords(pos, uv));
 }
 
 vec4 cast_ray(Ray r) {
@@ -342,10 +385,13 @@ vec4 cast_ray(Ray r) {
                 if (int(world_chunk_pos_min.x + min_pos.x) == in_uni_highlighted_block.x && int(min_pos.y) == in_uni_highlighted_block.y && int(world_chunk_pos_min.z + min_pos.z) == in_uni_highlighted_block.z
                         && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
                     return vec4(0.5, 0.5, 0.5, 1);
+
                 vec3 normal = CST_NORMAL_MAP[face];
 
+                vec4 diffuse_color = texture_color(CST_BLOCK_MATERIALS[out_value].texture_coords[face], uv);
                 float light_diffuse = max(0.3, dot(normal, -CST_LIGHT_DIRECTION));
-                return vec4(light_diffuse * CST_BLOCK_COLORS[out_value], 1);
+
+                return light_diffuse * diffuse_color;
             }
         });
     });

@@ -26,6 +26,8 @@ impl CubeTracer {
         let vao_quad_screen = helper::make_quad_vao(prog_quad_screen_id)?;
         let texture_raytracer = helper::generate_texture(width, height)?;
 
+        helper::load_texture(&std::path::Path::new("data/texture.png"))?;
+
         Ok(CubeTracer {
             program_raytracer,
             program_quad_screen,
