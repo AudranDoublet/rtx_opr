@@ -30,6 +30,14 @@ const uint CST_VIEW_DISTANCE = <<<CST_VIEW_DISTANCE>>>;
 const uint CST_NB_CHUNKS_X = (2*CST_VIEW_DISTANCE);
 const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
 
+const vec3 CST_LIGHT_DIRECTION = normalize(vec3(1.1, -1.5, 0.9));
+
+const vec3 CST_NORMAL_MAP[3] = {
+    vec3(1, 0, 0),
+    vec3(0, 1, 0),
+    vec3(0, 0, 1),
+};
+
 /* ************************************************************
  * > -0- Types
  * ************************************************************/
@@ -198,7 +206,6 @@ vec4 sky_color(Ray r) {
         uint out_value = FCT_GET_VAL(out_pos);\
         if (out_value != 0) {\
             {BOCK;}\
-            break;\
         }\
         if (out_side_dist.x < out_side_dist.y) {\
             if (out_side_dist.x < out_side_dist.z) {\
@@ -248,13 +255,36 @@ vec4 cast_ray(Ray r) {
 
         if (_i > 0) {
             float t = BBoxIntersect(world_chunk_pos_min, world_chunk_pos_max, r);
-            r_block.origin += r.direction * (t + 0.0001);
+            r_block.origin += r.direction * (t + 0.001);
         }
 
         r_block.origin -= vec3(var_cur_chunk.x, 0, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;
 
         DRAW_RAY(r_block, CST_CHUNK_HEIGHT, bl_is_inside, bl_value, {
-            return vec4(CST_BLOCK_COLORS[out_value], 1);
+            //vec3 out_pos += vec3(var_cur_chunk.x, 0, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;
+
+            /*
+            vec3 world_block_pos_min = out_pos;
+            vec3 world_block_pos_max = out_pos + vec3(1);
+
+            float t = BBoxIntersect(world_block_pos_min, world_block_pos_max, r);
+            */
+
+            vec3 normal = -CST_NORMAL_MAP[uint(dot(uvec3(_mask), uvec3(0, 1, 2)))] * _sgn;
+            /*
+            vec3 normal;
+            if (_mask.x) {
+                normal = vec3(-_sgn.x, 0, 0);
+            } else if (_mask.y) {
+                normal = vec3(0, -_sgn.y, 0);
+            } else {
+                normal = vec3(0, 0, -_sgn.z);
+            }
+            */
+
+            float light_diffuse = max(0.3, dot(normal, -CST_LIGHT_DIRECTION));
+
+            return  vec4(light_diffuse * CST_BLOCK_COLORS[out_value], 1);
         });
     });
 

@@ -153,13 +153,13 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
                         inputs.push(PlayerInput::MoveFoward);
                     }
                     if input_handler.is_pressed(KeyCode::A) {
-                        inputs.push(PlayerInput::MoveLeft);
+                        inputs.push(PlayerInput::MoveRight);
                     }
                     if input_handler.is_pressed(KeyCode::S) {
                         inputs.push(PlayerInput::MoveBackward);
                     }
                     if input_handler.is_pressed(KeyCode::D) {
-                        inputs.push(PlayerInput::MoveRight);
+                        inputs.push(PlayerInput::MoveLeft);
                     }
                     if input_handler.is_pressed(KeyCode::Space) {
                         inputs.push(PlayerInput::Jump);
@@ -173,7 +173,14 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
 
                     // --- Update States ---
 
-                    player.update(world, &mut listener, camera.forward(), camera.left(), inputs, delta_time);
+                    player.update(
+                        world,
+                        &mut listener,
+                        camera.forward(),
+                        camera.left(),
+                        inputs,
+                        delta_time,
+                    );
                     camera.origin = player.head_position();
                     //player.set_position(world, &mut listener, camera.origin);
 
