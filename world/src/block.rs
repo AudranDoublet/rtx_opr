@@ -1,6 +1,36 @@
 use crate::AABB;
 use nalgebra::Vector3;
 
+pub enum BlockFace {
+    Up,
+    Down,
+    North,
+    South,
+    East,
+    West,
+}
+
+impl BlockFace {
+    pub fn opposite(&self) -> BlockFace {
+        match self {
+            BlockFace::Up       => BlockFace::Down,
+            BlockFace::Down     => BlockFace::Up,
+            BlockFace::North    => BlockFace::South,
+            BlockFace::South    => BlockFace::North,
+            BlockFace::East     => BlockFace::West,
+            BlockFace::West     => BlockFace::East,
+        }
+    }
+
+    pub fn coord(c: usize) -> BlockFace {
+        match c {
+            0 => BlockFace::East,
+            1 => BlockFace::Up,
+            _ => BlockFace::North,
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[repr(u32)]
 pub enum Block {
