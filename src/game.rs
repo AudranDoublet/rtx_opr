@@ -14,7 +14,7 @@ use std::{collections::HashSet, rc::Rc};
 use termion::{raw::IntoRawMode, screen::AlternateScreen};
 use tui::{backend::TermionBackend, Terminal};
 
-use world::{create_main_world, Chunk, ChunkListener, Player, PlayerInput};
+use world::{create_main_world, Chunk, ChunkListener, PlayerInput};
 type CTX = ContextWrapper<PossiblyCurrent, glutin::window::Window>;
 
 pub struct MyChunkListener {
@@ -72,7 +72,6 @@ fn set_cursor_middle_window(context: &CTX) {
 pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error::Error>> {
     // --- Configuration ---
     let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
-    let mut movement_speed: f32 = 50.0;
 
     // --- World SetUp --
     let mut listener = MyChunkListener::new();
@@ -148,18 +147,8 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
                         camera.reorient(offset);
                     }
 
-                    // FIXME: this is only for debugging purpose, remove me later
-                    if input_handler.is_pressed(KeyCode::PageUp) {
-                        movement_speed += 0.25;
-                        movement_speed = movement_speed.min(100.0);
-                    } else if input_handler.is_pressed(KeyCode::PageDown) {
-                        movement_speed -= 0.25;
-                        movement_speed = movement_speed.max(0.5);
-                    }
-
                     let mut inputs = vec![];
 
-                    let speed = movement_speed * delta_time;
                     if input_handler.is_pressed(KeyCode::W) {
                         inputs.push(PlayerInput::MoveFoward);
                     }
@@ -179,7 +168,6 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
                         inputs.push(PlayerInput::SprintToggle);
                     }
                     camera.origin.y = camera.origin.y.clamp(0.0, 255.9);
-                    // FIXME-END
 
                     set_cursor_middle_window(&context);
 
@@ -205,7 +193,6 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
                     termidrawer
                         .update_var("v_left".to_string(), format!("{:?}", camera.left().data));
                     termidrawer.update_var("v_up".to_string(), format!("{:?}", camera.up().data));
-                    termidrawer.update_var("speed".to_string(), format!("{:?}", movement_speed));
 
                     let __debug_curr_chunk = Vector2::new(
                         (camera.origin.x / 16.0).floor() as i32,
