@@ -16,7 +16,8 @@ const VAR_IDX_SCREEN_DOT_LEFT: usize = 1;
 const VAR_IDX_SCREEN_DOT_UP: usize = 2;
 const VAR_IDX_ORIGIN: usize = 3;
 const VAR_IDX_CL_MIN_COORDS: usize = 4;
-const VARS_LEN: usize = 5;
+const VAR_IDX_HIGHTLIGHTED_BLOCK: usize = 5;
+const VARS_LEN: usize = 7;
 
 pub struct CubeTracerArguments {
     program: u32,
@@ -51,6 +52,10 @@ impl CubeTracerArguments {
         // Chunk Loads variables
         uniform_locations[VAR_IDX_CL_MIN_COORDS] =
             helper::get_uniform_location(program, "in_uni_cl_min_coords")?;
+
+        // Hightlighted block variables
+        uniform_locations[VAR_IDX_HIGHTLIGHTED_BLOCK] =
+            helper::get_uniform_location(program, "in_uni_highlighted_block")?;
 
         Ok(CubeTracerArguments {
             program,
@@ -153,7 +158,7 @@ impl CubeTracerArguments {
         Ok(())
     }
 
-    pub fn set_camera(&self, value: &Camera) -> Result<(), GLError> {
+    pub fn set_camera(&self, value: &Camera, highlighted_block: Vector3<i32>) -> Result<(), GLError> {
         let origin = value.origin;
         let top_left = value.get_virtual_screen_top_left();
         let (left, up) = value.get_virtual_screen_axes_scaled();
@@ -163,6 +168,7 @@ impl CubeTracerArguments {
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_TOP_LEFT, top_left)?;
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_LEFT, left)?;
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_UP, up)?;
+        self.set_vector_3i(VAR_IDX_HIGHTLIGHTED_BLOCK, highlighted_block)?;
         // FIXME-END
 
         Ok(())

@@ -267,7 +267,12 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
                     */
 
                     // - Cube Tracer -
-                    cubetracer.args.set_camera(&camera).unwrap();
+
+                    let highlighted_block = match player.looked_block(&world, camera.forward()) {
+                        Some((b, _)) => b,
+                        _ => Vector3::new(0, -100, 0),
+                    };
+                    cubetracer.args.set_camera(&camera, highlighted_block).unwrap();
 
                     context.window().request_redraw();
                 }
