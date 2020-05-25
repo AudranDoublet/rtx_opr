@@ -1,17 +1,20 @@
-use glutin::event::{DeviceEvent, ElementState, KeyboardInput, MouseScrollDelta, VirtualKeyCode};
+use glutin::event::{DeviceEvent, ElementState, KeyboardInput, MouseScrollDelta, VirtualKeyCode, MouseButton};
 use nalgebra::Vector2;
 
 pub enum StateChange {
     Keyboard,
+    MouseButton,
     MouseScroll,
     MouseMotion,
 }
 
-const CST_MAX_NUMBER_STATE_CHANGE: usize = 3;
+const CST_MAX_NUMBER_STATE_CHANGE: usize = 4;
 const CST_MAX_NUMBER_KEY: usize = u8::max_value() as usize;
+const CST_MAX_NUMBER_BUTTON: usize = u8::max_value() as usize;
 
 type StateChangeArray = [bool; CST_MAX_NUMBER_STATE_CHANGE];
 type KeyStateArray = [ElementState; CST_MAX_NUMBER_KEY];
+type ButtonStateArray = [ElementState; CST_MAX_NUMBER_BUTTON];
 
 pub struct WinInput {
     states_changes: StateChangeArray,
@@ -23,6 +26,7 @@ pub struct WinInput {
     mouse_motion_sensitivity: f32,
 
     keys_states: KeyStateArray,
+    buttons_states: ButtonStateArray,
 }
 
 impl WinInput {
@@ -71,6 +75,19 @@ impl WinInput {
         self.keys_states[k as usize] == ElementState::Pressed
     }
 
+    fn button_id(&self, button: MouseButton) -> usize {
+        match button {
+            MouseButton::Left => 0,
+            MouseButton::Right => 1,
+            MouseButton::Middle => 2,
+            MouseButton::Other(v) => v as usize,
+        }
+    }
+
+    pub fn is_button_pressed(&self, k: MouseButton) -> bool {
+        self.buttons_states[self.button_id(k)] == ElementState::Pressed
+    }
+
     pub fn on_device_event(&mut self, input: DeviceEvent) {
         match input {
             DeviceEvent::MouseWheel { delta } => self.handle_mouse_wheel(delta),
@@ -78,6 +95,15 @@ impl WinInput {
                 self.handle_mouse_motion(dx as f32, dy as f32)
             }
             _ => (),
+        }
+    }
+
+    pub fn on_mouse_input(&mut self, input: MouseButton, state: ElementState) {
+        let k = self.button_id(input);
+
+        if state != self.buttons_states[k] {
+            self.buttons_states[k] = state;
+            self.set_state_updated(StateChange::MouseButton);
         }
     }
 
@@ -100,6 +126,7 @@ impl WinInput {
             mouse_motion_sensitivity,
 
             keys_states: [ElementState::Released; CST_MAX_NUMBER_KEY],
+            buttons_states: [ElementState::Released; CST_MAX_NUMBER_BUTTON],
             states_changes: [false; CST_MAX_NUMBER_STATE_CHANGE],
         }
     }

@@ -13,6 +13,8 @@ const SPEED: f32 = 5.0;
 const WATER_SPEED: f32 = 1.0;
 const WATER_Y_SPEED: f32 = 1.0;
 
+const BLOCK_BREAK_COOLDOWN: f32 = 0.3;
+
 pub enum PlayerInput {
     Jump,
     SprintToggle,
@@ -48,6 +50,8 @@ pub struct Player {
     /** Chunk provider */
     last_chunk_update: Vector3<f32>,
     pub known_chunks: HashSet<Vector2<i32>>,
+
+    block_break_cooldown: f32,
 }
 
 impl Player {
@@ -60,6 +64,8 @@ impl Player {
             sprinting: false,
             grounded: false,
             in_water: false,
+
+            block_break_cooldown: 0.0,
 
             /* Chunk provider */
             last_chunk_update: Vector3::new(std::f32::INFINITY, 0.0, 0.0),
@@ -205,6 +211,8 @@ impl Player {
         let mut jumping = false;
         let mut sprinting = false;
 
+        self.block_break_cooldown -= dt;
+
         for input in &inputs {
             match input {
                 PlayerInput::MoveLeft => directional_input.x -= 1.,
@@ -214,8 +222,11 @@ impl Player {
                 PlayerInput::Jump => jumping = true,
                 PlayerInput::SprintToggle => sprinting = true,
                 PlayerInput::LeftInteract => {
-                    if let Some((pos, _)) = self.looked_block(world, camera_forward) {
-                        world.set_block_at(pos, Block::Air);
+                    if self.block_break_cooldown <= 0.0 {
+                        if let Some((pos, _)) = self.looked_block(world, camera_forward) {
+                            world.set_block_at(pos, Block::Air);
+                            self.block_break_cooldown = BLOCK_BREAK_COOLDOWN;
+                        }
                     }
                 },
                 PlayerInput::RightInteract => (),
