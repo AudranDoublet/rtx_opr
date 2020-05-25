@@ -32,10 +32,13 @@ const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
 
 const vec3 CST_LIGHT_DIRECTION = normalize(vec3(1.1, -1.5, 0.9));
 
-const vec3 CST_NORMAL_MAP[3] = {
+const vec3 CST_NORMAL_MAP[6] = {
     vec3(1, 0, 0),
     vec3(0, 1, 0),
     vec3(0, 0, 1),
+    vec3(-1, 0, 0),
+    vec3(0, -1, 0),
+    vec3(0, 0, -1),
 };
 
 /* ************************************************************
@@ -95,6 +98,7 @@ vec3 h_v_inv(vec3 v) {
     // We have the guarantee that a division will lead to (+/-)Inf, which is
     // OK for the usages here and should be slightly faster than the safe
     // version.
+
     return vec3(1) / v;
 }
 
@@ -241,6 +245,44 @@ float BBoxIntersect(const vec3 boxMin, const vec3 boxMax, const Ray r) {
     return max(t.x, t.y);
 }
 
+vec2 BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r, out int face) {
+    vec3 tbot = r.direction_inv * (boxMin - r.origin);
+    vec3 ttop = r.direction_inv * (boxMax - r.origin);
+
+    int facex = 0;
+    int facey = 1;
+    int facez = 2;
+
+    if (tbot.x > tbot.x)
+        facex = 3;
+    if (tbot.y > tbot.y)
+        facey = 4;
+    if (tbot.z > tbot.z)
+        facez = 5;
+
+    vec3 tmin = min(ttop, tbot);
+    vec3 tmax = max(ttop, tbot);
+
+    float t1 = tmin.x;
+    face = facex;
+
+    if (tmin.y > t1)
+    {
+        t1 = tmin.y;
+        face = facey;
+    }
+
+    if (tmin.z > t1)
+    {
+        t1 = tmin.z;
+        face = facez;
+    }
+
+    float t2 = min(min(tmax.x, tmax.y), tmax.z);
+
+    return vec2(t1, t2);
+}
+
 vec4 cast_ray(Ray r) {
     Ray r_chunk = r;
     r_chunk.origin = r.origin * CST_WORLD_TO_LOCAL - vec3(in_uni_cl_min_coords.x, 0, in_uni_cl_min_coords.y);
@@ -261,30 +303,24 @@ vec4 cast_ray(Ray r) {
         r_block.origin -= vec3(var_cur_chunk.x, 0, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;
 
         DRAW_RAY(r_block, CST_CHUNK_HEIGHT, bl_is_inside, bl_value, {
-            //vec3 out_pos += vec3(var_cur_chunk.x, 0, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;
+            vec3 min_pos = out_pos;
+            vec3 max_pos = out_pos + vec3(1);
 
-            /*
-            vec3 world_block_pos_min = out_pos;
-            vec3 world_block_pos_max = out_pos + vec3(1);
-
-            float t = BBoxIntersect(world_block_pos_min, world_block_pos_max, r);
-            */
-
-            vec3 normal = -CST_NORMAL_MAP[uint(dot(uvec3(_mask), uvec3(0, 1, 2)))] * _sgn;
-            /*
-            vec3 normal;
-            if (_mask.x) {
-                normal = vec3(-_sgn.x, 0, 0);
-            } else if (_mask.y) {
-                normal = vec3(0, -_sgn.y, 0);
-            } else {
-                normal = vec3(0, 0, -_sgn.z);
+            if (out_value == 1) {
+                max_pos = min_pos + vec3(1, 0.9, 1);
             }
-            */
 
-            float light_diffuse = max(0.3, dot(normal, -CST_LIGHT_DIRECTION));
+            int face = 0;
 
-            return  vec4(light_diffuse * CST_BLOCK_COLORS[out_value], 1);
+            vec2 v = BBoxRayIntersects(min_pos, max_pos, r_block, face);
+
+            if (v.x < v.y)
+            {
+                vec3 normal = CST_NORMAL_MAP[face];
+
+                float light_diffuse = max(0.3, dot(normal, -CST_LIGHT_DIRECTION));
+                return vec4(light_diffuse * CST_BLOCK_COLORS[out_value], 1);
+            }
         });
     });
 
