@@ -306,8 +306,12 @@ vec4 cast_ray(Ray r) {
             vec3 min_pos = out_pos;
             vec3 max_pos = out_pos + vec3(1);
 
-            if (out_value == 1) {
+            if (out_value == 1) { // water
                 max_pos = min_pos + vec3(1, 0.9, 1);
+            }
+
+            if (out_value == 8) { // snow
+                max_pos = min_pos + vec3(1, 0.1, 1);
             }
 
             int face = 0;

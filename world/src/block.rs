@@ -49,6 +49,7 @@ impl Block {
     pub fn aabb(&self, position: Vector3<f32>) -> Option<AABB> {
         let base = match self {
             Block::Air | Block::Water => None,
+            Block::Snow => Some(AABB::new(Vector3::zeros(), Vector3::new(1., 0.1, 1.))),
             _ => Some(AABB::new(Vector3::zeros(), Vector3::new(1., 1., 1.))),
         };
 
