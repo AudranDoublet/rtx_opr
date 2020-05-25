@@ -18,8 +18,9 @@ const VAR_IDX_ORIGIN: usize = 3;
 const VAR_IDX_CL_MIN_COORDS: usize = 4;
 const VAR_IDX_HIGHTLIGHTED_BLOCK: usize = 5;
 const VAR_IDX_TEXTURE : usize = 6;
+const VAR_IDX_TEXTURE_N : usize = 7;
 
-const VARS_LEN: usize = 8;
+const VARS_LEN: usize = 9;
 
 pub struct CubeTracerArguments {
     program: u32,
@@ -61,6 +62,8 @@ impl CubeTracerArguments {
 
         uniform_locations[VAR_IDX_TEXTURE] =
             helper::get_uniform_location(program, "in_uni_texture")?;
+        uniform_locations[VAR_IDX_TEXTURE_N] =
+            helper::get_uniform_location(program, "in_uni_texture_n")?;
 
         Ok(CubeTracerArguments {
             program,
@@ -183,6 +186,7 @@ impl CubeTracerArguments {
 
         // FIXME: we should try to send the data as an array of 4 Vector3 in one shot
         self.set_i(VAR_IDX_TEXTURE, 1)?;
+        self.set_i(VAR_IDX_TEXTURE_N, 2)?;
         self.set_vector_3f(VAR_IDX_ORIGIN, origin)?;
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_TOP_LEFT, top_left)?;
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_LEFT, left)?;

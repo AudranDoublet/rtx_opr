@@ -30,7 +30,7 @@ const uint CST_VIEW_DISTANCE = <<<CST_VIEW_DISTANCE>>>;
 const uint CST_NB_CHUNKS_X = (2*CST_VIEW_DISTANCE);
 const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
 
-const vec3 CST_LIGHT_DIRECTION = normalize(vec3(1.1, -1.5, 0.9));
+const vec3 CST_LIGHT_DIRECTION = normalize(vec3(1.1, -1.2, 0.9));
 
 const vec3 CST_NORMAL_MAP[6] = {
     vec3(1, 0, 0),
@@ -74,7 +74,7 @@ const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_C(0, 0, 1, 0, 2, 0),   // Grass
     MATERIAL_U(2, 0),               // Dirt
     MATERIAL_U(0, 1),               // Gravel
-    MATERIAL_U(8, 0),               // Sand
+    MATERIAL_U(0, 3),               // Sand
     MATERIAL_C(0, 2, 1, 2, 1, 2),   // Cactus
     MATERIAL_U(2, 1),               // Snow
     MATERIAL_U(0, 0),
@@ -103,6 +103,7 @@ uniform ivec2 in_uni_cl_min_coords; // chunks min coord in
 uniform ivec3 in_uni_highlighted_block;
 
 uniform sampler2D in_uni_texture;
+uniform sampler2D in_uni_texture_n;
 
     /* > -B- Outputs */
 layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
@@ -334,13 +335,29 @@ vec2 bbox_uv(const vec3 boxMin, const vec3 boxMax, const Ray r, float t, int fac
 }
 
 vec2 texture_coords(ivec2 pos, vec2 uv) {
-    vec2 size = vec2(1.0 / 16, 1.0 / 16); // FIXME remove hardcoded width/height
+    vec2 size = vec2(1.0 / 8, 1.0 / 8); // FIXME remove hardcoded width/height
 
     return vec2(float(pos.x) * size.x, float(pos.y) * size.y) + uv * size;
 }
 
 vec4 texture_color(ivec2 pos, vec2 uv) {
     return texture(in_uni_texture, texture_coords(pos, uv));
+}
+
+vec3 texture_normal(vec3 normal, ivec2 pos, vec2 uv, int face) {
+    vec3 tangeant;
+
+    if (face == 2 || face == 5)
+        tangeant = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
+    else
+        tangeant = normalize(cross(normal, vec3(0.0, 0.0, 1.0)));
+
+    vec3 b = normalize(cross(normal, tangeant));
+    vec4 color = texture(in_uni_texture_n, texture_coords(pos, uv));
+    vec3 map_normal = color.xyz * 2 - vec3(1);
+
+    //FIXME mat3 could be precomputed for face
+    return mat3(tangeant, b, normal) * map_normal;
 }
 
 vec4 cast_ray(Ray r) {
@@ -386,9 +403,12 @@ vec4 cast_ray(Ray r) {
                         && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
                     return vec4(0.5, 0.5, 0.5, 1);
 
-                vec3 normal = CST_NORMAL_MAP[face];
+                ivec2 tex = CST_BLOCK_MATERIALS[out_value].texture_coords[face];
+                vec3 normal = texture_normal(CST_NORMAL_MAP[face], tex, uv, face);
 
-                vec4 diffuse_color = texture_color(CST_BLOCK_MATERIALS[out_value].texture_coords[face], uv);
+                vec4 diffuse_color = texture_color(tex, uv);
+
+
                 float light_diffuse = max(0.3, dot(normal, -CST_LIGHT_DIRECTION));
 
                 return light_diffuse * diffuse_color;

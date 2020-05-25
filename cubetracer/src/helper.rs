@@ -9,17 +9,17 @@ use std::{mem, ptr};
 
 use gl::types::*;
 
-pub fn load_texture(path: &std::path::Path) -> Result<u32, GLError> {
+pub fn load_texture(i: u32, path: &std::path::Path) -> Result<u32, GLError> {
     let image = image::open(path).expect("can't load texture").into_rgba();
     let mut tex_out = 0;
 
     glchk_stmt!(
         gl::GenTextures(2, &mut tex_out);
-        gl::ActiveTexture(gl::TEXTURE1);
+        gl::ActiveTexture(gl::TEXTURE0 + i);
         gl::BindTexture(gl::TEXTURE_2D, tex_out);
 
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
 
         gl::TexImage2D(
             gl::TEXTURE_2D,
