@@ -101,6 +101,16 @@ impl AABB {
         AABB::new(self.min - diff, self.max + diff)
     }
 
+    pub fn box_intersects(&self, other: &AABB) -> bool {
+        for i in 0..3 {
+            if !(self.min[i] < other.max[i] && self.max[i] > other.min[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     pub fn ray_intersects(&self, origin: Vector3<f32>, inv_direction: Vector3<f32>) -> Option<(f32, BlockFace)> {
         let a = (self.min - origin).component_mul(&inv_direction);
         let b = (self.max - origin).component_mul(&inv_direction);
@@ -116,7 +126,7 @@ impl AABB {
                 t1 = min[i];
                 face = BlockFace::coord(i);
 
-                if inv_direction[i] < 0.0 {
+                if inv_direction[i] > 0.0 {
                     face = face.opposite();
                 }
             }

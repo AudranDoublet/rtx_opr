@@ -153,6 +153,10 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
                         inputs.push(PlayerInput::LeftInteract);
                     }
 
+                    if input_handler.is_button_pressed(MouseButton::Right) {
+                        inputs.push(PlayerInput::RightInteract);
+                    }
+
                     if input_handler.is_pressed(KeyCode::W) {
                         inputs.push(PlayerInput::MoveFoward);
                     }

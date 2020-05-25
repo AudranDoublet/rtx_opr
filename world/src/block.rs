@@ -22,6 +22,17 @@ impl BlockFace {
         }
     }
 
+    pub fn relative(&self) -> Vector3<i32> {
+        match self {
+            BlockFace::Up       => Vector3::new(0, 1, 0),
+            BlockFace::Down     => Vector3::new(0, -1, 0),
+            BlockFace::North    => Vector3::new(0, 0, 1),
+            BlockFace::South    => Vector3::new(0, 0, -1),
+            BlockFace::East     => Vector3::new(1, 0, 0),
+            BlockFace::West     => Vector3::new(-1, 0, 0),
+        }
+    }
+
     pub fn coord(c: usize) -> BlockFace {
         match c {
             0 => BlockFace::East,

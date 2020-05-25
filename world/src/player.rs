@@ -14,6 +14,7 @@ const WATER_SPEED: f32 = 1.0;
 const WATER_Y_SPEED: f32 = 1.0;
 
 const BLOCK_BREAK_COOLDOWN: f32 = 0.3;
+const BLOCK_PLACE_COOLDOWN: f32 = 0.3;
 
 pub enum PlayerInput {
     Jump,
@@ -52,6 +53,7 @@ pub struct Player {
     pub known_chunks: HashSet<Vector2<i32>>,
 
     block_break_cooldown: f32,
+    block_place_cooldown: f32,
 }
 
 impl Player {
@@ -66,6 +68,7 @@ impl Player {
             in_water: false,
 
             block_break_cooldown: 0.0,
+            block_place_cooldown: 0.0,
 
             /* Chunk provider */
             last_chunk_update: Vector3::new(std::f32::INFINITY, 0.0, 0.0),
@@ -212,6 +215,7 @@ impl Player {
         let mut sprinting = false;
 
         self.block_break_cooldown -= dt;
+        self.block_place_cooldown -= dt;
 
         for input in &inputs {
             match input {
@@ -229,7 +233,27 @@ impl Player {
                         }
                     }
                 },
-                PlayerInput::RightInteract => (),
+                PlayerInput::RightInteract => {
+                    if self.block_place_cooldown <= 0.0 {
+                        if let Some((pos, face)) = self.looked_block(world, camera_forward) {
+                            let pos = pos + face.relative();
+                            let btype = Block::Stone;
+
+                            let mut allowed = true;
+
+                            if let Some(aabb) = btype.aabb(ivec_to_f(pos)) {
+                                if self.collider().box_intersects(&aabb) {
+                                    allowed = false;
+                                }
+                            }
+
+                            if allowed {
+                                world.set_block_at(pos, btype);
+                                self.block_place_cooldown = BLOCK_PLACE_COOLDOWN;
+                            }
+                        }
+                    }
+                },
             }
         }
 
