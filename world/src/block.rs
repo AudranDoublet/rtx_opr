@@ -39,9 +39,16 @@ impl Block {
         }
     }
 
+    pub fn is_liquid(&self) -> bool {
+        match self {
+            Block::Water => true,
+            _ => false,
+        }
+    }
+
     pub fn aabb(&self, position: Vector3<f32>) -> Option<AABB> {
         let base = match self {
-            Block::Air => None,
+            Block::Air | Block::Water => None,
             _ => Some(AABB::new(Vector3::zeros(), Vector3::new(1., 1., 1.))),
         };
 

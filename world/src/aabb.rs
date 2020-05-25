@@ -30,7 +30,7 @@ impl AABB {
 
     pub fn blocks(&self) -> AABBIterator {
         let min = Vector3::new(self.min.x.floor() as i32, self.min.y.floor() as i32, self.min.z.floor() as i32);
-        let max = Vector3::new(self.max.x.ceil() as i32, self.max.y.ceil() as i32, self.max.z.ceil() as i32);
+        let max = Vector3::new(self.max.x.floor() as i32, self.max.y.floor() as i32, self.max.z.floor() as i32);
 
         AABBIterator {
             min: min,

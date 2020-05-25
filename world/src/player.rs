@@ -39,6 +39,7 @@ pub struct Player {
     position: Vector3<f32>,
     sprinting: bool,
     grounded: bool,
+    in_water: bool,
 
     velocity: Vector3<f32>,
 
@@ -56,6 +57,7 @@ impl Player {
 
             sprinting: false,
             grounded: false,
+            in_water: false,
 
             /* Chunk provider */
             last_chunk_update: Vector3::new(std::f32::INFINITY, 0.0, 0.0),
@@ -127,7 +129,7 @@ impl Player {
     }
 
     pub fn in_water(&self) -> bool {
-        false // FIXME
+        self.in_water
     }
 
     pub fn gravity(&self) -> f32 {
@@ -193,6 +195,7 @@ impl Player {
 
         if self.in_water() && jumping {
             desired_move.y = WATER_Y_SPEED;
+            self.velocity.y = 0.0;
         } else if self.on_ground() && jumping {
             self.velocity.y = JUMP_FORCE;
         }
@@ -256,6 +259,11 @@ impl Player {
         position: Vector3<f32>,
     ) {
         self.position = position;
+
+        self.in_water = self.collider().blocks().any(|b| match world.block_at(b) {
+            Some(v) => v.is_liquid(),
+            _ => false,
+        });
 
         let dx = self.last_chunk_update.x - position.x;
         let dz = self.last_chunk_update.z - position.z;
