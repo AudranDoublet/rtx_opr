@@ -1,4 +1,5 @@
 extern crate gl;
+extern crate image;
 
 use crate::errors::*;
 use crate::{glchk_expr, glchk_stmt, ConfigurableShader};
@@ -7,6 +8,34 @@ use std::ffi::{c_void, CString};
 use std::{mem, ptr};
 
 use gl::types::*;
+
+pub fn load_texture(i: u32, path: &std::path::Path) -> Result<u32, GLError> {
+    let image = image::open(path).expect("can't load texture").into_rgba();
+    let mut tex_out = 0;
+
+    glchk_stmt!(
+        gl::GenTextures(2, &mut tex_out);
+        gl::ActiveTexture(gl::TEXTURE0 + i);
+        gl::BindTexture(gl::TEXTURE_2D, tex_out);
+
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGBA as i32,
+            image.width() as i32,
+            image.height() as i32,
+            0,
+            gl::RGBA,
+            gl::UNSIGNED_BYTE,
+            image.into_raw().as_ptr() as *const _ as *const c_void,
+        );
+    );
+
+    Ok(tex_out)
+}
 
 pub fn generate_texture(width: u32, height: u32) -> Result<u32, GLError> {
     let mut tex_out = 0;

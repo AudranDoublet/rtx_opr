@@ -2,7 +2,7 @@ use crate::termidraw::TermiDrawer;
 use gl;
 use glutin::dpi;
 use glutin::event;
-use glutin::event::VirtualKeyCode as KeyCode;
+use glutin::event::{VirtualKeyCode as KeyCode, MouseButton};
 use glutin::event::WindowEvent;
 use glutin::{ContextBuilder, ContextWrapper, GlRequest, PossiblyCurrent};
 use nalgebra::{Vector2, Vector3};
@@ -154,6 +154,14 @@ pub fn game(
 
                     let mut inputs = vec![];
 
+                    if input_handler.is_button_pressed(MouseButton::Left) {
+                        inputs.push(PlayerInput::LeftInteract);
+                    }
+
+                    if input_handler.is_button_pressed(MouseButton::Right) {
+                        inputs.push(PlayerInput::RightInteract);
+                    }
+
                     if input_handler.is_pressed(KeyCode::W) {
                         inputs.push(PlayerInput::MoveFoward);
                     }
@@ -172,6 +180,7 @@ pub fn game(
                     if input_handler.is_pressed(KeyCode::LControl) {
                         inputs.push(PlayerInput::SprintToggle);
                     }
+
                     camera.origin.y = camera.origin.y.clamp(0.0, 255.9);
 
                     set_cursor_middle_window(&context);
@@ -263,7 +272,12 @@ pub fn game(
                     */
 
                     // - Cube Tracer -
-                    cubetracer.args.set_camera(&camera).unwrap();
+
+                    let highlighted_block = match player.looked_block(&world, camera.forward()) {
+                        Some((b, _)) => b,
+                        _ => Vector3::new(0, -100, 0),
+                    };
+                    cubetracer.args.set_camera(&camera, highlighted_block).unwrap();
 
                     context.window().request_redraw();
                 }
@@ -286,6 +300,9 @@ pub fn game(
                 event::Event::WindowEvent { event, .. } => match event {
                     WindowEvent::KeyboardInput { input, .. } => {
                         input_handler.on_keyboard_input(input)
+                    }
+                    WindowEvent::MouseInput { button, state, .. } => {
+                        input_handler.on_mouse_input(button, state)
                     }
                     glutin::event::WindowEvent::Resized(physical_size) => {
                         context.resize(physical_size);

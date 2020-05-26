@@ -16,7 +16,11 @@ const VAR_IDX_SCREEN_DOT_LEFT: usize = 1;
 const VAR_IDX_SCREEN_DOT_UP: usize = 2;
 const VAR_IDX_ORIGIN: usize = 3;
 const VAR_IDX_CL_MIN_COORDS: usize = 4;
-const VARS_LEN: usize = 5;
+const VAR_IDX_HIGHTLIGHTED_BLOCK: usize = 5;
+const VAR_IDX_TEXTURE : usize = 6;
+const VAR_IDX_TEXTURE_N : usize = 7;
+
+const VARS_LEN: usize = 9;
 
 pub struct CubeTracerArguments {
     program: u32,
@@ -51,6 +55,15 @@ impl CubeTracerArguments {
         // Chunk Loads variables
         uniform_locations[VAR_IDX_CL_MIN_COORDS] =
             helper::get_uniform_location(program, "in_uni_cl_min_coords")?;
+
+        // Hightlighted block variables
+        uniform_locations[VAR_IDX_HIGHTLIGHTED_BLOCK] =
+            helper::get_uniform_location(program, "in_uni_highlighted_block")?;
+
+        uniform_locations[VAR_IDX_TEXTURE] =
+            helper::get_uniform_location(program, "in_uni_texture")?;
+        uniform_locations[VAR_IDX_TEXTURE_N] =
+            helper::get_uniform_location(program, "in_uni_texture_n")?;
 
         Ok(CubeTracerArguments {
             program,
@@ -113,6 +126,19 @@ impl CubeTracerArguments {
         Ok(cl_min_coords)
     }
 
+    fn set_i(&self, var_idx: usize, value: i32) -> Result<(), GLError> {
+        glchk_stmt!(
+            gl::ProgramUniform1iv(
+                self.program,
+                self.uniform_locations[var_idx],
+                1,
+                (&value) as *const _
+            );
+        );
+
+        Ok(())
+    }
+
     fn set_vector_2i(&self, var_idx: usize, value: Vector2<i32>) -> Result<(), GLError> {
         glchk_stmt!(
             gl::ProgramUniform2iv(
@@ -153,16 +179,19 @@ impl CubeTracerArguments {
         Ok(())
     }
 
-    pub fn set_camera(&self, value: &Camera) -> Result<(), GLError> {
+    pub fn set_camera(&self, value: &Camera, highlighted_block: Vector3<i32>) -> Result<(), GLError> {
         let origin = value.origin;
         let top_left = value.get_virtual_screen_top_left();
         let (left, up) = value.get_virtual_screen_axes_scaled();
 
         // FIXME: we should try to send the data as an array of 4 Vector3 in one shot
+        self.set_i(VAR_IDX_TEXTURE, 1)?;
+        self.set_i(VAR_IDX_TEXTURE_N, 2)?;
         self.set_vector_3f(VAR_IDX_ORIGIN, origin)?;
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_TOP_LEFT, top_left)?;
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_LEFT, left)?;
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_UP, up)?;
+        self.set_vector_3i(VAR_IDX_HIGHTLIGHTED_BLOCK, highlighted_block)?;
         // FIXME-END
 
         Ok(())

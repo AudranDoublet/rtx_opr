@@ -16,3 +16,4 @@ glutin = "0.24.0"
 # Math
 nalgebra = "*"
 
+image = ""

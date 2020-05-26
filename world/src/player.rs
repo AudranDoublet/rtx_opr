@@ -1,4 +1,4 @@
-use crate::{ivec_to_f, worldf_to_chunk, World, AABB};
+use crate::{ivec_to_f, worldf_to_chunk, World, AABB, Block, BlockFace};
 use nalgebra::{Vector2, Vector3};
 use std::{collections::HashSet, rc::Rc};
 
@@ -13,6 +13,9 @@ const SPEED: f32 = 5.0;
 const WATER_SPEED: f32 = 1.0;
 const WATER_Y_SPEED: f32 = 1.0;
 
+const BLOCK_BREAK_COOLDOWN: f32 = 0.3;
+const BLOCK_PLACE_COOLDOWN: f32 = 0.3;
+
 pub enum PlayerInput {
     Jump,
     SprintToggle,
@@ -20,6 +23,8 @@ pub enum PlayerInput {
     MoveBackward,
     MoveRight,
     MoveLeft,
+    LeftInteract,
+    RightInteract,
 }
 
 pub trait ChunkListener {
@@ -46,6 +51,9 @@ pub struct Player {
     /** Chunk provider */
     last_chunk_update: Vector3<f32>,
     pub known_chunks: HashSet<Vector2<i32>>,
+
+    block_break_cooldown: f32,
+    block_place_cooldown: f32,
 }
 
 impl Player {
@@ -58,6 +66,9 @@ impl Player {
             sprinting: false,
             grounded: false,
             in_water: false,
+
+            block_break_cooldown: 0.0,
+            block_place_cooldown: 0.0,
 
             /* Chunk provider */
             last_chunk_update: Vector3::new(std::f32::INFINITY, 0.0, 0.0),
@@ -163,6 +174,33 @@ impl Player {
         base * sprint
     }
 
+    pub fn looked_block(&self, world: &World, forward: Vector3<f32>) -> Option<(Vector3<i32>, BlockFace)> {
+        let direction = forward.normalize();
+        let origin = self.head_position();
+
+        let inv_dir = Vector3::new(1. / direction.x, 1. / direction.y, 1. / direction.z);
+
+        let bbox = AABB::new(origin, origin).augment(direction * 4.);
+
+        let mut min = std::f32::INFINITY;
+        let mut result = None;
+
+        for pos in bbox.blocks() {
+            if let Some(block) = world.block_at(pos) {
+                if let Some(aabb) = block.aabb(ivec_to_f(pos)) {
+                    if let Some((d, face)) = aabb.ray_intersects(origin, inv_dir) {
+                        if d < min {
+                            min = d;
+                            result = Some((pos, face));
+                        }
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
     pub fn update(
         &mut self,
         world: &mut World,
@@ -176,6 +214,9 @@ impl Player {
         let mut jumping = false;
         let mut sprinting = false;
 
+        self.block_break_cooldown -= dt;
+        self.block_place_cooldown -= dt;
+
         for input in &inputs {
             match input {
                 PlayerInput::MoveLeft => directional_input.x -= 1.,
@@ -184,6 +225,35 @@ impl Player {
                 PlayerInput::MoveBackward => directional_input.y -= 1.,
                 PlayerInput::Jump => jumping = true,
                 PlayerInput::SprintToggle => sprinting = true,
+                PlayerInput::LeftInteract => {
+                    if self.block_break_cooldown <= 0.0 {
+                        if let Some((pos, _)) = self.looked_block(world, camera_forward) {
+                            world.set_block_at(pos, Block::Air);
+                            self.block_break_cooldown = BLOCK_BREAK_COOLDOWN;
+                        }
+                    }
+                },
+                PlayerInput::RightInteract => {
+                    if self.block_place_cooldown <= 0.0 {
+                        if let Some((pos, face)) = self.looked_block(world, camera_forward) {
+                            let pos = pos + face.relative();
+                            let btype = Block::Stone;
+
+                            let mut allowed = true;
+
+                            if let Some(aabb) = btype.aabb(ivec_to_f(pos)) {
+                                if self.collider().box_intersects(&aabb) {
+                                    allowed = false;
+                                }
+                            }
+
+                            if allowed {
+                                world.set_block_at(pos, btype);
+                                self.block_place_cooldown = BLOCK_PLACE_COOLDOWN;
+                            }
+                        }
+                    }
+                },
             }
         }
 

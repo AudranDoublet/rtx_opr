@@ -1,5 +1,7 @@
 use nalgebra::Vector3;
 
+use crate::BlockFace;
+
 #[derive(Debug)]
 pub struct AABB {
     min: Vector3<f32>,
@@ -97,6 +99,46 @@ impl AABB {
 
     pub fn extend(&self, diff: Vector3<f32>) -> AABB {
         AABB::new(self.min - diff, self.max + diff)
+    }
+
+    pub fn box_intersects(&self, other: &AABB) -> bool {
+        for i in 0..3 {
+            if !(self.min[i] < other.max[i] && self.max[i] > other.min[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    pub fn ray_intersects(&self, origin: Vector3<f32>, inv_direction: Vector3<f32>) -> Option<(f32, BlockFace)> {
+        let a = (self.min - origin).component_mul(&inv_direction);
+        let b = (self.max - origin).component_mul(&inv_direction);
+
+        let min = Vector3::new(a.x.min(b.x), a.y.min(b.y), a.z.min(b.z));
+        let max = Vector3::new(a.x.max(b.x), a.y.max(b.y), a.z.max(b.z));
+
+        let mut face = BlockFace::Up;
+        let mut t1 = std::f32::NEG_INFINITY;
+
+        for i in 0..3 {
+            if min[i] > t1 {
+                t1 = min[i];
+                face = BlockFace::coord(i);
+
+                if inv_direction[i] > 0.0 {
+                    face = face.opposite();
+                }
+            }
+        }
+
+        let t2 = max.x.min(max.y).min(max.z);
+
+        if t1 > 0.0 && t1 < t2 {
+            Some((t1, face))
+        } else {
+            None
+        }
     }
 }
 
