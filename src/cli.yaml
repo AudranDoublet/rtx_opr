@@ -24,6 +24,10 @@ subcommands:
                         value_name: view-distance
                         help: player's view distance
                         takes_value: true
+                -   with-shadows:
+                        short: -s
+                        long: with-shadows
+                        help: activate shadowing (may slow down the game)
     -   dump:
             about: dump map in a very simple format
             args:

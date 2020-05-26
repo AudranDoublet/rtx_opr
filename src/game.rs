@@ -69,7 +69,11 @@ fn set_cursor_middle_window(context: &CTX) {
     window.set_cursor_position(center).unwrap();
 }
 
-pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error::Error>> {
+pub fn game(
+    seed: isize,
+    view_distance: usize,
+    with_shadows: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     // --- Configuration ---
     let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
 
@@ -118,8 +122,9 @@ pub fn game(seed: isize, view_distance: usize) -> Result<(), Box<dyn std::error:
         16. / 9.,
     );
 
-    // --- Cube Tracer -i-
-    let mut cubetracer = cubetracer::CubeTracer::new(width, height, view_distance).unwrap();
+    // --- Cube Tracer ---
+    let mut cubetracer =
+        cubetracer::CubeTracer::new(width, height, view_distance, with_shadows).unwrap();
 
     // --- Main loop ---
     let mut frame_counter = FrameCounter::new(60);

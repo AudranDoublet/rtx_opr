@@ -66,9 +66,10 @@ pub fn get_ssbo_location(program: u32, var_name: &str) -> Result<i32, GLError> {
         Ok(loc)
     }
 }
-pub fn build_program_raytracer(view_size: usize) -> Result<u32, GLError> {
+pub fn build_program_raytracer(view_size: usize, shadow_activated: bool) -> Result<u32, GLError> {
     let mut shader_compute = ConfigurableShader::new(include_str!("../shaders/raytracer.comp"));
     shader_compute.var("CST_VIEW_DISTANCE", view_size);
+    shader_compute.var("CST_SHADOW_ACTIVATED", shadow_activated);
 
     let shader_compute = shader_compute.build(gl::COMPUTE_SHADER)?;
 
