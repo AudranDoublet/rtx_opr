@@ -1,6 +1,6 @@
 use nalgebra::Vector3;
 
-use crate::BlockFace;
+use crate::{BlockFace, World};
 
 #[derive(Debug)]
 pub struct AABB {
@@ -39,6 +39,13 @@ impl AABB {
             max: max,
             curr: min,
         }
+    }
+
+    pub fn has_blocks(&self, world: &World) -> bool {
+        self.blocks()
+            .filter_map(|p| world.block_at(p))
+            .filter_map(|b| b.aabb(Vector3::zeros()))
+            .count() > 0
     }
 
     pub fn augment(&self, diff: Vector3<f32>) -> AABB {
