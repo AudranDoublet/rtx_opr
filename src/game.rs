@@ -134,11 +134,12 @@ pub fn game(
     event_loop.run(
         move |event, _, control_flow: &mut glutin::event_loop::ControlFlow| {
             *control_flow = glutin::event_loop::ControlFlow::Poll;
+            let delta_time = frame_counter.delta_time();
 
             match event {
                 glutin::event::Event::LoopDestroyed => return,
                 glutin::event::Event::MainEventsCleared => {
-                    let delta_time = frame_counter.delta_time();
+                    input_handler.update_time(delta_time);
 
                     // --- Process inputs ---
                     if input_handler.updated(wininput::StateChange::MouseScroll) {
@@ -162,6 +163,9 @@ pub fn game(
                         inputs.push(PlayerInput::RightInteract);
                     }
 
+                    if input_handler.is_pressed(KeyCode::LShift) {
+                        inputs.push(PlayerInput::Sneaking);
+                    }
                     if input_handler.is_pressed(KeyCode::W) {
                         inputs.push(PlayerInput::MoveFoward);
                     }
@@ -179,6 +183,9 @@ pub fn game(
                     }
                     if input_handler.is_pressed(KeyCode::LControl) {
                         inputs.push(PlayerInput::SprintToggle);
+                    }
+                    if input_handler.is_double_pressed(KeyCode::Space) {
+                        inputs.push(PlayerInput::FlyToggle);
                     }
 
                     camera.origin.y = camera.origin.y.clamp(0.0, 255.9);
