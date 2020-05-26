@@ -113,7 +113,6 @@ uniform sampler2D in_uni_texture_n;
 layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
 
     /* > -C- Global Variables */
-ivec2 var_cur_chunk = ivec2(-1);
 
 /* ************************************************************
  * > -2- Helpers (abr: "h")
@@ -162,10 +161,11 @@ vec3 ray_direction(vec2 pixel) {
 }
 
 Ray ray_make(vec2 pixel) {
+    vec3 origin = in_uni_origin - vec3(in_uni_cl_min_coords.x, 0, in_uni_cl_min_coords.y) * CST_LOCAL_TO_WORLD;
     vec3 r_dir = ray_direction(pixel);
     vec3 r_dir_inv = h_v_inv(r_dir);
 
-    return Ray(in_uni_origin, r_dir, r_dir_inv);
+    return Ray(origin, r_dir, r_dir_inv);
 }
 
 /* ************************************************************
@@ -176,33 +176,23 @@ Ray ray_make(vec2 pixel) {
  * > -4- Section: Chunks Load (abr: "cl")
  * ************************************************************/
     /* > -A- Chunks */
-uint cl_value(ivec3 chunk) {
-    uint xz = h_a_2d_to_1d(chunk.xz, CST_NB_CHUNKS_X);
-    return cl_filled[xz][chunk.y];
-}
-
-// Checks if the given point (in chunk referential) is inside the current chunk load
-bool cl_is_inside(ivec3 chunk) {
-    return chunk.x >= 0 && chunk.x < CST_NB_CHUNKS_X
-        && chunk.y >= 0 && chunk.y < 16
-        && chunk.z >= 0 && chunk.z < CST_NB_CHUNKS_X;
+bool bl_is_inside(ivec3 block) {
+    return block.x >= 0 && block.x < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH
+        && block.y >= 0 && block.y < CST_CHUNK_HEIGHT
+        && block.z >= 0 && block.z < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH;
 }
 
     /* > -B- Blocks */
 uint bl_value(ivec3 block) {
+    ivec2 chunk = ivec2(floor(block.xz * CST_WORLD_TO_LOCAL.xz));
+    // FIXME: not sure :[
+    block -= ivec3(chunk.x, 0, chunk.y) * ivec3(CST_LOCAL_TO_WORLD);
+    // FIXME-END
+
     return cl_blocks
-        [h_a_2d_to_1d(var_cur_chunk - in_uni_cl_min_coords, CST_NB_CHUNKS_X)]
+        [h_a_2d_to_1d(chunk, CST_NB_CHUNKS_X)]
         [block.x + (block.z + block.y * CST_CHUNK_WIDTH) * CST_CHUNK_WIDTH];
 }
-bool bl_is_inside(ivec3 block) {
-    return block.x >= 0 && block.x < CST_CHUNK_WIDTH
-        && block.y >= 0 && block.y < CST_CHUNK_HEIGHT
-        && block.z >= 0 && block.z < CST_CHUNK_WIDTH;
-}
-
-/* ************************************************************
- * > -5- Section: Intersections
- * ************************************************************/
 
 
 /* ************************************************************
@@ -220,60 +210,6 @@ vec4 sky_color(Ray r) {
     float coeff = abs(dot(r.direction, vec3(0, 1, 0))) * 0.2 + 0.8;
     return vec4(color * coeff, 1);
 }
-
-#define DRAW_RAY(R, MAX_ITER, FCT_VALID_POS, FCT_GET_VAL, BOCK)\
-    vec3 _sgn = sign(R.direction);\
-    vec3 _dt_dist = abs(R.direction_inv);\
-    ivec3 out_pos = ivec3(floor(R.origin));\
-    ivec3 _steps = ivec3(_sgn);\
-    vec3 out_side_dist = (_sgn * (out_pos - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
-    bvec3 _mask;\
-    uint _i = 0;\
-    for (; _i < MAX_ITER && FCT_VALID_POS(out_pos); _i++) {\
-        uint out_value = FCT_GET_VAL(out_pos);\
-        if (out_value != 0) {\
-            {BOCK;}\
-        }\
-        _mask = lessThanEqual(out_side_dist.xyz, min(out_side_dist.yzx, out_side_dist.zxy));\
-        out_side_dist += vec3(_mask) * _dt_dist;\
-        out_pos += ivec3(vec3(_mask)) * _steps;\
-    }
-
-#define DRAW_RAY_2(R, MAX_ITER, FCT_VALID_POS, FCT_GET_VAL, BOCK)\
-    vec3 _sgn = sign(R.direction);\
-    vec3 _dt_dist = abs(R.direction_inv);\
-    ivec3 out_pos = ivec3(floor(R.origin));\
-    ivec3 _steps = ivec3(_sgn);\
-    vec3 out_side_dist = (_sgn * (out_pos - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
-    bvec3 _mask;\
-    uint _i = 0;\
-    for (; _i < MAX_ITER && FCT_VALID_POS(out_pos); _i++) {\
-        uint out_value = FCT_GET_VAL(out_pos);\
-        if (out_value != 0) {\
-            {BOCK;}\
-        }\
-        if (out_side_dist.x < out_side_dist.y) {\
-            if (out_side_dist.x < out_side_dist.z) {\
-                out_side_dist.x += _dt_dist.x;\
-                out_pos.x += _steps.x;\
-                _mask = bvec3(true, false, false);\
-            } else {\
-                out_side_dist.z += _dt_dist.z;\
-                out_pos.z += _steps.z;\
-                _mask = bvec3(false, false, true);\
-            }\
-        } else {\
-            if (out_side_dist.y < out_side_dist.z) {\
-                out_side_dist.y += _dt_dist.y;\
-                out_pos.y += _steps.y;\
-                _mask = bvec3(false, true, false);\
-            } else {\
-                out_side_dist.z += _dt_dist.z;\
-                out_pos.z += _steps.z;\
-                _mask = bvec3(false, false, true);\
-            }\
-        }\
-    }
 
 float BBoxIntersect(const vec3 boxMin, const vec3 boxMax, const Ray r) {
     vec3 tbot = r.direction_inv * (boxMin - r.origin);
@@ -324,46 +260,44 @@ vec2 BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r, out in
     return vec2(t1, t2);
 }
 
-#define FIND_INTERSECTION(RAY, MAX_CHUNKS, MEGA_BOCK)\
-    Ray r_chunk = RAY;\
-    r_chunk.origin = RAY.origin * CST_WORLD_TO_LOCAL - vec3(in_uni_cl_min_coords.x, 0, in_uni_cl_min_coords.y);\
-    DRAW_RAY(r_chunk, MAX_CHUNKS, cl_is_inside, cl_value, {\
-        var_cur_chunk = ivec2(out_pos.xz) + in_uni_cl_min_coords;\
-        vec3 world_chunk_pos_min = vec3(var_cur_chunk.x, out_pos.y, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;\
-        vec3 world_chunk_pos_max = vec3(var_cur_chunk.x+1, out_pos.y+1, var_cur_chunk.y+1) * CST_LOCAL_TO_WORLD;\
-        Ray r_block = RAY;\
-        if (_i > 0) {\
-            float t = BBoxIntersect(world_chunk_pos_min, world_chunk_pos_max, RAY);\
-            r_block.origin += RAY.direction * (t + CST_EPSILON);\
+#define DRAW_RAY(R, MAX_ITER, BOCK)\
+    vec3 _sgn = sign(R.direction);\
+    vec3 _dt_dist = abs(R.direction_inv);\
+    ivec3 out_pos = ivec3(floor(R.origin));\
+    ivec3 _steps = ivec3(_sgn);\
+    vec3 out_side_dist = (_sgn * (out_pos - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
+    bvec3 _mask;\
+    uint _i = 0;\
+    for (; _i < MAX_ITER && bl_is_inside(out_pos); _i++) {\
+        uint out_value = bl_value(out_pos);\
+        if (out_value != 0) {\
+            {BOCK;}\
         }\
-        r_block.origin -= vec3(var_cur_chunk.x, 0, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;\
-        DRAW_RAY(r_block, CST_CHUNK_HEIGHT, bl_is_inside, bl_value, {\
-            MEGA_BOCK\
-        });\
-    });\
+        _mask = lessThanEqual(out_side_dist.xyz, min(out_side_dist.yzx, out_side_dist.zxy));\
+        out_side_dist += vec3(_mask) * _dt_dist;\
+        out_pos += ivec3(vec3(_mask)) * _steps;\
+    }
+
 
 float distance_before_next_intersection(Ray ray) {
-    FIND_INTERSECTION(ray, CST_NB_CHUNKS_X, {
-        // FIXME: return distance to next intersection
+    DRAW_RAY(ray, CST_NB_CHUNKS_X, {
         return 0.;
-        // FIXME-END
     });
     return 1000.;
 }
 
-vec2 bbox_uv(const vec3 boxMin, const vec3 boxMax, const Ray r, float t, int face) {
-    vec3 pos = r.origin + r.direction * t;
+vec2 bbox_uv(const vec3 boxMin, const vec3 boxMax, const vec3 intersection, int face) {
     vec3 diff = boxMax - boxMin;
 
     if (face == 0 || face == 3) {
-        return vec2((pos.z - boxMin.z) / diff.z, 1 - (pos.y - boxMin.y) / diff.y);
+        return vec2((intersection.z - boxMin.z) / diff.z, 1 - (intersection.y - boxMin.y) / diff.y);
     }
 
     if (face == 1 || face == 4) {
-        return vec2((pos.x - boxMin.x) / diff.x, (pos.z - boxMin.z) / diff.z);
+        return vec2((intersection.x - boxMin.x) / diff.x, (intersection.z - boxMin.z) / diff.z);
     }
 
-    return vec2((pos.x - boxMin.x) / diff.x, 1 - (pos.y - boxMin.y) / diff.y);
+    return vec2((intersection.x - boxMin.x) / diff.x, 1 - (intersection.y - boxMin.y) / diff.y);
 }
 
 vec2 texture_coords(ivec2 pos, vec2 uv) {
@@ -393,6 +327,8 @@ vec3 texture_normal(vec3 normal, ivec2 pos, vec2 uv, int face) {
 }
 
 vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
+    intersection += normal * CST_EPSILON;
+
     Ray shadow_ray = Ray(intersection, -CST_LIGHT_DIRECTION, -CST_LIGHT_DIRECTION_INV);
 
     vec3 light_diffuse = CST_LIGHT_AMBIENT;
@@ -406,9 +342,9 @@ vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
 
 
 vec4 cast_ray(Ray ray) {
-    FIND_INTERSECTION(ray, uint(-1), {
+    DRAW_RAY(ray, uint(-1), {
         vec3 min_pos = out_pos;
-        vec3 max_pos;
+        vec3 max_pos = out_pos;
         vec3 max_pos_offset = vec3(1);
 
         if (out_value == 1) { // water
@@ -417,31 +353,28 @@ vec4 cast_ray(Ray ray) {
             max_pos_offset = vec3(1, 0.1, 1);
         }
 
-        max_pos = min_pos + max_pos_offset;
+        max_pos += max_pos_offset;
 
         int face = 0;
-        vec2 v = BBoxRayIntersects(min_pos, max_pos, r_block, face);
+        vec2 v = BBoxRayIntersects(min_pos, max_pos, ray, face);
 
         if (v.x < v.y)
         {
-            vec2 uv = bbox_uv(min_pos, max_pos, r_block, v.x, face);
-            if (int(world_chunk_pos_min.x + min_pos.x) == in_uni_highlighted_block.x && int(min_pos.y) == in_uni_highlighted_block.y && int(world_chunk_pos_min.z + min_pos.z) == in_uni_highlighted_block.z
-                    && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
+            vec3 intersection = ray.origin + ray.direction * v.x;
+
+            vec2 uv = bbox_uv(min_pos, max_pos, intersection, face);
+            if (out_pos.y == in_uni_highlighted_block.y && out_pos.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
                 return vec4(0.5, 0.5, 0.5, 1);
 
             ivec2 tex = CST_BLOCK_MATERIALS[out_value].texture_coords[face];
 
             vec3 normal = texture_normal(CST_NORMAL_MAP[face], tex, uv, face);
 
-            vec3 intersection = r_block.origin + r_block.direction * v.x;
-            intersection += vec3(var_cur_chunk.x, 0, var_cur_chunk.y) * CST_LOCAL_TO_WORLD;
             intersection += vec3(1) - max_pos_offset;
-            intersection += normal * CST_EPSILON;
 
             vec4 color = texture_color(tex, uv);
             return lighting(color, intersection, normal);
         }
-
     });
 
     return sky_color(ray);
