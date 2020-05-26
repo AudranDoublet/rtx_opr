@@ -213,7 +213,10 @@ bool bl_is_inside(ivec3 block) {
 
 vec4 sky_color(Ray r) {
     //return (cos(r.direction) + sin(r.origin) + vec3(2))/4;
-    return vec4(vec3(0), 1);
+
+    vec3 color = vec3(0.149, 0.6471, 0.7961);
+    float coeff = abs(dot(r.direction, vec3(0, 1, 0))) * 0.2 + 0.8;
+    return vec4(color * coeff, 1);
 }
 
 #define DRAW_RAY(R, MAX_ITER, FCT_VALID_POS, FCT_GET_VAL, BOCK)\
