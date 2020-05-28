@@ -174,7 +174,7 @@ Ray ray_make(vec2 pixel) {
 }
 
 /* ************************************************************
- * > -3- Section: World
+ * > -3- Section: Textures
  * ************************************************************/
 
 /* ************************************************************
@@ -227,42 +227,38 @@ float BBoxIntersect(const vec3 boxMin, const vec3 boxMax, const Ray r) {
     return max(t.x, t.y);
 }
 
-vec2 BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r, out int face) {
+bool BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r, out int face, out float t) {
     vec3 tbot = r.direction_inv * (boxMin - r.origin);
     vec3 ttop = r.direction_inv * (boxMax - r.origin);
 
-    int facex = 0;
-    int facey = 1;
-    int facez = 2;
-
-    if (tbot.x > tbot.x)
-        facex = 3;
-    if (tbot.y > tbot.y)
-        facey = 4;
-    if (tbot.z > tbot.z)
-        facez = 5;
+    ivec3 faces = ivec3(0, 1, 2) + ivec3(3) * ivec3(lessThan(tbot, ttop));
 
     vec3 tmin = min(ttop, tbot);
     vec3 tmax = max(ttop, tbot);
 
     float t1 = tmin.x;
-    face = facex;
+    face = faces.x;
 
     if (tmin.y > t1)
     {
         t1 = tmin.y;
-        face = facey;
+        face = faces.y;
     }
 
     if (tmin.z > t1)
     {
         t1 = tmin.z;
-        face = facez;
+        face = faces.z;
     }
 
     float t2 = min(min(tmax.x, tmax.y), tmax.z);
 
-    return vec2(t1, t2);
+    if (t1 < t2) {
+        t = t1;
+        return true;
+    }
+
+    return false;
 }
 
 #define DRAW_RAY(R, MAX_ITER, BOCK)\
@@ -361,11 +357,10 @@ vec4 cast_ray(Ray ray) {
         max_pos += max_pos_offset;
 
         int face = 0;
-        vec2 v = BBoxRayIntersects(min_pos, max_pos, ray, face);
+        float t;
 
-        if (v.x < v.y)
-        {
-            vec3 intersection = ray.origin + ray.direction * v.x;
+        if (BBoxRayIntersects(min_pos, max_pos, ray, face, t)) {
+            vec3 intersection = ray.origin + ray.direction * t;
 
             vec2 uv = bbox_uv(min_pos, max_pos, intersection, face);
             if (out_pos.y == in_uni_highlighted_block.y && out_pos.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
