@@ -14,12 +14,26 @@ lazy_static! {
         map.insert(BiomeType::DesertHills, vec![DecoratorTowerPlant::cactus(30)]);
         map.insert(BiomeType::Plain, vec![DecoratorPlantGroup::tallgrass(3)]);
         map.insert(BiomeType::Hills, vec![DecoratorPlantGroup::tallgrass(3)]);
-        map.insert(BiomeType::Savanna, vec![DecoratorPlantGroup::tallgrass(9)]);
-        map.insert(BiomeType::SavannaPlateau, vec![DecoratorPlantGroup::tallgrass(9)]);
+        map.insert(BiomeType::Savanna, vec![DecoratorPlantGroup::tallgrass(9), DecoratorTree::fat(20, ForestType::Acacia, false, false)]);
+        map.insert(BiomeType::SavannaPlateau, vec![DecoratorPlantGroup::tallgrass(9), DecoratorTree::fat(20, ForestType::Acacia, false, false)]);
+
+        map.insert(BiomeType::Forest, vec![DecoratorTree::small(10, ForestType::Normal, false, false), DecoratorTree::great(80, ForestType::Normal, false, false), DecoratorTree::fat(20, ForestType::Normal, false, false)]);
+        map.insert(BiomeType::ForestHills, vec![DecoratorTree::small(10, ForestType::Normal, false, false), DecoratorTree::great(80, ForestType::Normal, false, false), DecoratorTree::fat(20, ForestType::Normal, false, false)]);
+        map.insert(BiomeType::Taiga, vec![DecoratorTree::great(10, ForestType::Taiga, false, true), DecoratorTree::very_great(80, ForestType::Taiga, false, true), DecoratorTree::fat(20, ForestType::Taiga, false, true)]);
+        map.insert(BiomeType::TaigaHills, vec![DecoratorTree::great(10, ForestType::Taiga, false, false), DecoratorTree::very_great(80, ForestType::Taiga, false, false), DecoratorTree::fat(20, ForestType::Taiga, false, false)]);
+
+        map.insert(BiomeType::IceForest, vec![DecoratorTree::small(10, ForestType::Normal, false, true), DecoratorTree::great(80, ForestType::Normal, false, true), DecoratorTree::fat(20, ForestType::Normal, false, true)]);
+        map.insert(BiomeType::IceForestHills, vec![DecoratorTree::small(10, ForestType::Normal, false, true), DecoratorTree::great(80, ForestType::Normal, false, true), DecoratorTree::fat(20, ForestType::Normal, false, true)]);
+        map.insert(BiomeType::IceTaiga, vec![DecoratorTree::great(10, ForestType::Taiga, false, true), DecoratorTree::very_great(80, ForestType::Taiga, false, true), DecoratorTree::fat(20, ForestType::Taiga, false, true)]);
+        map.insert(BiomeType::IceTaigaHills, vec![DecoratorTree::great(10, ForestType::Taiga, false, true), DecoratorTree::very_great(80, ForestType::Taiga, false, true), DecoratorTree::fat(20, ForestType::Taiga, false, true)]);
+
+        map.insert(BiomeType::Jungle, vec![DecoratorTree::jungle(150), DecoratorTree::small(10, ForestType::Normal, false, false)]);
+        map.insert(BiomeType::Forest, vec![DecoratorTree::small(20, ForestType::Normal, true, false), DecoratorTree::great(10, ForestType::Normal, true, false), DecoratorTree::fat(5, ForestType::Normal, true, false)]);
 
         // common decorators
         for (_, v) in map.iter_mut() {
             v.push(DecoratorPlantGroup::tallgrass(1));
+            v.push(DecoratorTree::small(1, ForestType::Classic, false, false));
         }
 
         map
