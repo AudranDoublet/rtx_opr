@@ -127,13 +127,13 @@ impl TermiDrawer {
 
             let x_labels = [
                 format!("{}", x_bounds[0]),
-                format!("{}", (x_bounds[1] - x_bounds[0]) / 2.0),
+                format!("{}", x_bounds[0] + (x_bounds[1] + x_bounds[0]) / 2.0),
                 format!("{}", x_bounds[1]),
             ];
 
             let y_labels = [
                 format!("{}", y_bounds[0]),
-                format!("{}", (y_bounds[1] - y_bounds[0]) / 2.0),
+                format!("{}", y_bounds[0] + (y_bounds[1] - y_bounds[0]) / 2.0),
                 format!("{}", y_bounds[1]),
             ];
 
