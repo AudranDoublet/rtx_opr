@@ -11,6 +11,8 @@ const PLAYER_HEIGHT: f32 = 1.8;
 const SPRINT_SPEED_MULTIPLIER: f32 = 1.5;
 const SPEED: f32 = 5.0;
 const WATER_SPEED: f32 = 1.0;
+const FLYING_SPEED: f32 = 30.0;
+const FLYING_Y_SPEED: f32 = 30.0;
 const WATER_Y_SPEED: f32 = 1.0;
 
 const BLOCK_BREAK_COOLDOWN: f32 = 0.3;
@@ -19,6 +21,8 @@ const BLOCK_PLACE_COOLDOWN: f32 = 0.3;
 pub enum PlayerInput {
     Jump,
     SprintToggle,
+    Sneaking,
+    FlyToggle,
     MoveFoward,
     MoveBackward,
     MoveRight,
@@ -45,6 +49,9 @@ pub struct Player {
     sprinting: bool,
     grounded: bool,
     in_water: bool,
+    sneaking: bool,
+
+    flying: bool,
 
     velocity: Vector3<f32>,
 
@@ -66,6 +73,8 @@ impl Player {
             sprinting: false,
             grounded: false,
             in_water: false,
+            flying: true,
+            sneaking: false,
 
             block_break_cooldown: 0.0,
             block_place_cooldown: 0.0,
@@ -92,7 +101,7 @@ impl Player {
         self.velocity = self.velocity + Vector3::new(0.0, -self.gravity(), 0.0) * dt;
 
         if self.grounded && self.velocity.y < 0.0 {
-            self.velocity.y = 0.0;
+            self.velocity.y = -self.gravity();
         }
 
         let mut diff = (movement + self.velocity) * dt;
@@ -106,6 +115,40 @@ impl Player {
             .collect();
 
         let save_y = diff.y;
+
+        if self.sneaking {
+            let delta = 0.05;
+
+            while diff.x != 0.0 && !self.collider().translate3(diff.x, -1.0, 0.0).has_blocks(world) {
+                diff.x = match diff.x {
+                    dx if dx < delta && dx > -delta => 0.0,
+                    dx if dx > 0.0                  => dx - delta,
+                    dx                              => dx + delta,
+                };
+            }
+
+            while diff.z != 0.0 && !self.collider().translate3(diff.x, -1.0, diff.z).has_blocks(world) {
+                diff.z = match diff.z {
+                    dz if dz < delta && dz > -delta => 0.0,
+                    dz if dz > 0.0                  => dz - delta,
+                    dz                              => dz + delta,
+                };
+            }
+
+            while diff.x != 0.0 && diff.z != 0.0 && !self.collider().translate3(diff.x, -1.0, diff.z).has_blocks(world) {
+                diff.x = match diff.x {
+                    dx if dx < delta && dx > -delta => 0.0,
+                    dx if dx > 0.0                  => dx - delta,
+                    dx                              => dx + delta,
+                };
+
+                diff.z = match diff.z {
+                    dz if dz < delta && dz > -delta => 0.0,
+                    dz if dz > 0.0                  => dz - delta,
+                    dz                              => dz + delta,
+                };
+            }
+        }
 
         for block in &blocks {
             diff.y = block.offset(&collider, 1, diff.y);
@@ -128,7 +171,10 @@ impl Player {
     }
 
     pub fn head_position(&self) -> Vector3<f32> {
-        self.position + Vector3::new(0.0, 1.5, 0.0)
+        self.position + Vector3::new(0.0, match self.sneaking {
+            true => 1.3,
+            false => 1.5,
+        }, 0.0)
     }
 
     pub fn position(&self) -> Vector3<f32> {
@@ -144,6 +190,10 @@ impl Player {
     }
 
     pub fn gravity(&self) -> f32 {
+        if self.flying {
+            return 0.0;
+        }
+
         match self.in_water() {
             true => WATER_GRAVITY,
             false => GRAVITY,
@@ -162,6 +212,7 @@ impl Player {
 
     fn movement_speed(&self) -> f32 {
         let base = match self.in_water() {
+            _ if self.flying => FLYING_SPEED,
             true => WATER_SPEED,
             false => SPEED,
         };
@@ -213,6 +264,7 @@ impl Player {
         let mut directional_input: Vector2<f32> = Vector2::zeros();
         let mut jumping = false;
         let mut sprinting = false;
+        let mut sneaking = false;
 
         self.block_break_cooldown -= dt;
         self.block_place_cooldown -= dt;
@@ -224,6 +276,7 @@ impl Player {
                 PlayerInput::MoveFoward => directional_input.y += 1.,
                 PlayerInput::MoveBackward => directional_input.y -= 1.,
                 PlayerInput::Jump => jumping = true,
+                PlayerInput::Sneaking => sneaking = true,
                 PlayerInput::SprintToggle => sprinting = true,
                 PlayerInput::LeftInteract => {
                     if self.block_break_cooldown <= 0.0 {
@@ -254,20 +307,41 @@ impl Player {
                         }
                     }
                 },
+                PlayerInput::FlyToggle => {
+                    self.flying = !self.flying;
+                    self.velocity.y = 0.0;
+                },
             }
         }
 
         let mut desired_move: Vector3<f32> =
             camera_forward * directional_input.y + camera_right * directional_input.x;
+
         desired_move.y = 0.0;
+
+        if desired_move.norm() > 1e-7 {
+            desired_move.normalize_mut();
+        }
 
         self.update_sprint(desired_move, sprinting);
 
-        if self.in_water() && jumping {
-            desired_move.y = WATER_Y_SPEED;
+        if self.flying && jumping {
+            desired_move.y += FLYING_Y_SPEED / self.movement_speed();
+        } else if self.in_water() && jumping {
+            desired_move.y += WATER_Y_SPEED / self.movement_speed();
             self.velocity.y = 0.0;
         } else if self.on_ground() && jumping {
             self.velocity.y = JUMP_FORCE;
+        }
+
+        self.sneaking = false;
+
+        if self.flying && sneaking {
+            desired_move.y -= FLYING_Y_SPEED / self.movement_speed();
+        } else if self.in_water() && sneaking {
+            desired_move.y -= WATER_Y_SPEED/ self.movement_speed();
+        } else if self.on_ground() && sneaking {
+            self.sneaking = true;
         }
 
         desired_move *= self.movement_speed();

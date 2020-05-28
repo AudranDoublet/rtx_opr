@@ -6,6 +6,7 @@ use rand::{SeedableRng, rngs::StdRng};
 mod multi;
 mod tower_plant;
 mod plant_group;
+mod tree;
 
 pub use multi::*;
 
@@ -19,6 +20,7 @@ macro_rules! multi_dec {
 
 pub use tower_plant::*;
 pub use plant_group::*;
+pub use tree::*;
 
 pub trait WorldDecorator {
     fn decorate(&self, world: &mut World, random: &mut StdRng, position: Vector3<i32>);

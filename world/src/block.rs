@@ -80,6 +80,20 @@ impl Block {
         }
     }
 
+    pub fn is_log(&self) -> bool {
+        match self {
+            Block::OakLog | Block::AcaciaLog | Block::BigOakLog | Block::BirchLog | Block::JungleLog | Block::SpruceLog => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_leaves(&self) -> bool {
+        match self {
+            Block::OakLeaves | Block::AcaciaLeaves | Block::BigOakLeaves | Block::BirchLeaves | Block::JungleLeaves | Block::SpruceLeaves => true,
+            _ => false,
+        }
+    }
+
     pub fn is_liquid(&self) -> bool {
         match self {
             Block::Water => true,

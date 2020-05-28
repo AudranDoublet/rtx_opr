@@ -89,6 +89,11 @@ const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_U(0, 0),
     MATERIAL_U(0, 0),
     MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
+    MATERIAL_U(0, 0),
 };
 
 /* ************************************************************
@@ -333,7 +338,7 @@ vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
 
     vec3 light_diffuse = CST_LIGHT_AMBIENT;
 
-    if (!CST_SHADOW_ACTIVATED || distance_before_next_intersection(shadow_ray) > 10.) {
+    if (!CST_SHADOW_ACTIVATED || distance_before_next_intersection(shadow_ray) >= 1000.) {
         light_diffuse = max(light_diffuse, dot(normal, -CST_LIGHT_DIRECTION));
     }
 

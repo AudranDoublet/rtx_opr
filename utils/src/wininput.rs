@@ -8,12 +8,23 @@ pub enum StateChange {
     MouseMotion,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum DoublePressState {
+    Released,
+    PressedOnce(f32),
+    ReleasedAfterPressed(f32),
+    Pressed,
+}
+
 const CST_MAX_NUMBER_STATE_CHANGE: usize = 4;
 const CST_MAX_NUMBER_KEY: usize = u8::max_value() as usize;
 const CST_MAX_NUMBER_BUTTON: usize = u8::max_value() as usize;
 
+const MAX_TIME_DOUBLE_PRESS: f32 = 0.2;
+
 type StateChangeArray = [bool; CST_MAX_NUMBER_STATE_CHANGE];
 type KeyStateArray = [ElementState; CST_MAX_NUMBER_KEY];
+type KeyDoublePressArray = [DoublePressState; CST_MAX_NUMBER_KEY];
 type ButtonStateArray = [ElementState; CST_MAX_NUMBER_BUTTON];
 
 pub struct WinInput {
@@ -26,12 +37,19 @@ pub struct WinInput {
     mouse_motion_sensitivity: f32,
 
     keys_states: KeyStateArray,
+    double_pressed_states: KeyDoublePressArray,
     buttons_states: ButtonStateArray,
+
+    time: f32,
 }
 
 impl WinInput {
     fn set_state_updated(&mut self, state: StateChange) {
         self.states_changes[state as usize] = true;
+    }
+
+    pub fn update_time(&mut self, dt: f32) {
+        self.time += dt;
     }
 
     pub fn updated(&mut self, state: StateChange) -> bool {
@@ -75,6 +93,17 @@ impl WinInput {
         self.keys_states[k as usize] == ElementState::Pressed
     }
 
+    pub fn is_double_pressed(&mut self, k: VirtualKeyCode) -> bool {
+        let k = k as usize;
+
+        if self.double_pressed_states[k] == DoublePressState::Pressed {
+            self.double_pressed_states[k] = DoublePressState::Released;
+            return true;
+        }
+
+        return false;
+    }
+
     fn button_id(&self, button: MouseButton) -> usize {
         match button {
             MouseButton::Left => 0,
@@ -110,6 +139,20 @@ impl WinInput {
     pub fn on_keyboard_input(&mut self, input: KeyboardInput) {
         if let Some(k) = input.virtual_keycode {
             let k = k as usize;
+
+            if input.state == ElementState::Pressed {
+                self.double_pressed_states[k] = match self.double_pressed_states[k] {
+                    DoublePressState::Released => DoublePressState::PressedOnce(self.time),
+                    DoublePressState::ReleasedAfterPressed(t) if self.time - t < MAX_TIME_DOUBLE_PRESS => DoublePressState::Pressed,
+                    _ => DoublePressState::Released,
+                }
+            } else {
+                self.double_pressed_states[k] = match self.double_pressed_states[k] {
+                    DoublePressState::PressedOnce(t) if self.time - t < MAX_TIME_DOUBLE_PRESS => DoublePressState::ReleasedAfterPressed(self.time),
+                    _ => DoublePressState::Released,
+                };
+            }
+
             if input.state != self.keys_states[k] {
                 self.keys_states[k] = input.state;
                 self.set_state_updated(StateChange::Keyboard);
@@ -126,8 +169,11 @@ impl WinInput {
             mouse_motion_sensitivity,
 
             keys_states: [ElementState::Released; CST_MAX_NUMBER_KEY],
+            double_pressed_states: [DoublePressState::Released; CST_MAX_NUMBER_KEY],
             buttons_states: [ElementState::Released; CST_MAX_NUMBER_BUTTON],
             states_changes: [false; CST_MAX_NUMBER_STATE_CHANGE],
+
+            time: 0.0,
         }
     }
 }
