@@ -10,6 +10,7 @@ layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 const bool CST_SHADOW_ACTIVATED = <<<CST_SHADOW_ACTIVATED>>>;
 
 const uint CST_MAX_ITER_UNCERTAIN_BLOCKS = 32;
+const uint CST_MAX_ITER_TRANSPARENT = 16;
 
 const float CST_EPSILON = 1e-4;
 const uint CST_CHUNK_WIDTH = 16;
@@ -36,8 +37,7 @@ const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
 
 const vec3 CST_LIGHT_DIRECTION = normalize(vec3(-0.7, -1.5, -1.1));
 const vec3 CST_LIGHT_DIRECTION_INV = 1 / CST_LIGHT_DIRECTION;
-//const vec3 CST_LIGHT_AMBIENT = vec3(0.15, 0.3, 0.2);
-const vec3 CST_LIGHT_AMBIENT = vec3(0);
+const vec3 CST_LIGHT_AMBIENT = vec3(0.3, 0.3, 0.3);
 
 const vec3 CST_NORMAL_MAP[6] = {
     vec3(1, 0, 0),
@@ -72,8 +72,10 @@ struct Material {
 #define TEX_COLUMN(v, w, z) (v), (w), (v), (v), (z), (v)
 #define MATERIAL_EMPTY() Material(0, int[6]( TEX_UNIQUE(0) ))
 #define MATERIAL_U(u) Material(1, int[6]( TEX_UNIQUE(u)) )
+#define MATERIAL_U_NO_NORM(u) Material(2, int[6]( TEX_UNIQUE(u)) )
 #define MATERIAL_C(v, w, z) Material(1, int[6]( TEX_COLUMN(v, w, z) ))
 #define MATERIAL_LOG(i) MATERIAL_C(LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
+#define MATERIAL_LEAVES(i) MATERIAL_U_NO_NORM(LEAVES_TEX + i)
 
 #define STONE_TEX       0
 #define DIRT_TEX        2
@@ -87,6 +89,7 @@ struct Material {
 #define CACTUS_BOTT_TEX 18
 #define LOGS_TEX        20
 #define TOP_LOGS_TEX    32
+#define LEAVES_TEX      44
 
 const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_EMPTY(),
@@ -99,20 +102,18 @@ const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_C(CACTUS_SIDE_TEX, CACTUS_TOP_TEX, CACTUS_BOTT_TEX),   // 7-Cactus
     MATERIAL_U(SNOW_TEX),                                           // 8-Snow
     MATERIAL_U(STONE_TEX),
-    MATERIAL_U(LOGS_TEX),
     MATERIAL_LOG(0),
     MATERIAL_LOG(1),
     MATERIAL_LOG(2),
     MATERIAL_LOG(3),
     MATERIAL_LOG(4),
     MATERIAL_LOG(5),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
+    MATERIAL_LEAVES(0),
+    MATERIAL_LEAVES(1),
+    MATERIAL_LEAVES(2),
+    MATERIAL_LEAVES(3),
+    MATERIAL_LEAVES(4),
+    MATERIAL_LEAVES(5),
 };
 
 /* ************************************************************
@@ -335,59 +336,73 @@ vec4 cast_ray(Ray ray) {
         return sky_color(ray);
     }
 
-    vec3 block_offset = vec3(1);
-    float t = -1.0;
-    int face;
+    uint k = 0;
+    do {
+        vec3 block_offset = vec3(1);
+        float t = -1.0;
+        int face;
 
-    // if uncertain of the box intersection because the box has special shapes, or is transparent,
-    // we compute expensive intersections, and continue the ray till we're not sure we can get
-    // an intersection with a box
-    if (!isIntersectionCertain(block_type)) {
-        for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS; j++) {
-            block_offset = float(block_type == 1) * vec3(1, 0.9, 1)
-                + float(block_type == 8) * vec3(1, 0.1, 1);
+        // if uncertain of the box intersection because the box has special shapes, or is transparent,
+        // we compute expensive intersections, and continue the ray till we're not sure we can get
+        // an intersection with a box
+        if (!isIntersectionCertain(block_type)) {
+            for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS; j++) {
+                block_offset = float(block_type == 1) * vec3(1, 0.9, 1)
+                    + float(block_type == 8) * vec3(1, 0.1, 1);
 
-            if (BBoxRayIntersectsUncertain(block, block + block_offset, ray, face, t)) {
-                break;
-            }
+                if (BBoxRayIntersectsUncertain(block, block + block_offset, ray, face, t)) {
+                    break;
+                }
 
-            DRAW_RAY_CONTINUE(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
-            if (!_is_inside) {
-                return sky_color(ray);
-            }
+                DRAW_RAY_CONTINUE(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+                if (!_is_inside) {
+                    return sky_color(ray);
+                }
 
-            // if no collision within the allowed range
-            if (isIntersectionCertain(block_type)) {
-                block_offset = vec3(1);
-                break;
+                // if no collision within the allowed range
+                if (isIntersectionCertain(block_type)) {
+                    block_offset = vec3(1);
+                    break;
+                }
             }
         }
-    }
 
-    // it may happens that we found an intersection with the special block we're on, so there is no
-    // need to re-compute the intersection
-    if (t < 0.0) {
-        t = BBoxRayIntersects(block, block + vec3(1), ray);
-        ivec3 faces = ivec3(_mask) * (ivec3(0, 1, 2) + 3 * ivec3(greaterThan(_steps, ivec3(0))));
-        face = faces.x + faces.y + faces.z;
-    }
+        // it may happens that we found an intersection with the special block we're on, so there is no
+        // need to re-compute the intersection
+        if (t < 0.0) {
+            t = BBoxRayIntersects(block, block + vec3(1), ray);
+            ivec3 faces = ivec3(_mask) * (ivec3(0, 1, 2) + 3 * ivec3(greaterThan(_steps, ivec3(0))));
+            face = faces.x + faces.y + faces.z;
+        }
 
-    vec3 intersection = ray.origin + ray.direction * t;
+        vec3 intersection = ray.origin + ray.direction * t;
 
-    vec2 uv = bbox_uv(block, block + block_offset, block_offset, intersection, face);
-    if (block.y == in_uni_highlighted_block.y && block.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
-        return vec4(0.5, 0.5, 0.5, 1);
+        vec2 uv = bbox_uv(block, block + block_offset, block_offset, intersection, face);
+        if (block.y == in_uni_highlighted_block.y && block.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
+            return vec4(0.5, 0.5, 0.5, 1);
 
+        Material mat = CST_BLOCK_MATERIALS[block_type];
+        int tex = mat.texture_coords[face];
+        float t_qual = t / 10;
 
-    int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
+        vec3 normal = CST_NORMAL_MAP[face];
 
-    float t_qual = t / 10;
-    vec3 normal = texture_normal(tex, CST_NORMAL_MAP[face], uv, face, t_qual);
-    vec4 color = texture_color(tex, uv, t_qual);
+        if (mat.type == 1)
+            normal = texture_normal(tex, normal, uv, face, t_qual);
 
-    intersection += vec3(1) - block_offset;
+        vec4 color = texture_color(tex, uv, t_qual);
 
-    return lighting(color, intersection, normal);
+        intersection += vec3(1) - block_offset;
+
+        if (color.a > 0.5)
+            return lighting(color, intersection, normal);
+
+        DRAW_RAY_CONTINUE(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+        if (!_is_inside) {
+            return sky_color(ray);
+        }
+        k++;
+    } while (k < CST_MAX_ITER_TRANSPARENT);
 }
 
 
