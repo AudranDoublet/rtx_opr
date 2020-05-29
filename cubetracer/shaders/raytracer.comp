@@ -116,6 +116,15 @@ const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_LEAVES(5),
 };
 
+const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {
+    mat3( 0,-1, 0,   0, 0,-1,   1, 0, 0),
+    mat3( 1, 0, 0,   0, 0,-1,   0, 1, 0),
+    mat3(-1, 0, 0,   0,-1, 0,   0, 0, 1),
+    mat3( 0, 1, 0,   0, 0,-1,  -1, 0, 0),
+    mat3(-1, 0, 0,   0, 0,-1,   0,-1, 0),
+    mat3( 1, 0, 0,   0,-1, 0,   0, 0,-1)
+};
+
 /* ************************************************************
  * > -1- Variables
  * ************************************************************/
@@ -182,20 +191,11 @@ vec4 texture_color(int tex, vec2 uv, float t) {
     return textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex)), t);
 }
 
-vec3 texture_normal(int texture, vec3 normal, vec2 uv, int face, float t) {
-    vec3 tangeant;
-
-    if (face == 2 || face == 5)
-        tangeant = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
-    else
-        tangeant = normalize(cross(normal, vec3(0.0, 0.0, 1.0)));
-
-    vec3 b = normalize(cross(normal, tangeant));
-    vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(texture + 1)), t);
+vec3 texture_normal(int tex, vec2 uv, int face, float t) {
+    vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex + 1)), t);
     vec3 map_normal = color.xyz * 2 - vec3(1);
 
-    //FIXME mat3 could be precomputed for face
-    return mat3(tangeant, b, normal) * map_normal;
+    return CST_TEXTURE_NORMAL_TRANSFORMS[face] * map_normal;
 }
 
 /* ************************************************************
@@ -302,8 +302,6 @@ bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray 
         }\
     }\
 
-
-
 uint distance_before_next_intersection(Ray ray) {
     DRAW_RAY(ray, CST_NB_CHUNKS_X);
     return (_i >= CST_NB_CHUNKS_X || block_type == 0 || !_is_inside) ? 1000 : _i;
@@ -327,8 +325,6 @@ bool isIntersectionCertain(uint block_type) {
     return block_type != 1 
         && block_type != 8;
 }
-
-
 
 vec4 cast_ray(Ray ray) {
     DRAW_RAY(ray, 2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
@@ -383,16 +379,10 @@ vec4 cast_ray(Ray ray) {
 
         int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
         float t_qual = t / 10;
-
-        vec3 normal = CST_NORMAL_MAP[face];
-
-        if (CST_BLOCK_MATERIALS[block_type].type == 1)
-            normal = texture_normal(tex, normal, uv, face, t_qual);
-
         vec4 color = texture_color(tex, uv, t_qual);
 
         if (color.a > 0.5)
-            return lighting(color, intersection, normal);
+            return lighting(color, intersection, CST_BLOCK_MATERIALS[block_type].type == 1 ? texture_normal(tex, uv, face, t_qual) : CST_NORMAL_MAP[face]);
 
         DRAW_RAY_CONTINUE(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
         if (!_is_inside) {
