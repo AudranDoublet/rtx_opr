@@ -192,8 +192,46 @@ Ray ray_make(vec2 pixel) {
  * > -3- Section: Textures
  * ************************************************************/
 
+vec2 bbox_uv(const vec3 boxMin, const vec3 boxMax, const vec3 diff, const vec3 intersection, int face) {
+    if (face == 0 || face == 3) {
+        return vec2((intersection.z - boxMin.z) / diff.z, 1 - (intersection.y - boxMin.y) / diff.y);
+    }
+
+    if (face == 1 || face == 4) {
+        return vec2((intersection.x - boxMin.x) / diff.x, (intersection.z - boxMin.z) / diff.z);
+    }
+
+    return vec2((intersection.x - boxMin.x) / diff.x, 1 - (intersection.y - boxMin.y) / diff.y);
+}
+
+vec2 texture_coords(ivec2 pos, vec2 uv) {
+    vec2 size = vec2(1.0 / 8, 1.0 / 8); // FIXME remove hardcoded width/height
+
+    return vec2(float(pos.x) * size.x, float(pos.y) * size.y) + uv * size;
+}
+
+vec4 texture_color(int tex, vec2 uv, float t) {
+    return textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex)), t*2);
+}
+
+vec3 texture_normal(int texture, vec3 normal, vec2 uv, int face, float t) {
+    vec3 tangeant;
+
+    if (face == 2 || face == 5)
+        tangeant = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
+    else
+        tangeant = normalize(cross(normal, vec3(0.0, 0.0, 1.0)));
+
+    vec3 b = normalize(cross(normal, tangeant));
+    vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(texture + 1)), t*2);
+    vec3 map_normal = color.xyz * 2 - vec3(1);
+
+    //FIXME mat3 could be precomputed for face
+    return mat3(tangeant, b, normal) * map_normal;
+}
+
 /* ************************************************************
- * > -4- Section: Chunks Load (abr: "cl")
+ * > -4- Section: Chunks/Blocks memory fetching
  * ************************************************************/
     /* > -A- Chunks */
 bool bl_is_inside(ivec3 block) {
@@ -203,8 +241,7 @@ bool bl_is_inside(ivec3 block) {
 }
 
     /* > -B- Blocks */
-uint bl_value(ivec3 block) {
-    ivec2 chunk = ivec2(floor(block.xz * CST_WORLD_TO_LOCAL.xz));
+uint bl_value(ivec2 chunk, ivec3 block) {
     // FIXME: not sure :[
     block -= ivec3(chunk.x, 0, chunk.y) * ivec3(CST_LOCAL_TO_WORLD);
     // FIXME-END
@@ -279,61 +316,74 @@ bool BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r, out in
 #define DRAW_RAY(R, MAX_ITER, BOCK)\
     vec3 _sgn = sign(R.direction);\
     vec3 _dt_dist = abs(R.direction_inv);\
-    ivec3 out_pos = ivec3(floor(R.origin));\
+    ivec3 block = ivec3(floor(R.origin));\
     ivec3 _steps = ivec3(_sgn);\
-    vec3 out_side_dist = (_sgn * (out_pos - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
-    bvec3 _mask;\
+    vec3 _side_dist = (_sgn * (block - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
+    vec3 _mask;\
     uint _i = 0;\
-    for (; _i < MAX_ITER && bl_is_inside(out_pos); _i++) {\
-        uint out_value = bl_value(out_pos);\
-        if (out_value != 0) {\
+    for (; _i < MAX_ITER && bl_is_inside(block); _i++) {\
+        ivec3 chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
+        uint block_type = bl_value(chunk.xz, block);\
+        if (block_type != 0) {\
             {BOCK;}\
         }\
-        _mask = lessThanEqual(out_side_dist.xyz, min(out_side_dist.yzx, out_side_dist.zxy));\
-        out_side_dist += vec3(_mask) * _dt_dist;\
-        out_pos += ivec3(vec3(_mask)) * _steps;\
+        _mask = vec3(lessThanEqual(_side_dist.xyz, min(_side_dist.yzx, _side_dist.zxy)));\
+        _side_dist += _mask * _dt_dist;\
+        block += ivec3(_mask) * _steps;\
     }
 
+
+#define DRAW_RAY_WITH_CHUNK_OPTI(R, MAX_ITER, BOCK)\
+    vec3 _sgn = sign(R.direction);\
+    vec3 _dt_dist = abs(R.direction_inv);\
+    ivec3 block = ivec3(floor(R.origin));\
+    ivec3 _steps = ivec3(_sgn);\
+    vec3 _side_dist = (_sgn * (block - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
+    vec3 _mask;\
+    uint _i = 0;\
+    for (; _i < MAX_ITER && bl_is_inside(block); _i++) {\
+        ivec3 chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
+        uint block_type = bl_value(chunk.xz, block);\
+        if (block_type != 0) {\
+            {BOCK;}\
+        }\
+        _mask = vec3(lessThanEqual(_side_dist.xyz, min(_side_dist.yzx, _side_dist.zxy)));\
+        _side_dist += _mask * _dt_dist;\
+        block += ivec3(_mask) * _steps;\
+    }
+/*
+#define DRAW_RAY_WITH_CHUNK_OPTI(R, MAX_ITER, BOCK)\
+    vec3 _sgn = sign(R.direction);\
+    vec3 _dt_dist = abs(R.direction_inv);\
+    ivec3 block = ivec3(floor(R.origin));\
+    ivec3 chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
+    ivec3 _steps = ivec3(_sgn);\
+    vec3 _side_dist = (_sgn * (block - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
+    // FIXME: dt_chunk = ivec3(CST_LOCAL_TO_WORLD) - dist_to_next_chunk;\
+    ivec3 dt_chunk = ivec3(CST_LOCAL_TO_WORLD);\
+    // FIXME-END\
+    vec3 _mask;\
+    uint _i = 0;\
+    for (; _i < MAX_ITER && bl_is_inside(block); _i++) {\
+        uint block_type = bl_value(chunk.xz, block);\
+        if (block_type != 0) {\
+            {BOCK;}\
+        }\
+        _mask = vec3(lessThanEqual(_side_dist.xyz, min(_side_dist.yzx, _side_dist.zxy)));\
+        _side_dist += _mask * _dt_dist;\
+        block += ivec3(_mask) * _steps;\
+        dt_chunk += ivec3(_mask);\
+        ivec3 chunk_overflow = ivec3(vec3(lessThan(dt_chunk, CST_LOCAL_TO_WORLD)));\
+        chunk += (1 - chunk_overflow);\
+        dt_chunk = dt_chunk * chunk_overflow;\
+    }
+*/
 
 float distance_before_next_intersection(Ray ray) {
     DRAW_RAY(ray, CST_NB_CHUNKS_X, {
         return 0.;
     });
     return 1000.;
-}
-
-vec2 bbox_uv(const vec3 boxMin, const vec3 boxMax, const vec3 intersection, int face) {
-    vec3 diff = boxMax - boxMin;
-
-    if (face == 0 || face == 3) {
-        return vec2((intersection.z - boxMin.z) / diff.z, 1 - (intersection.y - boxMin.y) / diff.y);
-    }
-
-    if (face == 1 || face == 4) {
-        return vec2((intersection.x - boxMin.x) / diff.x, (intersection.z - boxMin.z) / diff.z);
-    }
-
-    return vec2((intersection.x - boxMin.x) / diff.x, 1 - (intersection.y - boxMin.y) / diff.y);
-}
-
-vec4 texture_color(int tex, vec2 uv, float t) {
-    return textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex)), t*2);
-}
-
-vec3 texture_normal(int texture, vec3 normal, vec2 uv, int face, float t) {
-    vec3 tangeant;
-
-    if (face == 2 || face == 5)
-        tangeant = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
-    else
-        tangeant = normalize(cross(normal, vec3(0.0, 0.0, 1.0)));
-
-    vec3 b = normalize(cross(normal, tangeant));
-    vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(texture + 1)), t*2);
-    vec3 map_normal = color.xyz * 2 - vec3(1);
-
-    //FIXME mat3 could be precomputed for face
-    return mat3(tangeant, b, normal) * map_normal;
 }
 
 vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
@@ -353,13 +403,13 @@ vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
 
 vec4 cast_ray(Ray ray) {
     DRAW_RAY(ray, uint(-1), {
-        vec3 min_pos = out_pos;
-        vec3 max_pos = out_pos;
+        vec3 min_pos = block;
+        vec3 max_pos = min_pos;
         vec3 max_pos_offset = vec3(1);
 
-        if (out_value == 1) { // water
+        if (block_type == 1) { // water
             max_pos_offset = vec3(1, 0.9, 1);
-        } else if (out_value == 8) { // snow
+        } else if (block_type == 8) { // snow
             max_pos_offset = vec3(1, 0.1, 1);
         }
 
@@ -371,17 +421,17 @@ vec4 cast_ray(Ray ray) {
         if (BBoxRayIntersects(min_pos, max_pos, ray, face, t)) {
             vec3 intersection = ray.origin + ray.direction * t;
 
-            vec2 uv = bbox_uv(min_pos, max_pos, intersection, face);
-            if (out_pos.y == in_uni_highlighted_block.y && out_pos.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
+            vec2 uv = bbox_uv(min_pos, max_pos, max_pos_offset, intersection, face);
+            if (block.y == in_uni_highlighted_block.y && block.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
                 return vec4(0.5, 0.5, 0.5, 1);
 
-            int tex = CST_BLOCK_MATERIALS[out_value].texture_coords[face];
+            int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
 
-            vec3 normal = texture_normal(tex, CST_NORMAL_MAP[face], uv, face, v.x);
+            vec3 normal = texture_normal(tex, CST_NORMAL_MAP[face], uv, face, t);
 
             intersection += vec3(1) - max_pos_offset;
 
-            vec4 color = texture_color(tex, uv, v.x);
+            vec4 color = texture_color(tex, uv, t);
             return lighting(color, intersection, normal);
         }
     });
