@@ -426,17 +426,15 @@ vec4 cast_ray(Ray ray) {
             if (block.y == in_uni_highlighted_block.y && block.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
                 return vec4(0.5, 0.5, 0.5, 1);
 
-            Material mat = CST_BLOCK_MATERIALS[block_type];
-            int tex = mat.texture_coords[face];
+            int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
             float t_qual = t / 10;
 
             vec3 normal = CST_NORMAL_MAP[face];
 
-            if (mat.type == 1)
+            if (CST_BLOCK_MATERIALS[block_type].type == 1)
                 normal = texture_normal(tex, normal, uv, face, t_qual);
 
             vec4 color = texture_color(tex, uv, t_qual);
-
 
             intersection += vec3(1) - max_pos_offset;
 
