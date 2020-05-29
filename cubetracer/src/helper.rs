@@ -18,10 +18,10 @@ pub fn load_texture(i: u32, path: &std::path::Path) -> Result<u32, GLError> {
         gl::ActiveTexture(gl::TEXTURE0 + i);
         gl::BindTexture(gl::TEXTURE_2D, tex_out);
 
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_NEAREST as i32);
 
-        gl::TexImage2D(
+        let res = gl::TexImage2D(
             gl::TEXTURE_2D,
             0,
             gl::RGBA as i32,
@@ -32,9 +32,47 @@ pub fn load_texture(i: u32, path: &std::path::Path) -> Result<u32, GLError> {
             gl::UNSIGNED_BYTE,
             image.into_raw().as_ptr() as *const _ as *const c_void,
         );
+
+        gl::GenerateTextureMipmap(tex_out);
     );
 
     Ok(tex_out)
+}
+
+pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<(), GLError> {
+    let mut tex_out = 0;
+
+    glchk_stmt!(
+        gl::GenTextures(1, &mut tex_out);
+        gl::ActiveTexture(gl::TEXTURE0 + i);
+        gl::BindTexture(gl::TEXTURE_2D_ARRAY, tex_out);
+        gl::TexStorage3D(gl::TEXTURE_2D_ARRAY, 8, gl::RGBA8, 256, 256, textures.len() as i32);
+
+        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32);
+    );
+
+    for i in 0..textures.len() {
+        let path = textures[i];
+        let image = image::open(path).expect(format!("can't load texture {}", path.to_str().unwrap()).as_str()).into_rgba();
+        let rimage = image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Gaussian);
+
+        glchk_stmt!(
+            gl::TexSubImage3D(
+                gl::TEXTURE_2D_ARRAY, 0,
+                0, 0, i as i32,
+                rimage.width() as i32, rimage.height() as i32, 1,
+                gl::RGBA, gl::UNSIGNED_BYTE,
+                rimage.into_raw().as_ptr() as *const _ as *const c_void
+            );
+        );
+    }
+
+    glchk_stmt!(
+        gl::GenerateMipmap(gl::TEXTURE_2D_ARRAY);
+    );
+
+    Ok(())
 }
 
 pub fn generate_texture(width: u32, height: u32) -> Result<u32, GLError> {
