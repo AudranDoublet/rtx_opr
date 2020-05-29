@@ -34,7 +34,8 @@ const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
 
 const vec3 CST_LIGHT_DIRECTION = normalize(vec3(-0.7, -1.5, -1.1));
 const vec3 CST_LIGHT_DIRECTION_INV = 1 / CST_LIGHT_DIRECTION;
-const vec3 CST_LIGHT_AMBIENT = vec3(0.15, 0.3, 0.2);
+//const vec3 CST_LIGHT_AMBIENT = vec3(0.15, 0.3, 0.2);
+const vec3 CST_LIGHT_AMBIENT = vec3(0);
 
 const vec3 CST_NORMAL_MAP[6] = {
     vec3(1, 0, 0),
@@ -135,42 +136,6 @@ layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
     /* > -C- Global Variables */
 
 /* ************************************************************
- * > -2- Helpers (abr: "h")
- * ************************************************************/
-    /* > -A- Float Operations (abr: "f") */
-float h_f_inv_safe(float v) {
-    return v == 0.0 ? 1e15 : (1 / v);
-}
-    /* > -B- Vector Operations (abr: "v") */
-float h_v_component_min(vec3 v) {
-    return min(min(v.x, v.y), v.z); 
-}
-float h_v_component_max(vec3 v) {
-    return max(max(v.x, v.y), v.z); 
-}
-vec3 h_v_inv_safe(vec3 v) {
-    return vec3(h_f_inv_safe(v.x), h_f_inv_safe(v.y), h_f_inv_safe(v.z));
-}
-vec3 h_v_inv(vec3 v) {
-    // WANING: this entirely rely on GLSL 4.30 (see: 4.7.1 Range and Precision)
-    // https://www.khronos.org/registry/OpenGL/specs/gl/GLSLangSpec.4.30.pdf
-    // We have the guarantee that a division will lead to (+/-)Inf, which is
-    // OK for the usages here and should be slightly faster than the safe
-    // version.
-
-    return vec3(1) / v;
-}
-
-    /* > -C Array Operations (abr: "a") */
-uint h_a_2d_to_1d(ivec2 coords, uint width) {
-    return coords.x + coords.y * width;
-}
-uint h_a_3d_to_1d(ivec3 coords, uint width, uint height) {
-    return coords.x + (coords.y + coords.z * height) * width;
-}
-
-
-/* ************************************************************
  * > -3- Section: Ray (abr: "ray")
  * ************************************************************/
 
@@ -183,7 +148,7 @@ vec3 ray_direction(vec2 pixel) {
 Ray ray_make(vec2 pixel) {
     vec3 origin = in_uni_origin - vec3(in_uni_cl_min_coords.x, 0, in_uni_cl_min_coords.y) * CST_LOCAL_TO_WORLD;
     vec3 r_dir = ray_direction(pixel);
-    vec3 r_dir_inv = h_v_inv(r_dir);
+    vec3 r_dir_inv = 1 / r_dir;
 
     return Ray(origin, r_dir, r_dir_inv);
 }
@@ -240,14 +205,12 @@ bool bl_is_inside(ivec3 block) {
         && block.z >= 0 && block.z < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH;
 }
 
+
     /* > -B- Blocks */
 uint bl_value(ivec2 chunk, ivec3 block) {
-    // FIXME: not sure :[
     block -= ivec3(chunk.x, 0, chunk.y) * ivec3(CST_LOCAL_TO_WORLD);
-    // FIXME-END
-
     return cl_blocks
-        [h_a_2d_to_1d(chunk, CST_NB_CHUNKS_X)]
+        [chunk.x + chunk.y * CST_NB_CHUNKS_X]
         [block.x + (block.z + block.y * CST_CHUNK_WIDTH) * CST_CHUNK_WIDTH];
 }
 
@@ -257,12 +220,6 @@ uint bl_value(ivec2 chunk, ivec3 block) {
  * ************************************************************/
 
 vec4 sky_color(Ray r) {
-    /*
-    //vec3 color = vec3(0);
-    vec3 color = (cos(r.direction*1.5) + sin(r.origin/7) + vec3(2))/4;
-    return vec4(color, 1);
-    */
-
     vec3 color = vec3(0.149, 0.6471, 0.7961);
     float coeff = abs(dot(r.direction, vec3(0, 1, 0))) * 0.2 + 0.8;
     return vec4(color * coeff, 1);
@@ -309,8 +266,8 @@ bool BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r, out in
         t = t1;
         return true;
     }
-
-    return false;
+    t = t2;
+    return true;
 }
 
 #define DRAW_RAY(R, MAX_ITER, BOCK)\
@@ -320,8 +277,7 @@ bool BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r, out in
     ivec3 _steps = ivec3(_sgn);\
     vec3 _side_dist = (_sgn * (block - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
     vec3 _mask;\
-    uint _i = 0;\
-    for (; _i < MAX_ITER && bl_is_inside(block); _i++) {\
+    for (uint _i = 0; _i < MAX_ITER && bl_is_inside(block); _i++) {\
         ivec3 chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
         uint block_type = bl_value(chunk.xz, block);\
         if (block_type != 0) {\
@@ -332,58 +288,35 @@ bool BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r, out in
         block += ivec3(_mask) * _steps;\
     }
 
-
-#define DRAW_RAY_WITH_CHUNK_OPTI(R, MAX_ITER, BOCK)\
+#define DRAW_RAY2(R, MAX_ITER, BOCK)\
     vec3 _sgn = sign(R.direction);\
     vec3 _dt_dist = abs(R.direction_inv);\
     ivec3 block = ivec3(floor(R.origin));\
     ivec3 _steps = ivec3(_sgn);\
     vec3 _side_dist = (_sgn * (block - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
     vec3 _mask;\
-    uint _i = 0;\
-    for (; _i < MAX_ITER && bl_is_inside(block); _i++) {\
-        ivec3 chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
-        uint block_type = bl_value(chunk.xz, block);\
-        if (block_type != 0) {\
-            {BOCK;}\
-        }\
-        _mask = vec3(lessThanEqual(_side_dist.xyz, min(_side_dist.yzx, _side_dist.zxy)));\
-        _side_dist += _mask * _dt_dist;\
-        block += ivec3(_mask) * _steps;\
-    }
-/*
-#define DRAW_RAY_WITH_CHUNK_OPTI(R, MAX_ITER, BOCK)\
-    vec3 _sgn = sign(R.direction);\
-    vec3 _dt_dist = abs(R.direction_inv);\
-    ivec3 block = ivec3(floor(R.origin));\
     ivec3 chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
-    ivec3 _steps = ivec3(_sgn);\
-    vec3 _side_dist = (_sgn * (block - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
-    // FIXME: dt_chunk = ivec3(CST_LOCAL_TO_WORLD) - dist_to_next_chunk;\
-    ivec3 dt_chunk = ivec3(CST_LOCAL_TO_WORLD);\
-    // FIXME-END\
-    vec3 _mask;\
+    uint block_type = bl_value(chunk.xz, block);\
     uint _i = 0;\
-    for (; _i < MAX_ITER && bl_is_inside(block); _i++) {\
-        uint block_type = bl_value(chunk.xz, block);\
-        if (block_type != 0) {\
-            {BOCK;}\
-        }\
+    bool _is_inside = true;\
+    for (;_i < MAX_ITER && block_type == 0 && _is_inside; _i++) {\
         _mask = vec3(lessThanEqual(_side_dist.xyz, min(_side_dist.yzx, _side_dist.zxy)));\
         _side_dist += _mask * _dt_dist;\
         block += ivec3(_mask) * _steps;\
-        dt_chunk += ivec3(_mask);\
-        ivec3 chunk_overflow = ivec3(vec3(lessThan(dt_chunk, CST_LOCAL_TO_WORLD)));\
-        chunk += (1 - chunk_overflow);\
-        dt_chunk = dt_chunk * chunk_overflow;\
-    }
-*/
+        chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
+        _is_inside = bl_is_inside(block);\
+        block_type = bl_value(chunk.xz, block);\
+    }\
+    if (_i < MAX_ITER && block_type != 0 && _is_inside) {\
+        {BOCK;}\
+    }\
 
-float distance_before_next_intersection(Ray ray) {
-    DRAW_RAY(ray, CST_NB_CHUNKS_X, {
-        return 0.;
+
+uint distance_before_next_intersection(Ray ray) {
+    DRAW_RAY2(ray, CST_NB_CHUNKS_X, {
+        return _i;
     });
-    return 1000.;
+    return 1000;
 }
 
 vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
@@ -393,7 +326,7 @@ vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
 
     vec3 light_diffuse = CST_LIGHT_AMBIENT;
 
-    if (!CST_SHADOW_ACTIVATED || distance_before_next_intersection(shadow_ray) >= 1000.) {
+    if (!CST_SHADOW_ACTIVATED || distance_before_next_intersection(shadow_ray) >= CST_NB_CHUNKS_X) {
         light_diffuse = max(light_diffuse, dot(normal, -CST_LIGHT_DIRECTION));
     }
 
@@ -402,16 +335,18 @@ vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
 
 
 vec4 cast_ray(Ray ray) {
-    DRAW_RAY(ray, uint(-1), {
+    DRAW_RAY2(ray, CST_NB_CHUNKS_X * CST_CHUNK_WIDTH, {
         vec3 min_pos = block;
         vec3 max_pos = min_pos;
         vec3 max_pos_offset = vec3(1);
 
+        /*
         if (block_type == 1) { // water
             max_pos_offset = vec3(1, 0.9, 1);
         } else if (block_type == 8) { // snow
             max_pos_offset = vec3(1, 0.1, 1);
         }
+        */
 
         max_pos += max_pos_offset;
 
