@@ -2,8 +2,8 @@ use crate::termidraw::TermiDrawer;
 use gl;
 use glutin::dpi;
 use glutin::event;
-use glutin::event::{VirtualKeyCode as KeyCode, MouseButton};
 use glutin::event::WindowEvent;
+use glutin::event::{MouseButton, VirtualKeyCode as KeyCode};
 use glutin::{ContextBuilder, ContextWrapper, GlRequest, PossiblyCurrent};
 use nalgebra::{Vector2, Vector3};
 use utils::framecounter::FrameCounter;
@@ -99,7 +99,7 @@ pub fn game(
     let window_builder = glutin::window::WindowBuilder::new().with_title("Audran is stupid");
 
     let context = ContextBuilder::new()
-        .with_vsync(true)
+        //        .with_vsync(true)
         .with_double_buffer(Some(true))
         .with_gl(GlRequest::Specific(glutin::Api::OpenGl, (4, 3)))
         .build_windowed(window_builder, &event_loop)
@@ -128,6 +128,8 @@ pub fn game(
 
     // --- Main loop ---
     let mut frame_counter = FrameCounter::new(60);
+    let mut fps_mean = 0.0;
+    let mut fps_nb_ticks = 0.0;
 
     let mut __debug_min_coords: Vector2<i32> = Vector2::zeros();
 
@@ -284,7 +286,10 @@ pub fn game(
                         Some((b, _)) => b,
                         _ => Vector3::new(0, -100, 0),
                     };
-                    cubetracer.args.set_camera(&camera, highlighted_block).unwrap();
+                    cubetracer
+                        .args
+                        .set_camera(&camera, highlighted_block)
+                        .unwrap();
 
                     context.window().request_redraw();
                 }
@@ -299,6 +304,10 @@ pub fn game(
                     if let Some(fps) = frame_counter.tick() {
                         termidrawer.update_var("fps".to_string(), format!("{}", fps));
                         termidrawer.update_fps(fps as f64);
+                        fps_mean = fps_mean * fps_nb_ticks + fps;
+                        fps_nb_ticks += 1.0;
+                        fps_mean /= fps_nb_ticks;
+                        termidrawer.update_var("fps_mean".to_string(), format!("{}", fps_mean));
                     }
 
                     termidrawer.draw(&mut terminal).unwrap();
