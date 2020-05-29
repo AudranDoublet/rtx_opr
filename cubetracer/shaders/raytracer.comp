@@ -211,7 +211,7 @@ vec2 texture_coords(ivec2 pos, vec2 uv) {
 }
 
 vec4 texture_color(int tex, vec2 uv, float t) {
-    return textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex)), t*2);
+    return textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex)), t);
 }
 
 vec3 texture_normal(int texture, vec3 normal, vec2 uv, int face, float t) {
@@ -223,7 +223,7 @@ vec3 texture_normal(int texture, vec3 normal, vec2 uv, int face, float t) {
         tangeant = normalize(cross(normal, vec3(0.0, 0.0, 1.0)));
 
     vec3 b = normalize(cross(normal, tangeant));
-    vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(texture + 1)), t*2);
+    vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(texture + 1)), t);
     vec3 map_normal = color.xyz * 2 - vec3(1);
 
     //FIXME mat3 could be precomputed for face
@@ -426,12 +426,13 @@ vec4 cast_ray(Ray ray) {
                 return vec4(0.5, 0.5, 0.5, 1);
 
             int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
+            float t_qual = t / 10;
 
-            vec3 normal = texture_normal(tex, CST_NORMAL_MAP[face], uv, face, t);
+            vec3 normal = texture_normal(tex, CST_NORMAL_MAP[face], uv, face, t_qual);
 
             intersection += vec3(1) - max_pos_offset;
 
-            vec4 color = texture_color(tex, uv, t);
+            vec4 color = texture_color(tex, uv, t_qual);
             return lighting(color, intersection, normal);
         }
     });
