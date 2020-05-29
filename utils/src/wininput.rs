@@ -20,7 +20,7 @@ const CST_MAX_NUMBER_STATE_CHANGE: usize = 4;
 const CST_MAX_NUMBER_KEY: usize = u8::max_value() as usize;
 const CST_MAX_NUMBER_BUTTON: usize = u8::max_value() as usize;
 
-const MAX_TIME_DOUBLE_PRESS: f32 = 0.2;
+const MAX_TIME_DOUBLE_PRESS: f32 = 0.4;
 
 type StateChangeArray = [bool; CST_MAX_NUMBER_STATE_CHANGE];
 type KeyStateArray = [ElementState; CST_MAX_NUMBER_KEY];
