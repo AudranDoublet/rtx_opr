@@ -1,5 +1,6 @@
 use nalgebra::Vector3;
-use rand::Rng;
+
+use rand::{Rng, rngs::StdRng};
 
 const GRAD_1: [f32; 16] = [1., -1., 1., -1., 1., -1., 1., -1., 0., 0., 0., 0., 1., 0., -1., 0.];
 const GRAD_2: [f32; 16] = [1., 1., -1., -1., 0., 0., 0., 0., 1., -1., 1., -1., 1., -1., 1., -1.];
@@ -48,8 +49,7 @@ fn delta(v: f32) -> f32 {
 
 impl PerlinNoise
 {
-    pub fn new() -> PerlinNoise {
-        let mut rng = rand::thread_rng();
+    pub fn new(rng: &mut StdRng) -> PerlinNoise {
         let mut values = [0; 512];
 
         for i in 0..256 {
@@ -179,9 +179,9 @@ impl PerlinNoise
 
 impl PerlinOctaves
 {
-    pub fn new(count: usize) -> PerlinOctaves {
+    pub fn new(count: usize, rng: &mut StdRng) -> PerlinOctaves {
         PerlinOctaves {
-            octaves: (0..count).map(|_| PerlinNoise::new()).collect()
+            octaves: (0..count).map(|_| PerlinNoise::new(rng)).collect()
         }
     }
 
