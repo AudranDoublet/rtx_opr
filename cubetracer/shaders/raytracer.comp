@@ -62,38 +62,54 @@ struct Ray {
 
 struct Material {
     int type;
-    ivec2 texture_coords[6];
+    int texture_coords[6];
 };
 
 #define TEX_UNIQUE(v) (v), (v), (v), (v), (v), (v)
 #define TEX_COLUMN(v, w, z) (v), (w), (v), (v), (z), (v)
-#define MATERIAL_EMPTY() Material(0, ivec2[6]( TEX_UNIQUE(ivec2(0, 0)) ))
-#define MATERIAL_U(u, v) Material(1, ivec2[6]( TEX_UNIQUE(ivec2(u, v)) ))
-#define MATERIAL_C(u, v, u2, v2, u3, v3) Material(1, ivec2[6]( TEX_COLUMN(ivec2(u, v), ivec2(u2, v2), ivec2(u3, v3)) ))
+#define MATERIAL_EMPTY() Material(0, int[6]( TEX_UNIQUE(0) ))
+#define MATERIAL_U(u) Material(1, int[6]( TEX_UNIQUE(u)) )
+#define MATERIAL_C(v, w, z) Material(1, int[6]( TEX_COLUMN(v, w, z) ))
+#define MATERIAL_LOG(i) MATERIAL_C(LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
+
+#define STONE_TEX       0
+#define DIRT_TEX        2
+#define GRASS_TOP_TEX   4
+#define GRASS_SIDE_TEX  6
+#define SAND_TEX        8
+#define SNOW_TEX        10
+#define GRAVEL_TEX      12
+#define CACTUS_TOP_TEX  14
+#define CACTUS_SIDE_TEX 16
+#define CACTUS_BOTT_TEX 18
+#define LOGS_TEX        20
+#define TOP_LOGS_TEX    32
 
 const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_EMPTY(),
-    MATERIAL_U(1, 1),
-    MATERIAL_U(3, 0),               // Stone
-    MATERIAL_C(0, 0, 1, 0, 2, 0),   // Grass
-    MATERIAL_U(2, 0),               // Dirt
-    MATERIAL_U(0, 1),               // Gravel
-    MATERIAL_U(0, 3),               // Sand
-    MATERIAL_C(0, 2, 1, 2, 1, 2),   // Cactus
-    MATERIAL_U(2, 1),               // Snow
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
-    MATERIAL_U(0, 0),
+    MATERIAL_U(STONE_TEX),
+    MATERIAL_U(STONE_TEX),                                          // Stone
+    MATERIAL_C(GRASS_SIDE_TEX, GRASS_TOP_TEX, DIRT_TEX),            // Grass
+    MATERIAL_U(DIRT_TEX),                                           // Dirt
+    MATERIAL_U(GRAVEL_TEX),                                         // Gravel
+    MATERIAL_U(SAND_TEX),                                           // Sand
+    MATERIAL_C(CACTUS_SIDE_TEX, CACTUS_TOP_TEX, CACTUS_BOTT_TEX),   // Cactus
+    MATERIAL_U(SNOW_TEX),                                           // Snow
+    MATERIAL_U(STONE_TEX),
+    MATERIAL_U(LOGS_TEX),
+    MATERIAL_LOG(0),
+    MATERIAL_LOG(1),
+    MATERIAL_LOG(2),
+    MATERIAL_LOG(3),
+    MATERIAL_LOG(4),
+    MATERIAL_LOG(5),
+    MATERIAL_U(STONE_TEX),
+    MATERIAL_U(STONE_TEX),
+    MATERIAL_U(STONE_TEX),
+    MATERIAL_U(STONE_TEX),
+    MATERIAL_U(STONE_TEX),
+    MATERIAL_U(STONE_TEX),
+    MATERIAL_U(STONE_TEX),
 };
 
 /* ************************************************************
@@ -111,8 +127,7 @@ uniform ivec2 in_uni_cl_min_coords; // chunks min coord in
 
 uniform ivec3 in_uni_highlighted_block;
 
-uniform sampler2D in_uni_texture;
-uniform sampler2D in_uni_texture_n;
+uniform sampler2DArray in_uni_textures;
 
     /* > -B- Outputs */
 layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
@@ -305,17 +320,11 @@ vec2 bbox_uv(const vec3 boxMin, const vec3 boxMax, const vec3 intersection, int 
     return vec2((intersection.x - boxMin.x) / diff.x, 1 - (intersection.y - boxMin.y) / diff.y);
 }
 
-vec2 texture_coords(ivec2 pos, vec2 uv) {
-    vec2 size = vec2(1.0 / 8, 1.0 / 8); // FIXME remove hardcoded width/height
-
-    return vec2(float(pos.x) * size.x, float(pos.y) * size.y) + uv * size;
+vec4 texture_color(int tex, vec2 uv, float t) {
+    return textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex)), t*2);
 }
 
-vec4 texture_color(ivec2 pos, vec2 uv) {
-    return texture(in_uni_texture, texture_coords(pos, uv));
-}
-
-vec3 texture_normal(vec3 normal, ivec2 pos, vec2 uv, int face) {
+vec3 texture_normal(int texture, vec3 normal, vec2 uv, int face, float t) {
     vec3 tangeant;
 
     if (face == 2 || face == 5)
@@ -324,7 +333,7 @@ vec3 texture_normal(vec3 normal, ivec2 pos, vec2 uv, int face) {
         tangeant = normalize(cross(normal, vec3(0.0, 0.0, 1.0)));
 
     vec3 b = normalize(cross(normal, tangeant));
-    vec4 color = texture(in_uni_texture_n, texture_coords(pos, uv));
+    vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(texture + 1)), t*2);
     vec3 map_normal = color.xyz * 2 - vec3(1);
 
     //FIXME mat3 could be precomputed for face
@@ -371,13 +380,13 @@ vec4 cast_ray(Ray ray) {
             if (out_pos.y == in_uni_highlighted_block.y && out_pos.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
                 return vec4(0.5, 0.5, 0.5, 1);
 
-            ivec2 tex = CST_BLOCK_MATERIALS[out_value].texture_coords[face];
+            int tex = CST_BLOCK_MATERIALS[out_value].texture_coords[face];
 
-            vec3 normal = texture_normal(CST_NORMAL_MAP[face], tex, uv, face);
+            vec3 normal = texture_normal(tex, CST_NORMAL_MAP[face], uv, face, v.x);
 
             intersection += vec3(1) - max_pos_offset;
 
-            vec4 color = texture_color(tex, uv);
+            vec4 color = texture_color(tex, uv, v.x);
             return lighting(color, intersection, normal);
         }
     });
