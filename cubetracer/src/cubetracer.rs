@@ -76,6 +76,12 @@ impl CubeTracer {
             &std::path::Path::new("data/log_jungle_top_n.png"),
             &std::path::Path::new("data/log_spruce_top.png"),
             &std::path::Path::new("data/log_spruce_top_n.png"),
+            &std::path::Path::new("data/leaves_oak.png"),
+            &std::path::Path::new("data/leaves_acacia.png"),
+            &std::path::Path::new("data/leaves_big_oak.png"),
+            &std::path::Path::new("data/leaves_birch.png"),
+            &std::path::Path::new("data/leaves_jungle.png"),
+            &std::path::Path::new("data/leaves_spruce.png"),
         ])?;
 
         Ok(CubeTracer {

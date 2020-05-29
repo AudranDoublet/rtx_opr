@@ -69,8 +69,10 @@ struct Material {
 #define TEX_COLUMN(v, w, z) (v), (w), (v), (v), (z), (v)
 #define MATERIAL_EMPTY() Material(0, int[6]( TEX_UNIQUE(0) ))
 #define MATERIAL_U(u) Material(1, int[6]( TEX_UNIQUE(u)) )
+#define MATERIAL_U_NO_NORM(u) Material(2, int[6]( TEX_UNIQUE(u)) )
 #define MATERIAL_C(v, w, z) Material(1, int[6]( TEX_COLUMN(v, w, z) ))
 #define MATERIAL_LOG(i) MATERIAL_C(LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
+#define MATERIAL_LEAVES(i) MATERIAL_U_NO_NORM(LEAVES_TEX + i)
 
 #define STONE_TEX       0
 #define DIRT_TEX        2
@@ -84,6 +86,7 @@ struct Material {
 #define CACTUS_BOTT_TEX 18
 #define LOGS_TEX        20
 #define TOP_LOGS_TEX    32
+#define LEAVES_TEX      44
 
 const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_EMPTY(),
@@ -96,20 +99,18 @@ const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_C(CACTUS_SIDE_TEX, CACTUS_TOP_TEX, CACTUS_BOTT_TEX),   // Cactus
     MATERIAL_U(SNOW_TEX),                                           // Snow
     MATERIAL_U(STONE_TEX),
-    MATERIAL_U(LOGS_TEX),
     MATERIAL_LOG(0),
     MATERIAL_LOG(1),
     MATERIAL_LOG(2),
     MATERIAL_LOG(3),
     MATERIAL_LOG(4),
     MATERIAL_LOG(5),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
-    MATERIAL_U(STONE_TEX),
+    MATERIAL_LEAVES(0),
+    MATERIAL_LEAVES(1),
+    MATERIAL_LEAVES(2),
+    MATERIAL_LEAVES(3),
+    MATERIAL_LEAVES(4),
+    MATERIAL_LEAVES(5),
 };
 
 /* ************************************************************
@@ -425,15 +426,22 @@ vec4 cast_ray(Ray ray) {
             if (block.y == in_uni_highlighted_block.y && block.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
                 return vec4(0.5, 0.5, 0.5, 1);
 
-            int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
+            Material mat = CST_BLOCK_MATERIALS[block_type];
+            int tex = mat.texture_coords[face];
             float t_qual = t / 10;
 
-            vec3 normal = texture_normal(tex, CST_NORMAL_MAP[face], uv, face, t_qual);
+            vec3 normal = CST_NORMAL_MAP[face];
+
+            if (mat.type == 1)
+                normal = texture_normal(tex, normal, uv, face, t_qual);
+
+            vec4 color = texture_color(tex, uv, t_qual);
+
 
             intersection += vec3(1) - max_pos_offset;
 
-            vec4 color = texture_color(tex, uv, t_qual);
-            return lighting(color, intersection, normal);
+            if (color.w > 0.5)
+                return lighting(color, intersection, normal);
         }
     });
 
