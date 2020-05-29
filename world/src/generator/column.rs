@@ -6,6 +6,8 @@ use std::rc::Rc;
 use crate::generator::layers::{Layer, LayerResult};
 use crate::{Block, Chunk, SEA_LEVEL};
 
+use rand::{SeedableRng, rngs::StdRng};
+
 pub struct ColumnProvider {
     perlins: [PerlinOctaves; 4],
     column_weights: [f32; 825],
@@ -49,12 +51,14 @@ impl ColumnProvider {
     pub fn new(seed: isize) -> ColumnProvider {
         let (b, z) = Layer::create_generator(seed);
 
+        let mut rng = SeedableRng::seed_from_u64(seed as u64);
+
         ColumnProvider {
             perlins: [
-                PerlinOctaves::new(8),
-                PerlinOctaves::new(16),
-                PerlinOctaves::new(16),
-                PerlinOctaves::new(16),
+                PerlinOctaves::new(8, &mut rng),
+                PerlinOctaves::new(16, &mut rng),
+                PerlinOctaves::new(16, &mut rng),
+                PerlinOctaves::new(16, &mut rng),
             ],
             column_weights: [0.0; 825],
             biome_provider: z,
