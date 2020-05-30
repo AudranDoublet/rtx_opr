@@ -329,7 +329,7 @@ bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray 
 
     const float t2 = min(min(tmax.x, tmax.y), tmax.z);
 
-    if (t1 < t2) {
+    if (t1 > 0.0 && t1 < t2) {
         t = t1;
         return true;
     }
@@ -365,12 +365,86 @@ bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray 
 #define DRAW_RAY_HAS_INTERSECTED()\
     (_is_inside && (block_type != 0))
 
+bool isIntersectionCertain(uint block_type) {
+    return block_type != 1 
+        && block_type != 8
+        && block_type != 7
+        && block_type != 9
+        && CST_BLOCK_MATERIALS[block_type].type != 4;
+}
 
-uint distance_before_next_intersection(const Ray ray) {
+vec3 computeBlockOffsetTop(uint block_type) {
+    return float(block_type == 1) * vec3(1, 0.9, 1)
+        + float(block_type == 7) * vec3(0.9, 1.0, 0.9)
+        + float(block_type == 8) * vec3(1, 0.1, 1);
+}
+vec3 computeBlockOffsetBot(uint block_type) {
+    return float(block_type == 7) * vec3(0.1, 0, 0.1);
+}
+
+float distance_before_next_intersection(const Ray ray) {
     DRAW_RAY_INIT(ray);
     DRAW_RAY_ITER(CST_NB_CHUNKS_X);
 
-    return DRAW_RAY_HAS_INTERSECTED() ? _i : 1000;
+    if (!DRAW_RAY_HAS_INTERSECTED())
+        return 1000;
+
+    uint k = 0;
+    do {
+        float t;
+        int face = 0;
+        bool mustComputeIntersection = true;
+        bool mustComputeUv = true;
+        vec2 uv;
+
+        vec3 normal;
+
+        for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {
+            if ((block_type == 9 || CST_BLOCK_MATERIALS[block_type].type == 4) && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], ray, t, uv, normal)) {
+                mustComputeUv = false;
+                mustComputeIntersection = false;
+                break;
+            } else if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), ray, face, t)) {
+                mustComputeIntersection = false;
+                break;
+            }
+
+            DRAW_RAY_ITER_RESET();
+            DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+
+            if (!DRAW_RAY_HAS_INTERSECTED())
+                return 1000;
+        }
+
+        // need to re-compute the intersection
+        if (mustComputeIntersection) {
+            ivec3 faces = ivec3(_mask) * (ivec3(0, 1, 2) + 3 * ivec3(greaterThan(_steps, ivec3(0))));
+            face = faces.x + faces.y + faces.z;
+
+            t = BBoxRayIntersects(block, block + vec3(1), ray);
+        } 
+
+        vec3 intersection = ray.origin + ray.direction * t;
+
+        if (mustComputeUv)
+            uv = bbox_uv(block, intersection, face);
+
+        float t_qual = t / 10.;
+        int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
+        vec4 color = texture_color(tex, uv, t_qual);
+
+        if (color.a > 0.5)
+            return t;
+
+        DRAW_RAY_ITER_RESET();
+        DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+
+        if (!DRAW_RAY_HAS_INTERSECTED())
+            return 1000;
+
+    } while (k++ < CST_MAX_ITER_TRANSPARENT);
+
+    return 1000;
 }
 
 vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
@@ -385,22 +459,6 @@ vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
     }
 
     return vec4(light_diffuse, 1) * color;
-}
-
-bool isIntersectionCertain(uint block_type) {
-    return block_type != 1 
-        && block_type != 8
-        && block_type != 7
-        && block_type != 9
-        && CST_BLOCK_MATERIALS[block_type].type != 4;
-}
-vec3 computeBlockOffsetTop(uint block_type) {
-    return float(block_type == 1) * vec3(1, 0.9, 1)
-        + float(block_type == 7) * vec3(0.9, 1.0, 0.9)
-        + float(block_type == 8) * vec3(1, 0.1, 1);
-}
-vec3 computeBlockOffsetBot(uint block_type) {
-    return float(block_type == 7) * vec3(0.1, 0, 0.1);
 }
 
 vec4 cast_ray(const Ray ray) {
