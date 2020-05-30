@@ -290,7 +290,7 @@ impl Player {
                     if self.block_place_cooldown <= 0.0 {
                         if let Some((pos, face)) = self.looked_block(world, camera_forward) {
                             let pos = pos + face.relative();
-                            let btype = Block::TallGrass;
+                            let btype = Block::Stone;
 
                             let mut allowed = true;
 
