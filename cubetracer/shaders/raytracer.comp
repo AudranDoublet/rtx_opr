@@ -73,6 +73,7 @@ struct Material {
 #define MATERIAL_EMPTY() Material(0, int[6]( TEX_UNIQUE(0) ))
 #define MATERIAL_U(u) Material(1, int[6]( TEX_UNIQUE(u)) )
 #define MATERIAL_U_NO_NORM(u) Material(2, int[6]( TEX_UNIQUE(u)) )
+#define MATERIAL_PLANT(u) Material(3, int[6] (TEX_UNIQUE(u)))
 #define MATERIAL_C(v, w, z) Material(1, int[6]( TEX_COLUMN(v, w, z) ))
 #define MATERIAL_LOG(i) MATERIAL_C(LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
 #define MATERIAL_LEAVES(i) MATERIAL_U_NO_NORM(LEAVES_TEX + i)
@@ -83,13 +84,14 @@ struct Material {
 #define GRASS_SIDE_TEX  6
 #define SAND_TEX        8
 #define SNOW_TEX        10
-#define GRAVEL_TEX      12
-#define CACTUS_TOP_TEX  14
-#define CACTUS_SIDE_TEX 16
-#define CACTUS_BOTT_TEX 18
-#define LOGS_TEX        20
-#define TOP_LOGS_TEX    32
-#define LEAVES_TEX      44
+#define TALLGRASS_TEX   12
+#define GRAVEL_TEX      14
+#define CACTUS_TOP_TEX  16
+#define CACTUS_SIDE_TEX 18
+#define CACTUS_BOTT_TEX 20
+#define LOGS_TEX        22
+#define TOP_LOGS_TEX    34
+#define LEAVES_TEX      46
 
 const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_EMPTY(),
@@ -101,7 +103,7 @@ const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_U(SAND_TEX),                                           // 6-Sand
     MATERIAL_C(CACTUS_SIDE_TEX, CACTUS_TOP_TEX, CACTUS_BOTT_TEX),   // 7-Cactus
     MATERIAL_U(SNOW_TEX),                                           // 8-Snow
-    MATERIAL_U(STONE_TEX),
+    MATERIAL_PLANT(TALLGRASS_TEX),                                  // 9-Tall grass
     MATERIAL_LOG(0),
     MATERIAL_LOG(1),
     MATERIAL_LOG(2),
@@ -138,6 +140,8 @@ uniform vec3 in_uni_origin; // camera origin
 uniform ivec2 in_uni_cl_min_coords; // chunks min coord in 
 
 uniform ivec3 in_uni_highlighted_block;
+
+uniform vec3 in_uni_wind;
 
 uniform sampler2DArray in_uni_textures;
 
@@ -191,6 +195,16 @@ vec3 texture_normal(const int tex, const vec2 uv, const int face, const float t)
     return CST_TEXTURE_NORMAL_TRANSFORMS[face] * map_normal;
 }
 
+vec3 texture_normal(const int tex, vec2 uv, const float t, vec3 normal) {
+    const vec3 tangeant = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
+    const vec3 b = normalize(cross(normal, tangeant));
+
+    const vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex + 1)), t);
+    const vec3 map_normal = color.xyz * 2 - vec3(1);
+
+    return mat3(tangeant, b, normal) * map_normal;
+}
+
 /* ************************************************************
  * > -4- Section: Chunks/Blocks memory fetching
  * ************************************************************/
@@ -224,6 +238,57 @@ float BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r) {
     const vec3 ttop = r.direction_inv * (boxMax - r.origin);
     const vec3 tmin = min(ttop, tbot);
     return max(max(tmin.x, tmin.y), tmin.z);
+}
+
+bool quadrilater_intersects(int tex, const vec3 pos, const vec3 edge1, const vec3 edge2, const Ray r, out float t, out vec2 uv, out vec3 normal) {
+    vec3 h = cross(r.direction, edge2);
+    float a = dot(edge1, h);
+
+    if (a > -0.0001 && a < 0.0001) {
+        return false;
+    }
+
+    float f = 1.0 / a;
+    vec3 s = r.origin - pos;
+    uv.y = f * dot(s, h);
+
+    if (uv.y < 0.0 || uv.y > 1.0)
+        return false;
+
+    vec3 q = cross(s, edge1);
+    uv.x = f * dot(r.direction, q);
+
+    if (uv.x < 0.0 || uv.x > 1.0)
+        return false;
+
+    uv.y = 1.0 - uv.y;
+    t = f * dot(edge2, q);
+
+    normal = cross(edge1, edge2);
+
+    if (dot(normal, r.direction) < 0.0)
+        normal = -normal;
+
+    return t > 0.0 && texture_color(tex, uv, t / 10.).a > 0.5;
+}
+
+bool plant_intersects(const vec3 block_pos, int tex, Ray ray, out float t, out vec2 uv, out vec3 normal) {
+    float t2;
+    vec2 uv2;
+    vec3 normal2;
+
+    bool v1 = quadrilater_intersects(tex, block_pos, in_uni_wind, vec3(1.0, 0.0, 1.0), ray, t, uv, normal);
+    bool v2 = quadrilater_intersects(tex, block_pos + vec3(1.0, 0.0, 0.0), in_uni_wind, vec3(-1.0, 0.0, 1.0), ray, t2, uv2, normal2) && (!v1 || t2 < t);
+
+    if (v2)
+    {
+        uv = uv2;
+        t = t2;
+        normal = normal2;
+        return true;
+    }
+
+    return v1;
 }
 
 bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray r, out int face, out float t) {
@@ -313,7 +378,8 @@ vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
 bool isIntersectionCertain(uint block_type) {
     return block_type != 1 
         && block_type != 8
-        && block_type != 7;
+        && block_type != 7
+        && block_type != 9;
 }
 vec3 computeBlockOffsetTop(uint block_type) {
     return float(block_type == 1) * vec3(1, 0.9, 1)
@@ -334,15 +400,23 @@ vec4 cast_ray(const Ray ray) {
     uint k = 0;
     do {
         float t;
-        int face;
+        int face = 0;
 
         bool mustComputeIntersection = true;
+        bool mustComputeUv = true;
+        vec2 uv;
+
+        vec3 normal;
 
         // if uncertain of the box intersection because the box has special shapes, or is transparent,
         // we compute expensive intersections, and continue the ray till we're not sure we can get
         // an intersection with a box
         for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {
-            if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), ray, face, t)) {
+            if (block_type == 9 && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], ray, t, uv, normal)) {
+                mustComputeUv = false;
+                mustComputeIntersection = false;
+                break;
+            } else if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), ray, face, t)) {
                 mustComputeIntersection = false;
                 break;
             }
@@ -363,7 +437,8 @@ vec4 cast_ray(const Ray ray) {
 
         vec3 intersection = ray.origin + ray.direction * t;
 
-        vec2 uv = bbox_uv(block, intersection, face);
+        if (mustComputeUv)
+            uv = bbox_uv(block, intersection, face);
         if (block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
             return vec4(0.5, 0.5, 0.5, 1);
 
@@ -372,7 +447,22 @@ vec4 cast_ray(const Ray ray) {
         vec4 color = texture_color(tex, uv, t_qual);
 
         if (color.a > 0.5)
-            return lighting(color, intersection, CST_BLOCK_MATERIALS[block_type].type == 1 ? texture_normal(tex, uv, face, t_qual) : CST_NORMAL_MAP[face]);
+        {
+            switch (CST_BLOCK_MATERIALS[block_type].type)
+            {
+                case 1:
+                    normal = texture_normal(tex, uv, face, t_qual);
+                    break;
+                case 2:
+                    normal = CST_NORMAL_MAP[face];
+                    break;
+                case 3:
+                    normal = texture_normal(tex, uv, t_qual, normal);
+                    break;
+            }
+
+            return lighting(color, intersection, normal);
+        }
 
         DRAW_RAY_ITER_RESET();
         DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);

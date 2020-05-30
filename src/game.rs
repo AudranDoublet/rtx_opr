@@ -133,6 +133,8 @@ pub fn game(
 
     let mut __debug_min_coords: Vector2<i32> = Vector2::zeros();
 
+    let mut total_time = 0.0;
+
     event_loop.run(
         move |event, _, control_flow: &mut glutin::event_loop::ControlFlow| {
             *control_flow = glutin::event_loop::ControlFlow::Poll;
@@ -142,6 +144,7 @@ pub fn game(
                 glutin::event::Event::LoopDestroyed => return,
                 glutin::event::Event::MainEventsCleared => {
                     input_handler.update_time(delta_time);
+                    total_time += delta_time;
 
                     // --- Process inputs ---
                     if input_handler.updated(wininput::StateChange::MouseScroll) {
@@ -204,6 +207,7 @@ pub fn game(
                         inputs,
                         delta_time,
                     );
+
                     camera.origin = player.head_position();
                     //player.set_position(world, &mut listener, camera.origin);
 
@@ -286,9 +290,13 @@ pub fn game(
                         Some((b, _)) => b,
                         _ => Vector3::new(0, -100, 0),
                     };
+
+                    //FIXME improve wind
+                    let wind = Vector3::new((total_time + 0.8).cos() / 4., 1.0, total_time.sin() / 4.).normalize();
+
                     cubetracer
                         .args
-                        .set_camera(&camera, highlighted_block)
+                        .set_camera(&camera, wind, highlighted_block)
                         .unwrap();
 
                     context.window().request_redraw();

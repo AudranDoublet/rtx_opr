@@ -49,6 +49,8 @@ impl CubeTracer {
                 &std::path::Path::new("data/sand_n.png"),
                 &std::path::Path::new("data/snow.png"),
                 &std::path::Path::new("data/snow_n.png"),
+                &std::path::Path::new("data/tallgrass.png"),
+                &std::path::Path::new("data/tallgrass_n.png"),
                 &std::path::Path::new("data/gravel.png"),
                 &std::path::Path::new("data/gravel_n.png"),
                 &std::path::Path::new("data/cactus_top.png"),

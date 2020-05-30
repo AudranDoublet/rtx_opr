@@ -18,6 +18,7 @@ const VAR_IDX_ORIGIN: usize = 3;
 const VAR_IDX_CL_MIN_COORDS: usize = 4;
 const VAR_IDX_HIGHTLIGHTED_BLOCK: usize = 5;
 const VAR_IDX_TEXTURES: usize = 6;
+const VAR_IDX_WIND: usize = 7;
 
 const VARS_LEN: usize = 8;
 
@@ -61,6 +62,9 @@ impl CubeTracerArguments {
 
         uniform_locations[VAR_IDX_TEXTURES] =
             helper::get_uniform_location(program, "in_uni_textures")?;
+
+        uniform_locations[VAR_IDX_WIND] =
+            helper::get_uniform_location(program, "in_uni_wind")?;
 
         let res = CubeTracerArguments {
             program,
@@ -167,6 +171,7 @@ impl CubeTracerArguments {
     pub fn set_camera(
         &self,
         value: &Camera,
+        wind: Vector3<f32>,
         mut highlighted_block: Vector3<i32>,
     ) -> Result<(), GLError> {
         let origin = value.origin;
@@ -181,6 +186,7 @@ impl CubeTracerArguments {
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_LEFT, left)?;
         self.set_vector_3f(VAR_IDX_SCREEN_DOT_UP, up)?;
         self.set_vector_3i(VAR_IDX_HIGHTLIGHTED_BLOCK, highlighted_block)?;
+        self.set_vector_3f(VAR_IDX_WIND, wind)?;
         // FIXME-END
 
         Ok(())
