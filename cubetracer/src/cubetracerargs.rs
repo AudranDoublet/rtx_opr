@@ -25,6 +25,7 @@ pub struct CubeTracerArguments {
     program: u32,
     ssbo_raytracer_cl: u32,
     view_size: usize,
+    cl_min_coords: Vector3<i32>,
     uniform_locations: [i32; VARS_LEN],
 }
 
@@ -65,6 +66,7 @@ impl CubeTracerArguments {
             program,
             ssbo_raytracer_cl,
             view_size,
+            cl_min_coords: Vector3::zeros(),
             uniform_locations,
         };
 
@@ -72,7 +74,7 @@ impl CubeTracerArguments {
         Ok(res)
     }
 
-    pub fn set_chunks(&self, chunks: Vec<Rc<Chunk>>) -> Result<Vector2<i32>, GLError> {
+    pub fn set_chunks(&mut self, chunks: Vec<Rc<Chunk>>) -> Result<Vector2<i32>, GLError> {
         let nb_chunks_x = 2 * self.view_size;
         let nb_chunks_xz = nb_chunks_x.pow(2);
 
@@ -83,6 +85,8 @@ impl CubeTracerArguments {
             cl_min_coords.x = cl_min_coords.x.min(c.x);
             cl_min_coords.y = cl_min_coords.y.min(c.y);
         });
+        self.cl_min_coords = Vector3::new(cl_min_coords.x, 0, cl_min_coords.y)
+            .component_mul(&Vector3::new(16, 0, 16));
 
         chunks.iter().for_each(|c| {
             let coord = c.coords() - cl_min_coords;
@@ -163,11 +167,13 @@ impl CubeTracerArguments {
     pub fn set_camera(
         &self,
         value: &Camera,
-        highlighted_block: Vector3<i32>,
+        mut highlighted_block: Vector3<i32>,
     ) -> Result<(), GLError> {
         let origin = value.origin;
         let top_left = value.get_virtual_screen_top_left();
         let (left, up) = value.get_virtual_screen_axes_scaled();
+
+        highlighted_block -= self.cl_min_coords;
 
         // FIXME: we should try to send the data as an array of 4 Vector3 in one shot
         self.set_vector_3f(VAR_IDX_ORIGIN, origin)?;

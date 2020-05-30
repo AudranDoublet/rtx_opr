@@ -6,7 +6,7 @@ use std::rc::Rc;
 use crate::generator::layers::{Layer, LayerResult};
 use crate::{Block, Chunk, SEA_LEVEL};
 
-use rand::{SeedableRng, rngs::StdRng};
+use rand::SeedableRng;
 
 pub struct ColumnProvider {
     perlins: [PerlinOctaves; 4],

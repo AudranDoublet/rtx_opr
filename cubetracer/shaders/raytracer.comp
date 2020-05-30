@@ -365,7 +365,7 @@ vec4 cast_ray(const Ray ray) {
         vec3 intersection = ray.origin + ray.direction * t;
 
         vec2 uv = bbox_uv(block, block_offset, intersection, face);
-        if (block.y == in_uni_highlighted_block.y && block.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
+        if (block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
             return vec4(0.5, 0.5, 0.5, 1);
 
         int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];

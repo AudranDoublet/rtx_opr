@@ -9,36 +9,6 @@ use std::{mem, ptr};
 
 use gl::types::*;
 
-pub fn load_texture(i: u32, path: &std::path::Path) -> Result<u32, GLError> {
-    let image = image::open(path).expect("can't load texture").into_rgba();
-    let mut tex_out = 0;
-
-    glchk_stmt!(
-        gl::GenTextures(2, &mut tex_out);
-        gl::ActiveTexture(gl::TEXTURE0 + i);
-        gl::BindTexture(gl::TEXTURE_2D, tex_out);
-
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_NEAREST as i32);
-
-        let res = gl::TexImage2D(
-            gl::TEXTURE_2D,
-            0,
-            gl::RGBA as i32,
-            image.width() as i32,
-            image.height() as i32,
-            0,
-            gl::RGBA,
-            gl::UNSIGNED_BYTE,
-            image.into_raw().as_ptr() as *const _ as *const c_void,
-        );
-
-        gl::GenerateTextureMipmap(tex_out);
-    );
-
-    Ok(tex_out)
-}
-
 pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<(), GLError> {
     let mut tex_out = 0;
 
@@ -54,8 +24,11 @@ pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<(), GLError
 
     for i in 0..textures.len() {
         let path = textures[i];
-        let image = image::open(path).expect(format!("can't load texture {}", path.to_str().unwrap()).as_str()).into_rgba();
-        let rimage = image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Gaussian);
+        let image = image::open(path)
+            .expect(format!("can't load texture {}", path.to_str().unwrap()).as_str())
+            .into_rgba();
+        let rimage =
+            image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Gaussian);
 
         glchk_stmt!(
             gl::TexSubImage3D(
