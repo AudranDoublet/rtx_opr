@@ -168,8 +168,8 @@ Ray ray_make(const vec2 pixel) {
  * > -3- Section: Textures
  * ************************************************************/
 
-vec2 bbox_uv(const vec3 boxMin, const vec3 diff, const vec3 intersection, const int face) {
-    const vec3 r = (intersection - boxMin) / diff;
+vec2 bbox_uv(const vec3 boxMin, const vec3 intersection, const int face) {
+    const vec3 r = intersection - boxMin;
     return (face == 0 || face == 3) ? vec2(r.z, 1 - r.y)
         : (face == 1 || face == 4) ? vec2(r.x, 1 - r.z)
         : vec2(r.x, 1 - r.y);
@@ -312,12 +312,16 @@ vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
 
 bool isIntersectionCertain(uint block_type) {
     return block_type != 1 
-        && block_type != 8;
+        && block_type != 8
+        && block_type != 7;
 }
-
-vec3 computeBlockOffset(uint block_type) {
+vec3 computeBlockOffsetTop(uint block_type) {
     return float(block_type == 1) * vec3(1, 0.9, 1)
+        + float(block_type == 7) * vec3(0.9, 1.0, 0.9)
         + float(block_type == 8) * vec3(1, 0.1, 1);
+}
+vec3 computeBlockOffsetBot(uint block_type) {
+    return float(block_type == 7) * vec3(0.1, 0, 0.1);
 }
 
 vec4 cast_ray(const Ray ray) {
@@ -329,7 +333,6 @@ vec4 cast_ray(const Ray ray) {
 
     uint k = 0;
     do {
-        vec3 block_offset;
         float t;
         int face;
 
@@ -339,9 +342,7 @@ vec4 cast_ray(const Ray ray) {
         // we compute expensive intersections, and continue the ray till we're not sure we can get
         // an intersection with a box
         for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {
-            block_offset = computeBlockOffset(block_type);
-
-            if (BBoxRayIntersectsUncertain(block, block + block_offset, ray, face, t)) {
+            if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), ray, face, t)) {
                 mustComputeIntersection = false;
                 break;
             }
@@ -354,8 +355,6 @@ vec4 cast_ray(const Ray ray) {
 
         // need to re-compute the intersection
         if (mustComputeIntersection) {
-            block_offset = vec3(1);
-
             ivec3 faces = ivec3(_mask) * (ivec3(0, 1, 2) + 3 * ivec3(greaterThan(_steps, ivec3(0))));
             face = faces.x + faces.y + faces.z;
 
@@ -364,7 +363,7 @@ vec4 cast_ray(const Ray ray) {
 
         vec3 intersection = ray.origin + ray.direction * t;
 
-        vec2 uv = bbox_uv(block, block_offset, intersection, face);
+        vec2 uv = bbox_uv(block, intersection, face);
         if (block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
             return vec4(0.5, 0.5, 0.5, 1);
 
