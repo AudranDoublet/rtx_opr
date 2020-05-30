@@ -2,7 +2,7 @@
 // FIXME: We should implement an `#include` system to split this code into multiple sources
 
 // FIXME: Should be configurable before compilation instead of being hardcoded
-layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 /* ************************************************************
  * > --1- Constants
