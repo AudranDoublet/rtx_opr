@@ -349,6 +349,7 @@ vec4 cast_ray(const Ray ray) {
                 // if no collision within the allowed range
                 if (isIntersectionCertain(block_type)) {
                     block_offset = vec3(1);
+                    t = -1.0;
                     break;
                 }
             }
