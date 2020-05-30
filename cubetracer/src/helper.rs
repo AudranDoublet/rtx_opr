@@ -14,12 +14,12 @@ pub fn load_texture(i: u32, path: &std::path::Path) -> Result<u32, GLError> {
     let mut tex_out = 0;
 
     glchk_stmt!(
-        gl::GenTextures(2, &mut tex_out);
-        gl::ActiveTexture(gl::TEXTURE0 + i);
+        gl::GenTextures(1, &mut tex_out);
+        gl::ActiveTexture(gl::TEXTURE0);
         gl::BindTexture(gl::TEXTURE_2D, tex_out);
 
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
 
         let res = gl::TexImage2D(
             gl::TEXTURE_2D,
@@ -32,14 +32,12 @@ pub fn load_texture(i: u32, path: &std::path::Path) -> Result<u32, GLError> {
             gl::UNSIGNED_BYTE,
             image.into_raw().as_ptr() as *const _ as *const c_void,
         );
-
-        gl::GenerateTextureMipmap(tex_out);
     );
 
     Ok(tex_out)
 }
 
-pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<(), GLError> {
+pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<u32, GLError> {
     let mut tex_out = 0;
 
     glchk_stmt!(
@@ -72,7 +70,7 @@ pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<(), GLError
         gl::GenerateMipmap(gl::TEXTURE_2D_ARRAY);
     );
 
-    Ok(())
+    Ok(tex_out)
 }
 
 pub fn generate_texture(width: u32, height: u32) -> Result<u32, GLError> {
@@ -218,8 +216,13 @@ pub fn make_ssbo(program: u32, var_name: &str, size: usize) -> Result<u32, GLErr
     Ok(ssbo)
 }
 
-pub fn make_quad_vao(program: u32) -> Result<u32, GLError> {
-    let vertices: [f32; 8] = [-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0];
+pub fn make_quad_vao(program: u32, width: f32, height: f32) -> Result<u32, GLError> {
+    let vertices: [f32; 16] = [
+        -width, -height,   0.0, 0.0,
+        -width, height,    0.0, 1.0,
+        width, -height,    1.0, 0.0,
+        width, height,     1.0, 1.0,
+    ];
 
     let (mut vbo, mut vao) = (0, 0);
 
@@ -241,9 +244,15 @@ pub fn make_quad_vao(program: u32) -> Result<u32, GLError> {
     let c_var_name_pos = CString::new("in_pos").unwrap();
     let attr_pos = glchk_expr!(gl::GetAttribLocation(program, c_var_name_pos.as_ptr()) as u32);
 
+    let c_var_name_tex = CString::new("in_tex_coords").unwrap();
+    let attr_tex = glchk_expr!(gl::GetAttribLocation(program, c_var_name_tex.as_ptr()) as u32);
+
     glchk_stmt!(
-        gl::VertexAttribPointer(attr_pos, 2, gl::FLOAT, gl::FALSE, 0, ptr::null());
+        gl::VertexAttribPointer(attr_pos, 2, gl::FLOAT, gl::FALSE, 16, ptr::null());
         gl::EnableVertexAttribArray(attr_pos);
+
+        gl::VertexAttribPointer(attr_tex, 2, gl::FLOAT, gl::FALSE, 16, 8 as *const c_void);
+        gl::EnableVertexAttribArray(attr_tex);
     );
 
     Ok(vao)

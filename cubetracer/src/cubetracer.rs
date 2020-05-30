@@ -10,7 +10,9 @@ pub struct CubeTracer {
     program_raytracer: u32,
     program_quad_screen: u32,
     vao_quad_screen: u32,
+    vao_quad_cursor: u32,
     texture_raytracer: u32,
+    texture_cursor: u32,
 
     pub args: CubeTracerArguments,
 }
@@ -28,7 +30,8 @@ impl CubeTracer {
         let program_raytracer = prog_raytracer_id;
         let program_quad_screen = prog_quad_screen_id;
 
-        let vao_quad_screen = helper::make_quad_vao(prog_quad_screen_id)?;
+        let vao_quad_screen = helper::make_quad_vao(prog_quad_screen_id, 1.0, 1.0)?;
+        let vao_quad_cursor = helper::make_quad_vao(prog_quad_screen_id, 0.01125, 0.02)?;
         let texture_raytracer = helper::generate_texture(width, height)?;
 
         helper::texture_3d(
@@ -87,11 +90,15 @@ impl CubeTracer {
             ],
         )?;
 
+        let texture_cursor = helper::load_texture(2, &std::path::Path::new("data/cursor.png"))?;
+
         Ok(CubeTracer {
             program_raytracer,
             program_quad_screen,
             vao_quad_screen,
+            vao_quad_cursor,
             texture_raytracer,
+            texture_cursor,
 
             args: CubeTracerArguments::new(program_raytracer, view_size)?,
         })
@@ -133,6 +140,16 @@ impl CubeTracer {
             gl::ActiveTexture(gl::TEXTURE0);
             gl::BindTexture(gl::TEXTURE_2D, self.texture_raytracer);
             gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+
+            gl::BindVertexArray(self.vao_quad_cursor);
+            gl::ActiveTexture(gl::TEXTURE0);
+            gl::BindTexture(gl::TEXTURE_2D, self.texture_cursor);
+            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+
+            gl::Disable(gl::BLEND);
         );
 
         Ok(())
