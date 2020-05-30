@@ -20,6 +20,21 @@ impl DecoratorPlantGroup {
         }, count)
     }
 
+    pub fn flowers(count: usize) -> Box<dyn WorldDecorator + Sync> {
+        multi_dec!(DecoratorPlantGroup {
+            block_type: vec![
+                vec![Block::OrangeTulipe, Block::PinkTulip, Block::RedTulip, Block::WhiteTulip],
+                vec![Block::Dandelion],
+                vec![Block::AzureBluet, Block::OxeyeDaisy],
+                vec![Block::BlueOrchid],
+                vec![Block::Allium],
+                vec![Block::Poppy],
+            ],
+            accepted_supports: vec![Block::Grass, Block::Dirt],
+            count: 128,
+        }, count)
+    }
+
     fn is_support_accepted(&self, block: Block) -> bool {
         self.accepted_supports.iter().any(|b| *b == block)
     }

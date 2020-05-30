@@ -74,6 +74,7 @@ struct Material {
 #define MATERIAL_U(u) Material(1, int[6]( TEX_UNIQUE(u)) )
 #define MATERIAL_U_NO_NORM(u) Material(2, int[6]( TEX_UNIQUE(u)) )
 #define MATERIAL_PLANT(u) Material(3, int[6] (TEX_UNIQUE(u)))
+#define MATERIAL_FLOWER(i) Material(4, int[6] (TEX_UNIQUE(FLOWER_TEX + i)))
 #define MATERIAL_C(v, w, z) Material(1, int[6]( TEX_COLUMN(v, w, z) ))
 #define MATERIAL_LOG(i) MATERIAL_C(LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
 #define MATERIAL_LEAVES(i) MATERIAL_U_NO_NORM(LEAVES_TEX + i)
@@ -92,6 +93,7 @@ struct Material {
 #define LOGS_TEX        22
 #define TOP_LOGS_TEX    34
 #define LEAVES_TEX      46
+#define FLOWER_TEX      52
 
 const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_EMPTY(),
@@ -116,6 +118,16 @@ const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_LEAVES(3),
     MATERIAL_LEAVES(4),
     MATERIAL_LEAVES(5),
+    MATERIAL_FLOWER(0),
+    MATERIAL_FLOWER(1),
+    MATERIAL_FLOWER(2),
+    MATERIAL_FLOWER(3),
+    MATERIAL_FLOWER(4),
+    MATERIAL_FLOWER(5),
+    MATERIAL_FLOWER(6),
+    MATERIAL_FLOWER(7),
+    MATERIAL_FLOWER(8),
+    MATERIAL_FLOWER(9),
 };
 
 const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {
@@ -379,7 +391,8 @@ bool isIntersectionCertain(uint block_type) {
     return block_type != 1 
         && block_type != 8
         && block_type != 7
-        && block_type != 9;
+        && block_type != 9
+        && CST_BLOCK_MATERIALS[block_type].type != 4;
 }
 vec3 computeBlockOffsetTop(uint block_type) {
     return float(block_type == 1) * vec3(1, 0.9, 1)
@@ -412,7 +425,7 @@ vec4 cast_ray(const Ray ray) {
         // we compute expensive intersections, and continue the ray till we're not sure we can get
         // an intersection with a box
         for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {
-            if (block_type == 9 && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], ray, t, uv, normal)) {
+            if ((block_type == 9 || CST_BLOCK_MATERIALS[block_type].type == 4) && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], ray, t, uv, normal)) {
                 mustComputeUv = false;
                 mustComputeIntersection = false;
                 break;

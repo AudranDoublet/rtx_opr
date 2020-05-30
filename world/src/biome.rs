@@ -33,6 +33,7 @@ lazy_static! {
         // common decorators
         for (_, v) in map.iter_mut() {
             v.push(DecoratorPlantGroup::tallgrass(1));
+            v.push(DecoratorPlantGroup::flowers(1));
             v.push(DecoratorTree::small(1, ForestType::Classic, false, false));
         }
 

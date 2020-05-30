@@ -69,6 +69,17 @@ pub enum Block {
     BirchLeaves,
     JungleLeaves,
     SpruceLeaves,
+
+    OrangeTulipe,
+    PinkTulip,
+    RedTulip,
+    WhiteTulip,
+    Dandelion,
+    AzureBluet,
+    OxeyeDaisy,
+    BlueOrchid,
+    Allium,
+    Poppy,
 }
 
 impl Block {
@@ -77,6 +88,22 @@ impl Block {
             Block::Air | Block::Snow => false,
             Block::TallGrass => false,
             _ => true,
+        }
+    }
+
+    pub fn is_flower(&self) -> bool {
+        match self {
+            Block::OrangeTulipe
+                | Block::PinkTulip
+                | Block::RedTulip
+                | Block::WhiteTulip
+                | Block::Dandelion
+                | Block::AzureBluet
+                | Block::OxeyeDaisy
+                | Block::BlueOrchid
+                | Block::Allium
+                | Block::Poppy => true,
+                _ => false,
         }
     }
 
@@ -104,6 +131,7 @@ impl Block {
     pub fn aabb(&self, position: Vector3<f32>) -> Option<AABB> {
         let base = match self {
             Block::Air | Block::Water | Block::TallGrass => None,
+            _ if self.is_flower() => None,
             Block::Snow => Some(AABB::new(Vector3::zeros(), Vector3::new(1., 0.1, 1.))),
             _ => Some(AABB::new(Vector3::zeros(), Vector3::new(1., 1., 1.))),
         };

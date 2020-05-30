@@ -89,6 +89,16 @@ impl CubeTracer {
                 &std::path::Path::new("data/leaves_birch.png"),
                 &std::path::Path::new("data/leaves_jungle.png"),
                 &std::path::Path::new("data/leaves_spruce.png"),
+                &std::path::Path::new("data/orange_tulip.png"),
+                &std::path::Path::new("data/pink_tulip.png"),
+                &std::path::Path::new("data/red_tulip.png"),
+                &std::path::Path::new("data/white_tulip.png"),
+                &std::path::Path::new("data/dandelion.png"),
+                &std::path::Path::new("data/azure_bluet.png"),
+                &std::path::Path::new("data/oxeye_daisy.png"),
+                &std::path::Path::new("data/blue_orchid.png"),
+                &std::path::Path::new("data/allium.png"),
+                &std::path::Path::new("data/poppy.png"),
             ],
         )?;
 
