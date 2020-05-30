@@ -130,7 +130,6 @@ const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {
  * ************************************************************/
     /* > -A- Inputs */
 layout (std430) readonly buffer shader_data {
-    uint cl_filled[CST_NB_CHUNKS_XZ][16];
     uint cl_blocks[CST_NB_CHUNKS_XZ][CST_CHUNK_WIDTH*CST_CHUNK_WIDTH*CST_CHUNK_HEIGHT];
 };
 

@@ -17,7 +17,7 @@ const VAR_IDX_SCREEN_DOT_UP: usize = 2;
 const VAR_IDX_ORIGIN: usize = 3;
 const VAR_IDX_CL_MIN_COORDS: usize = 4;
 const VAR_IDX_HIGHTLIGHTED_BLOCK: usize = 5;
-const VAR_IDX_TEXTURES : usize = 6;
+const VAR_IDX_TEXTURES: usize = 6;
 
 const VARS_LEN: usize = 8;
 
@@ -34,12 +34,11 @@ impl CubeTracerArguments {
 
         let nb_chunks = (2 * view_size).pow(2);
         let cl_nb_blocks = 16 * 16 * 256;
-        let cl_nb_filled = 16;
 
         let ssbo_raytracer_cl = helper::make_ssbo(
             program,
             "shader_data",
-            nb_chunks * (cl_nb_filled + cl_nb_blocks) * mem::size_of::<u32>(),
+            nb_chunks * cl_nb_blocks * mem::size_of::<u32>(),
         )?;
 
         // Camera variables
@@ -73,15 +72,11 @@ impl CubeTracerArguments {
         Ok(res)
     }
 
-    pub fn set_chunks(&self, mut chunks: Vec<Rc<Chunk>>) -> Result<Vector2<i32>, GLError> {
+    pub fn set_chunks(&self, chunks: Vec<Rc<Chunk>>) -> Result<Vector2<i32>, GLError> {
         let nb_chunks_x = 2 * self.view_size;
         let nb_chunks_xz = nb_chunks_x.pow(2);
 
-        assert!(chunks.len() <= nb_chunks_xz as usize);
-        chunks.sort_unstable();
-
         let mut chunks_blocks = vec![[Block::Air as u32; 16 * 16 * 256]; nb_chunks_xz];
-        let mut chunks_filled = vec![[false as u32; 16]; nb_chunks_xz];
 
         let mut cl_min_coords = Vector2::new(std::i32::MAX, std::i32::MAX);
         chunks.iter().map(|c| c.coords()).for_each(|c| {
@@ -99,26 +94,12 @@ impl CubeTracerArguments {
             c.blocks.iter().enumerate().for_each(|(i, &b)| {
                 chunks_blocks[xz][i] = b as u32;
             });
-
-            let chunks_filled_cur = &mut chunks_filled[xz];
-            c.chunk_filled_metadata()
-                .iter()
-                .enumerate()
-                .for_each(|(y, &filled)| {
-                    chunks_filled_cur[y] = filled as u32;
-                });
         });
 
-        helper::update_ssbo_partial(self.ssbo_raytracer_cl, 0, &chunks_filled)?;
-        helper::update_ssbo_partial(
-            self.ssbo_raytracer_cl,
-            16 * chunks_filled.len() * mem::size_of::<u32>(),
-            &chunks_blocks,
-        )?;
+        helper::update_ssbo_partial(self.ssbo_raytracer_cl, 0, &chunks_blocks)?;
 
         /*
         helper::update_ssbo_data(self.ssbo_raytracer_cl_blocks, &chunks_blocks)?;
-        helper::update_ssbo_data(self.ssbo_raytracer_cl_filled, &chunks_filled)?;
         */
 
         self.set_vector_2i(VAR_IDX_CL_MIN_COORDS, cl_min_coords)?;
@@ -179,7 +160,11 @@ impl CubeTracerArguments {
         Ok(())
     }
 
-    pub fn set_camera(&self, value: &Camera, highlighted_block: Vector3<i32>) -> Result<(), GLError> {
+    pub fn set_camera(
+        &self,
+        value: &Camera,
+        highlighted_block: Vector3<i32>,
+    ) -> Result<(), GLError> {
         let origin = value.origin;
         let top_left = value.get_virtual_screen_top_left();
         let (left, up) = value.get_virtual_screen_axes_scaled();
