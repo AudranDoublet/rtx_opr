@@ -1,6 +1,5 @@
 use crate::termidraw::TermiDrawer;
 use gl;
-use glutin::dpi;
 use glutin::event;
 use glutin::event::WindowEvent;
 use glutin::event::{MouseButton, VirtualKeyCode as KeyCode};
@@ -57,18 +56,6 @@ fn get_window_dim(context: &CTX) -> (u32, u32) {
     (dim.width, dim.height)
 }
 
-fn set_cursor_middle_window(context: &CTX) {
-    let window = context.window();
-
-    let window_size = window.inner_size();
-    let center = dpi::Position::new(dpi::LogicalPosition::new(
-        window_size.width as f32 / 2.,
-        window_size.height as f32 / 2.,
-    ));
-
-    window.set_cursor_position(center).unwrap();
-}
-
 pub fn game(
     seed: isize,
     view_distance: usize,
@@ -109,6 +96,8 @@ pub fn game(
     gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
     context.window().set_cursor_visible(false);
+    context.window().set_cursor_grab(true)?;
+
     //set_cursor_middle_window(&context);
 
     let (width, height) = get_window_dim(&context);
@@ -194,8 +183,6 @@ pub fn game(
                     }
 
                     camera.origin.y = camera.origin.y.clamp(0.0, 255.9);
-
-                    set_cursor_middle_window(&context);
 
                     // --- Update States ---
 
@@ -330,7 +317,6 @@ pub fn game(
                     }
                     glutin::event::WindowEvent::Resized(physical_size) => {
                         context.resize(physical_size);
-                        set_cursor_middle_window(&context);
 
                         camera.set_image_size(
                             physical_size.width as f32,
