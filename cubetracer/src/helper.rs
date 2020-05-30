@@ -46,8 +46,8 @@ pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<u32, GLErro
         gl::BindTexture(gl::TEXTURE_2D_ARRAY, tex_out);
         gl::TexStorage3D(gl::TEXTURE_2D_ARRAY, 8, gl::RGBA8, 256, 256, textures.len() as i32);
 
-        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MIN_FILTER, gl::NEAREST_MIPMAP_NEAREST as i32);
     );
 
     for i in 0..textures.len() {
