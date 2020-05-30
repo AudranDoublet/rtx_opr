@@ -169,7 +169,7 @@ Ray ray_make(const vec2 pixel) {
  * ************************************************************/
 
 vec2 bbox_uv(const vec3 boxMin, const vec3 diff, const vec3 intersection, const int face) {
-    const vec3 r = (intersection - boxMin) / diff;
+    const vec3 r = intersection - boxMin;//(intersection - boxMin) / diff;
     return (face == 0 || face == 3) ? vec2(r.z, 1 - r.y)
         : (face == 1 || face == 4) ? vec2(r.x, 1 - r.z)
         : vec2(r.x, 1 - r.y);
@@ -314,7 +314,8 @@ vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
 
 bool isIntersectionCertain(uint block_type) {
     return block_type != 1 
-        && block_type != 8;
+        && block_type != 8
+        && block_type != 7;
 }
 
 vec4 cast_ray(const Ray ray) {
@@ -326,6 +327,7 @@ vec4 cast_ray(const Ray ray) {
     uint k = 0;
     do {
         vec3 block_offset = vec3(1);
+        vec3 block_offset_min = vec3(0);
         float t = -1.0;
         int face;
 
@@ -334,10 +336,12 @@ vec4 cast_ray(const Ray ray) {
         // an intersection with a box
         if (!isIntersectionCertain(block_type)) {
             for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS; j++) {
+                block_offset_min = float(block_type == 7) * vec3(0.1, 0, 0.1);
                 block_offset = float(block_type == 1) * vec3(1, 0.9, 1)
-                    + float(block_type == 8) * vec3(1, 0.1, 1);
+                    + float(block_type == 8) * vec3(1, 0.1, 1)
+                    + float(block_type == 7) * vec3(0.9, 1.0, 0.9);
 
-                if (BBoxRayIntersectsUncertain(block, block + block_offset, ray, face, t)) {
+                if (BBoxRayIntersectsUncertain(block + block_offset_min, block + block_offset, ray, face, t)) {
                     break;
                 }
 
@@ -366,6 +370,7 @@ vec4 cast_ray(const Ray ray) {
         vec3 intersection = ray.origin + ray.direction * t;
 
         vec2 uv = bbox_uv(block, block_offset, intersection, face);
+
         if (block.y == in_uni_highlighted_block.y && block.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
             return vec4(0.5, 0.5, 0.5, 1);
 
