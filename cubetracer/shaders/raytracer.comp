@@ -168,8 +168,8 @@ Ray ray_make(const vec2 pixel) {
  * > -3- Section: Textures
  * ************************************************************/
 
-vec2 bbox_uv(const vec3 boxMin, const vec3 diff, const vec3 intersection, const int face) {
-    const vec3 r = intersection - boxMin;//(intersection - boxMin) / diff;
+vec2 bbox_uv(const vec3 boxMin, const vec3 intersection, const int face) {
+    const vec3 r = intersection - boxMin;
     return (face == 0 || face == 3) ? vec2(r.z, 1 - r.y)
         : (face == 1 || face == 4) ? vec2(r.x, 1 - r.z)
         : vec2(r.x, 1 - r.y);
@@ -260,7 +260,7 @@ bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray 
     return false;
 }
 
-#define DRAW_RAY(R, MAX_ITER)\
+#define DRAW_RAY_INIT(R)\
     vec3 _sgn = sign(R.direction);\
     vec3 _dt_dist = abs(R.direction_inv);\
     ivec3 block = ivec3(floor(R.origin));\
@@ -271,6 +271,8 @@ bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray 
     uint block_type = bl_value(chunk.xz, block);\
     uint _i = 0;\
     bool _is_inside = true;\
+
+#define DRAW_RAY_ITER(MAX_ITER)\
     for (;_i < MAX_ITER && block_type == 0 && _is_inside; _i++) {\
         _mask = vec3(lessThanEqual(_side_dist.xyz, min(_side_dist.yzx, _side_dist.zxy)));\
         _side_dist += _mask * _dt_dist;\
@@ -280,22 +282,18 @@ bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray 
         block_type = bl_value(chunk.xz, block);\
     }\
 
-#define DRAW_RAY_CONTINUE(MAX_ITER)\
-    for (;_i < MAX_ITER && _is_inside; _i++) {\
-        _mask = vec3(lessThanEqual(_side_dist.xyz, min(_side_dist.yzx, _side_dist.zxy)));\
-        _side_dist += _mask * _dt_dist;\
-        block += ivec3(_mask) * _steps;\
-        chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
-        _is_inside = bl_is_inside(block);\
-        block_type = bl_value(chunk.xz, block);\
-        if (block_type != 0) {\
-            break;\
-        }\
-    }\
+#define DRAW_RAY_ITER_RESET()\
+    block_type = 0;
+
+#define DRAW_RAY_HAS_INTERSECTED()\
+    (_is_inside && (block_type != 0))
+
 
 uint distance_before_next_intersection(const Ray ray) {
-    DRAW_RAY(ray, CST_NB_CHUNKS_X);
-    return (_i >= CST_NB_CHUNKS_X || block_type == 0 || !_is_inside) ? 1000 : _i;
+    DRAW_RAY_INIT(ray);
+    DRAW_RAY_ITER(CST_NB_CHUNKS_X);
+
+    return DRAW_RAY_HAS_INTERSECTED() ? _i : 1000;
 }
 
 vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
@@ -317,61 +315,56 @@ bool isIntersectionCertain(uint block_type) {
         && block_type != 8
         && block_type != 7;
 }
+vec3 computeBlockOffsetTop(uint block_type) {
+    return float(block_type == 1) * vec3(1, 0.9, 1)
+        + float(block_type == 7) * vec3(0.9, 1.0, 0.9)
+        + float(block_type == 8) * vec3(1, 0.1, 1);
+}
+vec3 computeBlockOffsetBot(uint block_type) {
+    return float(block_type == 7) * vec3(0.1, 0, 0.1);
+}
 
 vec4 cast_ray(const Ray ray) {
-    DRAW_RAY(ray, 2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
-    if (!_is_inside) {
+    DRAW_RAY_INIT(ray);
+
+    DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+    if (!DRAW_RAY_HAS_INTERSECTED())
         return sky_color(ray);
-    }
 
     uint k = 0;
     do {
-        vec3 block_offset = vec3(1);
-        vec3 block_offset_min = vec3(0);
-        float t = -1.0;
+        float t;
         int face;
+
+        bool mustComputeIntersection = true;
 
         // if uncertain of the box intersection because the box has special shapes, or is transparent,
         // we compute expensive intersections, and continue the ray till we're not sure we can get
         // an intersection with a box
-        if (!isIntersectionCertain(block_type)) {
-            for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS; j++) {
-                block_offset_min = float(block_type == 7) * vec3(0.1, 0, 0.1);
-                block_offset = float(block_type == 1) * vec3(1, 0.9, 1)
-                    + float(block_type == 8) * vec3(1, 0.1, 1)
-                    + float(block_type == 7) * vec3(0.9, 1.0, 0.9);
-
-                if (BBoxRayIntersectsUncertain(block + block_offset_min, block + block_offset, ray, face, t)) {
-                    break;
-                }
-
-                DRAW_RAY_CONTINUE(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
-                if (!_is_inside) {
-                    return sky_color(ray);
-                }
-
-                // if no collision within the allowed range
-                if (isIntersectionCertain(block_type)) {
-                    block_offset = vec3(1);
-                    t = -1.0;
-                    break;
-                }
+        for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {
+            if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), ray, face, t)) {
+                mustComputeIntersection = false;
+                break;
             }
+
+            DRAW_RAY_ITER_RESET();
+            DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+            if (!DRAW_RAY_HAS_INTERSECTED())
+                return sky_color(ray);
         }
 
-        // it may happens that we found an intersection with the special block we're on, so there is no
         // need to re-compute the intersection
-        if (t < 0.0) {
-            t = BBoxRayIntersects(block, block + vec3(1), ray);
+        if (mustComputeIntersection) {
             ivec3 faces = ivec3(_mask) * (ivec3(0, 1, 2) + 3 * ivec3(greaterThan(_steps, ivec3(0))));
             face = faces.x + faces.y + faces.z;
-        }
+
+            t = BBoxRayIntersects(block, block + vec3(1), ray);
+        } 
 
         vec3 intersection = ray.origin + ray.direction * t;
 
-        vec2 uv = bbox_uv(block, block_offset, intersection, face);
-
-        if (block.y == in_uni_highlighted_block.y && block.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
+        vec2 uv = bbox_uv(block, intersection, face);
+        if (block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
             return vec4(0.5, 0.5, 0.5, 1);
 
         int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
@@ -381,12 +374,12 @@ vec4 cast_ray(const Ray ray) {
         if (color.a > 0.5)
             return lighting(color, intersection, CST_BLOCK_MATERIALS[block_type].type == 1 ? texture_normal(tex, uv, face, t_qual) : CST_NORMAL_MAP[face]);
 
-        DRAW_RAY_CONTINUE(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
-        if (!_is_inside) {
+        DRAW_RAY_ITER_RESET();
+        DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+        if (!DRAW_RAY_HAS_INTERSECTED())
             return sky_color(ray);
-        }
-        k++;
-    } while (k < CST_MAX_ITER_TRANSPARENT);
+
+    } while (k++ < CST_MAX_ITER_TRANSPARENT);
 }
 
 void main() {

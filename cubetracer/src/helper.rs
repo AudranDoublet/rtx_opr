@@ -9,7 +9,7 @@ use std::{mem, ptr};
 
 use gl::types::*;
 
-pub fn load_texture(i: u32, path: &std::path::Path) -> Result<u32, GLError> {
+pub fn load_texture(_i: u32, path: &std::path::Path) -> Result<u32, GLError> {
     let image = image::open(path).expect("can't load texture").into_rgba();
     let mut tex_out = 0;
 
@@ -21,7 +21,7 @@ pub fn load_texture(i: u32, path: &std::path::Path) -> Result<u32, GLError> {
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
 
-        let res = gl::TexImage2D(
+        gl::TexImage2D(
             gl::TEXTURE_2D,
             0,
             gl::RGBA as i32,
@@ -52,8 +52,11 @@ pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<u32, GLErro
 
     for i in 0..textures.len() {
         let path = textures[i];
-        let image = image::open(path).expect(format!("can't load texture {}", path.to_str().unwrap()).as_str()).into_rgba();
-        let rimage = image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Gaussian);
+        let image = image::open(path)
+            .expect(format!("can't load texture {}", path.to_str().unwrap()).as_str())
+            .into_rgba();
+        let rimage =
+            image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Gaussian);
 
         glchk_stmt!(
             gl::TexSubImage3D(
