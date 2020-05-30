@@ -151,16 +151,16 @@ layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
  * > -3- Section: Ray (abr: "ray")
  * ************************************************************/
 
-vec3 ray_direction(vec2 pixel) {
+vec3 ray_direction(const vec2 pixel) {
     return normalize(in_uni_screen.top_left 
         - pixel.x * in_uni_screen.left
         - pixel.y * in_uni_screen.up);
 }
 
-Ray ray_make(vec2 pixel) {
-    vec3 origin = in_uni_origin - vec3(in_uni_cl_min_coords.x, 0, in_uni_cl_min_coords.y) * CST_LOCAL_TO_WORLD;
-    vec3 r_dir = ray_direction(pixel);
-    vec3 r_dir_inv = 1 / r_dir;
+Ray ray_make(const vec2 pixel) {
+    const vec3 origin = in_uni_origin - vec3(in_uni_cl_min_coords.x, 0, in_uni_cl_min_coords.y) * CST_LOCAL_TO_WORLD;
+    const vec3 r_dir = ray_direction(pixel);
+    const vec3 r_dir_inv = 1 / r_dir;
 
     return Ray(origin, r_dir, r_dir_inv);
 }
@@ -169,31 +169,25 @@ Ray ray_make(vec2 pixel) {
  * > -3- Section: Textures
  * ************************************************************/
 
-vec2 bbox_uv(const vec3 boxMin, const vec3 boxMax, const vec3 diff, const vec3 intersection, int face) {
-    if (face == 0 || face == 3) {
-        return vec2((intersection.z - boxMin.z) / diff.z, 1 - (intersection.y - boxMin.y) / diff.y);
-    }
-
-    if (face == 1 || face == 4) {
-        return vec2((intersection.x - boxMin.x) / diff.x, (intersection.z - boxMin.z) / diff.z);
-    }
-
-    return vec2((intersection.x - boxMin.x) / diff.x, 1 - (intersection.y - boxMin.y) / diff.y);
+vec2 bbox_uv(const vec3 boxMin, const vec3 diff, const vec3 intersection, const int face) {
+    const vec3 r = (intersection - boxMin) / diff;
+    return (face == 0 || face == 3) ? vec2(r.z, 1 - r.y)
+        : (face == 1 || face == 4) ? vec2(r.x, 1 - r.z)
+        : vec2(r.x, 1 - r.y);
 }
 
-vec2 texture_coords(ivec2 pos, vec2 uv) {
-    vec2 size = vec2(1.0 / 8, 1.0 / 8); // FIXME remove hardcoded width/height
-
-    return vec2(float(pos.x) * size.x, float(pos.y) * size.y) + uv * size;
+vec2 texture_coords(const ivec2 pos, const vec2 uv) {
+    const vec2 size = vec2(1.0 / 8, 1.0 / 8); // FIXME remove hardcoded width/height
+    return (pos + uv) * size;
 }
 
-vec4 texture_color(int tex, vec2 uv, float t) {
-    return textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex)), t);
+vec4 texture_color(const int tex, const vec2 uv, const float t) {
+    return textureLod(in_uni_textures, vec3(uv.x, uv.y, tex), t);
 }
 
-vec3 texture_normal(int tex, vec2 uv, int face, float t) {
-    vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex + 1)), t);
-    vec3 map_normal = color.xyz * 2 - vec3(1);
+vec3 texture_normal(const int tex, const vec2 uv, const int face, const float t) {
+    const vec4 color = textureLod(in_uni_textures, vec3(uv.x, uv.y, float(tex + 1)), t);
+    const vec3 map_normal = color.rgb * 2 - vec3(1);
 
     return CST_TEXTURE_NORMAL_TRANSFORMS[face] * map_normal;
 }
@@ -201,45 +195,43 @@ vec3 texture_normal(int tex, vec2 uv, int face, float t) {
 /* ************************************************************
  * > -4- Section: Chunks/Blocks memory fetching
  * ************************************************************/
-    /* > -A- Chunks */
-bool bl_is_inside(ivec3 block) {
+bool bl_is_inside(const ivec3 block) {
     return block.x >= 0 && block.x < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH
         && block.y >= 0 && block.y < CST_CHUNK_HEIGHT
         && block.z >= 0 && block.z < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH;
 }
 
-
-    /* > -B- Blocks */
-uint bl_value(ivec2 chunk, ivec3 block) {
+uint bl_value(const ivec2 chunk, ivec3 block) {
     block -= ivec3(chunk.x, 0, chunk.y) * ivec3(CST_LOCAL_TO_WORLD);
+    const ivec2 a = chunk * ivec2(1, CST_NB_CHUNKS_X);
+    const ivec3 b = block.xzy * ivec3(1, CST_CHUNK_WIDTH, CST_CHUNK_WIDTH * CST_CHUNK_WIDTH);
     return cl_blocks
-        [chunk.x + chunk.y * CST_NB_CHUNKS_X]
-        [block.x + (block.z + block.y * CST_CHUNK_WIDTH) * CST_CHUNK_WIDTH];
+        [a.x + a.y]
+        [b.x + b.y + b.z];
 }
 
 
 /* ************************************************************
  * > -6- Section: Ray Tracer
  * ************************************************************/
-
-vec4 sky_color(Ray r) {
-    vec3 color = vec3(0.149, 0.6471, 0.7961);
-    float coeff = abs(dot(r.direction, vec3(0, 1, 0))) * 0.2 + 0.8;
+vec4 sky_color(const Ray r) {
+    const vec3 color = vec3(0.149, 0.6471, 0.7961);
+    const float coeff = abs(dot(r.direction, vec3(0, 1, 0))) * 0.2 + 0.8;
     return vec4(color * coeff, 1);
 }
 
 float BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r) {
-    vec3 tbot = r.direction_inv * (boxMin - r.origin);
-    vec3 ttop = r.direction_inv * (boxMax - r.origin);
-    vec3 tmin = min(ttop, tbot);
+    const vec3 tbot = r.direction_inv * (boxMin - r.origin);
+    const vec3 ttop = r.direction_inv * (boxMax - r.origin);
+    const vec3 tmin = min(ttop, tbot);
     return max(max(tmin.x, tmin.y), tmin.z);
 }
 
 bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray r, out int face, out float t) {
-    vec3 tbot = r.direction_inv * (boxMin - r.origin);
-    vec3 ttop = r.direction_inv * (boxMax - r.origin);
+    const vec3 tbot = r.direction_inv * (boxMin - r.origin);
+    const vec3 ttop = r.direction_inv * (boxMax - r.origin);
 
-    ivec3 faces = ivec3(0, 1, 2) + ivec3(3) * ivec3(lessThan(tbot, ttop));
+    const ivec3 faces = ivec3(0, 1, 2) + ivec3(3) * ivec3(lessThan(tbot, ttop));
 
     vec3 tmin = min(ttop, tbot);
     vec3 tmax = max(ttop, tbot);
@@ -259,7 +251,7 @@ bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray 
         face = faces.z;
     }
 
-    float t2 = min(min(tmax.x, tmax.y), tmax.z);
+    const float t2 = min(min(tmax.x, tmax.y), tmax.z);
 
     if (t1 < t2) {
         t = t1;
@@ -302,7 +294,7 @@ bool BBoxRayIntersectsUncertain(const vec3 boxMin, const vec3 boxMax, const Ray 
         }\
     }\
 
-uint distance_before_next_intersection(Ray ray) {
+uint distance_before_next_intersection(const Ray ray) {
     DRAW_RAY(ray, CST_NB_CHUNKS_X);
     return (_i >= CST_NB_CHUNKS_X || block_type == 0 || !_is_inside) ? 1000 : _i;
 }
@@ -326,7 +318,7 @@ bool isIntersectionCertain(uint block_type) {
         && block_type != 8;
 }
 
-vec4 cast_ray(Ray ray) {
+vec4 cast_ray(const Ray ray) {
     DRAW_RAY(ray, 2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
     if (!_is_inside) {
         return sky_color(ray);
@@ -373,7 +365,7 @@ vec4 cast_ray(Ray ray) {
 
         vec3 intersection = ray.origin + ray.direction * t;
 
-        vec2 uv = bbox_uv(block, block + block_offset, block_offset, intersection, face);
+        vec2 uv = bbox_uv(block, block_offset, intersection, face);
         if (block.y == in_uni_highlighted_block.y && block.xz == (in_uni_highlighted_block.xz - in_uni_cl_min_coords * CST_LOCAL_TO_WORLD.xz) && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
             return vec4(0.5, 0.5, 0.5, 1);
 
@@ -392,12 +384,10 @@ vec4 cast_ray(Ray ray) {
     } while (k < CST_MAX_ITER_TRANSPARENT);
 }
 
-
 void main() {
-    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
-    Ray ray = ray_make(vec2(pixel));
-
-    vec4 color = cast_ray(ray);
+    const ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    const Ray ray = ray_make(vec2(pixel));
+    const vec4 color = cast_ray(ray);
 
     imageStore(out_uni_frame, pixel, color);
 }
