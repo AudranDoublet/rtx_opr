@@ -16,6 +16,49 @@ use tui::{backend::TermionBackend, Terminal};
 use world::{create_main_world, Chunk, ChunkListener, PlayerInput};
 type CTX = ContextWrapper<PossiblyCurrent, glutin::window::Window>;
 
+pub enum Layout {
+    Azerty,
+    Qwerty,
+}
+
+impl Layout {
+    pub fn parse(name: &str) -> Layout {
+        match name {
+            "azerty" | "fr" => Layout::Azerty,
+            "qwerty" | "us" | "uk" | "en" => Layout::Qwerty,
+            _ => panic!("unknown layout"),
+        }
+    }
+
+    pub fn forward(&self) -> KeyCode {
+        match self {
+            Layout::Azerty => KeyCode::Z,
+            Layout::Qwerty => KeyCode::W,
+        }
+    }
+
+    pub fn backward(&self) -> KeyCode {
+        match self {
+            Layout::Azerty => KeyCode::S,
+            Layout::Qwerty => KeyCode::S,
+        }
+    }
+
+    pub fn right(&self) -> KeyCode {
+        match self {
+            Layout::Azerty => KeyCode::Q,
+            Layout::Qwerty => KeyCode::A,
+        }
+    }
+
+    pub fn left(&self) -> KeyCode {
+        match self {
+            Layout::Azerty => KeyCode::D,
+            Layout::Qwerty => KeyCode::D,
+        }
+    }
+}
+
 pub struct MyChunkListener {
     updated: bool,
     pub chunks: HashSet<(i32, i32)>,
@@ -60,6 +103,7 @@ pub fn game(
     seed: isize,
     view_distance: usize,
     with_shadows: bool,
+    layout: Layout,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // --- Configuration ---
     let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
@@ -160,16 +204,16 @@ pub fn game(
                     if input_handler.is_pressed(KeyCode::LShift) {
                         inputs.push(PlayerInput::Sneaking);
                     }
-                    if input_handler.is_pressed(KeyCode::W) {
+                    if input_handler.is_pressed(layout.forward()) {
                         inputs.push(PlayerInput::MoveFoward);
                     }
-                    if input_handler.is_pressed(KeyCode::A) {
+                    if input_handler.is_pressed(layout.right()) {
                         inputs.push(PlayerInput::MoveRight);
                     }
-                    if input_handler.is_pressed(KeyCode::S) {
+                    if input_handler.is_pressed(layout.backward()) {
                         inputs.push(PlayerInput::MoveBackward);
                     }
-                    if input_handler.is_pressed(KeyCode::D) {
+                    if input_handler.is_pressed(layout.left()) {
                         inputs.push(PlayerInput::MoveLeft);
                     }
                     if input_handler.is_pressed(KeyCode::Space) {
