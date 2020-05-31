@@ -412,7 +412,7 @@ float distance_before_next_intersection(const Ray ray) {
             }
 
             DRAW_RAY_ITER_RESET();
-            DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+            DRAW_RAY_ITER(CST_NB_CHUNKS_X);
 
             if (!DRAW_RAY_HAS_INTERSECTED())
                 return 1000;
@@ -439,7 +439,7 @@ float distance_before_next_intersection(const Ray ray) {
             return t;
 
         DRAW_RAY_ITER_RESET();
-        DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+        DRAW_RAY_ITER(CST_NB_CHUNKS_X);
 
         if (!DRAW_RAY_HAS_INTERSECTED())
             return 1000;
