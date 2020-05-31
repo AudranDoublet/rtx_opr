@@ -26,7 +26,6 @@ pub struct CubeTracerArguments {
     program: u32,
     ssbo_raytracer_cl: u32,
     view_size: usize,
-    chunk_empty: Vec<u32>,
     chunks_available_indices: Vec<u32>,
     chunks_mapping: HashMap<(i32, i32), u32>,
     cl_min_coords: Vector3<i32>,
@@ -44,7 +43,14 @@ impl CubeTracerArguments {
         let ssbo_raytracer_cl = helper::make_ssbo(
             program,
             "shader_data",
-            nb_chunks * (cl_nb_mapping + cl_nb_blocks) * mem::size_of::<u32>(),
+            (nb_chunks + 1) * (cl_nb_mapping + cl_nb_blocks) * mem::size_of::<u32>(),
+        )?;
+
+        // init the empty chunk (used during data stream)
+        helper::update_ssbo_partial(
+            ssbo_raytracer_cl,
+            (nb_chunks + nb_chunks * cl_nb_blocks) * mem::size_of::<u32>(),
+            &vec![0 as u32; cl_nb_blocks],
         )?;
 
         // Camera variables
@@ -73,7 +79,6 @@ impl CubeTracerArguments {
             program,
             ssbo_raytracer_cl,
             view_size,
-            chunk_empty: vec![0 as u32; cl_nb_blocks],
             chunks_available_indices: (0..nb_chunks as u32).collect(),
             chunks_mapping: HashMap::new(),
             cl_min_coords: Vector3::zeros(),
@@ -96,7 +101,7 @@ impl CubeTracerArguments {
         let nb_chunks_x = 2 * self.view_size;
         let nb_chunks_xz = nb_chunks_x.pow(2);
 
-        let mut chunks_mapping = vec![0 as u32; nb_chunks_xz];
+        let mut chunks_mapping = vec![(nb_chunks_xz + 1) as u32; nb_chunks_xz];
         let mem_chunk_size = 16 * 16 * 256 * mem::size_of::<u32>();
         let mem_blocks_offset = chunks_mapping.len() * mem::size_of::<u32>();
 
