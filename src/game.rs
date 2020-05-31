@@ -8,7 +8,7 @@ use nalgebra::{Vector2, Vector3};
 use utils::framecounter::FrameCounter;
 use utils::wininput;
 
-use std::{collections::HashSet, rc::Rc};
+use std::rc::Rc;
 
 use termion::{raw::IntoRawMode, screen::AlternateScreen};
 use tui::{backend::TermionBackend, Terminal};
@@ -60,37 +60,35 @@ impl Layout {
 }
 
 pub struct MyChunkListener {
-    updated: bool,
-    pub chunks: HashSet<(i32, i32)>,
+    pub loaded_chunks: Vec<(i32, i32)>,
+    pub unloaded_chunks: Vec<(i32, i32)>,
 }
 
 impl MyChunkListener {
     pub fn new() -> MyChunkListener {
         MyChunkListener {
-            updated: false,
-            chunks: HashSet::new(),
+            loaded_chunks: Vec::new(),
+            unloaded_chunks: Vec::new(),
         }
     }
 
-    pub fn has_been_updated(&mut self) -> bool {
-        if self.updated {
-            self.updated = false;
-            true
-        } else {
-            false
-        }
+    pub fn has_been_updated(&self) -> bool {
+        self.loaded_chunks.len() + self.unloaded_chunks.len() > 0
+    }
+
+    pub fn clear(&mut self) {
+        self.loaded_chunks.clear();
+        self.unloaded_chunks.clear();
     }
 }
 
 impl ChunkListener for MyChunkListener {
     fn chunk_load(&mut self, x: i32, y: i32) {
-        self.chunks.insert((x, y));
-        self.updated = true;
+        self.loaded_chunks.push((x, y));
     }
 
     fn chunk_unload(&mut self, x: i32, y: i32) {
-        self.chunks.remove(&(x, y));
-        self.updated = true;
+        self.unloaded_chunks.push((x, y));
     }
 }
 
@@ -281,13 +279,18 @@ pub fn game(
                     }
 
                     if listener.has_been_updated() {
-                        let chunks: Vec<Rc<Chunk>> = listener
-                            .chunks
+                        let chunks_to_add: Vec<Rc<Chunk>> = listener
+                            .loaded_chunks
                             .iter()
                             .map(|c| world.chunk(c.0, c.1).unwrap().clone())
                             .collect();
 
-                        __debug_min_coords = cubetracer.args.set_chunks(chunks).unwrap();
+                        let chunks_to_rm: Vec<(i32, i32)> = listener.unloaded_chunks.clone();
+
+                        __debug_min_coords = cubetracer
+                            .args
+                            .update_chunks(chunks_to_rm, chunks_to_add)
+                            .unwrap();
 
                         termidrawer.update_var(
                             "__debug_min_coords".to_string(),
@@ -295,25 +298,19 @@ pub fn game(
                         );
                         termidrawer.update_var(
                             "nb_chunks_listener".to_string(),
-                            format!("{:?}", listener.chunks.len()),
+                            format!("{:?}", cubetracer.args.nb_mapped_chunks()),
                         );
-                        termidrawer.log(format!("> chunks : {:?}", listener.chunks));
+
+                        termidrawer.log(format!("> chunks loaded  : {:?}", listener.loaded_chunks));
+                        termidrawer
+                            .log(format!("> chunks unloaded: {:?}", listener.unloaded_chunks));
+
+                        listener.clear();
                     }
                     termidrawer.update_var(
                         "__debug_curr_chunk_local".to_string(),
                         format!("{:?}", (__debug_curr_chunk - __debug_min_coords).data),
                     );
-
-                    /*
-                    player.update(
-                        world,
-                        &listener,
-                        camera.forward(),
-                        -camera.left(),
-                        Vec::new(),
-                        delta_time,
-                    );
-                    */
 
                     // - Cube Tracer -
 
@@ -323,7 +320,9 @@ pub fn game(
                     };
 
                     //FIXME improve wind
-                    let wind = Vector3::new((total_time + 0.8).cos() / 4., 1.0, total_time.sin() / 4.).normalize();
+                    let wind =
+                        Vector3::new((total_time + 0.8).cos() / 4., 1.0, total_time.sin() / 4.)
+                            .normalize();
 
                     cubetracer
                         .args
