@@ -21,13 +21,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .value_of("view-distance")
             .unwrap_or("2")
             .parse::<usize>()?;
+        let layout = game::Layout::parse(args
+            .value_of("layout")
+            .unwrap_or("fr"));
         let with_shadows = args.is_present("with-shadows");
 
         if seed == 0 {
             //FIXME random seed ?
         }
 
-        game::game(seed, view_distance, with_shadows)?;
+        game::game(seed, view_distance, with_shadows, layout)?;
     } else if let Some(args) = matches.subcommand_matches("render_chunks") {
         let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
         biome_generator::generate_biome(seed)?;

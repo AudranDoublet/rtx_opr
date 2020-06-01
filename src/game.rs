@@ -1,6 +1,5 @@
 use crate::termidraw::TermiDrawer;
 use gl;
-use glutin::dpi;
 use glutin::event;
 use glutin::event::WindowEvent;
 use glutin::event::{MouseButton, VirtualKeyCode as KeyCode};
@@ -9,7 +8,7 @@ use nalgebra::{Vector2, Vector3};
 use utils::framecounter::FrameCounter;
 use utils::wininput;
 
-use std::{collections::HashSet, rc::Rc};
+use std::rc::Rc;
 
 use termion::{raw::IntoRawMode, screen::AlternateScreen};
 use tui::{backend::TermionBackend, Terminal};
@@ -17,38 +16,79 @@ use tui::{backend::TermionBackend, Terminal};
 use world::{create_main_world, Chunk, ChunkListener, PlayerInput};
 type CTX = ContextWrapper<PossiblyCurrent, glutin::window::Window>;
 
+pub enum Layout {
+    Azerty,
+    Qwerty,
+}
+
+impl Layout {
+    pub fn parse(name: &str) -> Layout {
+        match name {
+            "azerty" | "fr" => Layout::Azerty,
+            "qwerty" | "us" | "uk" | "en" => Layout::Qwerty,
+            _ => panic!("unknown layout"),
+        }
+    }
+
+    pub fn forward(&self) -> KeyCode {
+        match self {
+            Layout::Azerty => KeyCode::Z,
+            Layout::Qwerty => KeyCode::W,
+        }
+    }
+
+    pub fn backward(&self) -> KeyCode {
+        match self {
+            Layout::Azerty => KeyCode::S,
+            Layout::Qwerty => KeyCode::S,
+        }
+    }
+
+    pub fn right(&self) -> KeyCode {
+        match self {
+            Layout::Azerty => KeyCode::Q,
+            Layout::Qwerty => KeyCode::A,
+        }
+    }
+
+    pub fn left(&self) -> KeyCode {
+        match self {
+            Layout::Azerty => KeyCode::D,
+            Layout::Qwerty => KeyCode::D,
+        }
+    }
+}
+
 pub struct MyChunkListener {
-    updated: bool,
-    pub chunks: HashSet<(i32, i32)>,
+    pub loaded_chunks: Vec<(i32, i32)>,
+    pub unloaded_chunks: Vec<(i32, i32)>,
 }
 
 impl MyChunkListener {
     pub fn new() -> MyChunkListener {
         MyChunkListener {
-            updated: false,
-            chunks: HashSet::new(),
+            loaded_chunks: Vec::new(),
+            unloaded_chunks: Vec::new(),
         }
     }
 
-    pub fn has_been_updated(&mut self) -> bool {
-        if self.updated {
-            self.updated = false;
-            true
-        } else {
-            false
-        }
+    pub fn has_been_updated(&self) -> bool {
+        self.loaded_chunks.len() + self.unloaded_chunks.len() > 0
+    }
+
+    pub fn clear(&mut self) {
+        self.loaded_chunks.clear();
+        self.unloaded_chunks.clear();
     }
 }
 
 impl ChunkListener for MyChunkListener {
     fn chunk_load(&mut self, x: i32, y: i32) {
-        self.chunks.insert((x, y));
-        self.updated = true;
+        self.loaded_chunks.push((x, y));
     }
 
     fn chunk_unload(&mut self, x: i32, y: i32) {
-        self.chunks.remove(&(x, y));
-        self.updated = true;
+        self.unloaded_chunks.push((x, y));
     }
 }
 
@@ -57,22 +97,11 @@ fn get_window_dim(context: &CTX) -> (u32, u32) {
     (dim.width, dim.height)
 }
 
-fn set_cursor_middle_window(context: &CTX) {
-    let window = context.window();
-
-    let window_size = window.inner_size();
-    let center = dpi::Position::new(dpi::LogicalPosition::new(
-        window_size.width as f32 / 2.,
-        window_size.height as f32 / 2.,
-    ));
-
-    window.set_cursor_position(center).unwrap();
-}
-
 pub fn game(
     seed: isize,
     view_distance: usize,
     with_shadows: bool,
+    layout: Layout,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // --- Configuration ---
     let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
@@ -109,6 +138,8 @@ pub fn game(
     gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
     context.window().set_cursor_visible(false);
+    context.window().set_cursor_grab(true)?;
+
     //set_cursor_middle_window(&context);
 
     let (width, height) = get_window_dim(&context);
@@ -171,16 +202,16 @@ pub fn game(
                     if input_handler.is_pressed(KeyCode::LShift) {
                         inputs.push(PlayerInput::Sneaking);
                     }
-                    if input_handler.is_pressed(KeyCode::W) {
+                    if input_handler.is_pressed(layout.forward()) {
                         inputs.push(PlayerInput::MoveFoward);
                     }
-                    if input_handler.is_pressed(KeyCode::A) {
+                    if input_handler.is_pressed(layout.right()) {
                         inputs.push(PlayerInput::MoveRight);
                     }
-                    if input_handler.is_pressed(KeyCode::S) {
+                    if input_handler.is_pressed(layout.backward()) {
                         inputs.push(PlayerInput::MoveBackward);
                     }
-                    if input_handler.is_pressed(KeyCode::D) {
+                    if input_handler.is_pressed(layout.left()) {
                         inputs.push(PlayerInput::MoveLeft);
                     }
                     if input_handler.is_pressed(KeyCode::Space) {
@@ -194,8 +225,6 @@ pub fn game(
                     }
 
                     camera.origin.y = camera.origin.y.clamp(0.0, 255.9);
-
-                    set_cursor_middle_window(&context);
 
                     // --- Update States ---
 
@@ -250,13 +279,18 @@ pub fn game(
                     }
 
                     if listener.has_been_updated() {
-                        let chunks: Vec<Rc<Chunk>> = listener
-                            .chunks
+                        let chunks_to_add: Vec<Rc<Chunk>> = listener
+                            .loaded_chunks
                             .iter()
                             .map(|c| world.chunk(c.0, c.1).unwrap().clone())
                             .collect();
 
-                        __debug_min_coords = cubetracer.args.set_chunks(chunks).unwrap();
+                        let chunks_to_rm: Vec<(i32, i32)> = listener.unloaded_chunks.clone();
+
+                        __debug_min_coords = cubetracer
+                            .args
+                            .update_chunks(chunks_to_rm, chunks_to_add)
+                            .unwrap();
 
                         termidrawer.update_var(
                             "__debug_min_coords".to_string(),
@@ -264,25 +298,19 @@ pub fn game(
                         );
                         termidrawer.update_var(
                             "nb_chunks_listener".to_string(),
-                            format!("{:?}", listener.chunks.len()),
+                            format!("{:?}", cubetracer.args.nb_mapped_chunks()),
                         );
-                        termidrawer.log(format!("> chunks : {:?}", listener.chunks));
+
+                        termidrawer.log(format!("> chunks loaded  : {:?}", listener.loaded_chunks));
+                        termidrawer
+                            .log(format!("> chunks unloaded: {:?}", listener.unloaded_chunks));
+
+                        listener.clear();
                     }
                     termidrawer.update_var(
                         "__debug_curr_chunk_local".to_string(),
                         format!("{:?}", (__debug_curr_chunk - __debug_min_coords).data),
                     );
-
-                    /*
-                    player.update(
-                        world,
-                        &listener,
-                        camera.forward(),
-                        -camera.left(),
-                        Vec::new(),
-                        delta_time,
-                    );
-                    */
 
                     // - Cube Tracer -
 
@@ -292,7 +320,9 @@ pub fn game(
                     };
 
                     //FIXME improve wind
-                    let wind = Vector3::new((total_time + 0.8).cos() / 4., 1.0, total_time.sin() / 4.).normalize();
+                    let wind =
+                        Vector3::new((total_time + 0.8).cos() / 4., 1.0, total_time.sin() / 4.)
+                            .normalize();
 
                     cubetracer
                         .args
@@ -330,7 +360,6 @@ pub fn game(
                     }
                     glutin::event::WindowEvent::Resized(physical_size) => {
                         context.resize(physical_size);
-                        set_cursor_middle_window(&context);
 
                         camera.set_image_size(
                             physical_size.width as f32,

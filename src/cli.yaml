@@ -19,6 +19,11 @@ subcommands:
                         value_name: seed
                         help: world seed
                         takes_value: true
+                -   layout:
+                        long: layout
+                        value_name: layout
+                        help: keyboard layout
+                        takes_value: true
                 -   view-distance:
                         long: view-distance
                         value_name: view-distance

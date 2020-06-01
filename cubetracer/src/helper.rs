@@ -46,8 +46,8 @@ pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<u32, GLErro
         gl::BindTexture(gl::TEXTURE_2D_ARRAY, tex_out);
         gl::TexStorage3D(gl::TEXTURE_2D_ARRAY, 8, gl::RGBA8, 256, 256, textures.len() as i32);
 
-        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MIN_FILTER, gl::NEAREST_MIPMAP_NEAREST as i32);
     );
 
     for i in 0..textures.len() {
@@ -134,6 +134,7 @@ pub fn get_ssbo_location(program: u32, var_name: &str) -> Result<i32, GLError> {
         Ok(loc)
     }
 }
+
 pub fn build_program_raytracer(view_size: usize, shadow_activated: bool) -> Result<u32, GLError> {
     let mut shader_compute = ConfigurableShader::new(include_str!("../shaders/raytracer.comp"));
     shader_compute.var("CST_VIEW_DISTANCE", view_size);
@@ -148,25 +149,6 @@ pub fn build_program_raytracer(view_size: usize, shadow_activated: bool) -> Resu
     );
 
     gl_check_error_program(program, gl::LINK_STATUS)
-}
-
-pub fn _update_ssbo_data<T>(ssbo: u32, data: &[T]) -> Result<(), GLError> {
-    glchk_stmt!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, ssbo););
-
-    let dst: *mut c_void = glchk_expr!(gl::MapBuffer(gl::SHADER_STORAGE_BUFFER, gl::WRITE_ONLY));
-
-    unsafe {
-        ptr::copy_nonoverlapping(data.as_ptr() as *const c_void, dst, data.len());
-    }
-
-    let unmapped = glchk_expr!(gl::UnmapBuffer(gl::SHADER_STORAGE_BUFFER));
-    assert!(unmapped > 0);
-
-    glchk_stmt!(
-        gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, 0);
-    );
-
-    Ok(())
 }
 
 pub fn _update_ssbo<T>(ssbo: u32, data: &Vec<T>) -> Result<(), GLError> {

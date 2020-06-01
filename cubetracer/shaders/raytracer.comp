@@ -144,6 +144,7 @@ const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {
  * ************************************************************/
     /* > -A- Inputs */
 layout (std430) readonly buffer shader_data {
+    uint cl_chunks_mapping[CST_NB_CHUNKS_XZ];
     uint cl_blocks[CST_NB_CHUNKS_XZ][CST_CHUNK_WIDTH*CST_CHUNK_WIDTH*CST_CHUNK_HEIGHT];
 };
 
@@ -230,8 +231,9 @@ uint bl_value(const ivec2 chunk, ivec3 block) {
     block -= ivec3(chunk.x, 0, chunk.y) * ivec3(CST_LOCAL_TO_WORLD);
     const ivec2 a = chunk * ivec2(1, CST_NB_CHUNKS_X);
     const ivec3 b = block.xzy * ivec3(1, CST_CHUNK_WIDTH, CST_CHUNK_WIDTH * CST_CHUNK_WIDTH);
+    const uint chunk_idx = cl_chunks_mapping[a.x + a.y];
     return cl_blocks
-        [a.x + a.y]
+        [chunk_idx]
         [b.x + b.y + b.z];
 }
 
@@ -424,7 +426,7 @@ float distance_before_next_intersection(const Ray ray) {
             }
 
             DRAW_RAY_ITER_RESET();
-            DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+            DRAW_RAY_ITER(CST_NB_CHUNKS_X);
 
             if (!DRAW_RAY_HAS_INTERSECTED())
                 return 1000;
@@ -448,7 +450,7 @@ float distance_before_next_intersection(const Ray ray) {
             return t;
 
         DRAW_RAY_ITER_RESET();
-        DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
+        DRAW_RAY_ITER(CST_NB_CHUNKS_X);
 
         if (!DRAW_RAY_HAS_INTERSECTED())
             return 1000;

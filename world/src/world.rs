@@ -78,6 +78,12 @@ impl World {
     }
 
     pub fn generate_chunk(&self, x: i32, z: i32) {
+        if let Some(c) = self.chunk(x, z) {
+            if c.decorated() {
+                return;
+            }
+        }
+
         self.sender
             .send((true, x, z))
             .expect("error while sending load chunk request");
