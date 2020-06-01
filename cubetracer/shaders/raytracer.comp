@@ -8,6 +8,9 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
  * > --1- Constants
  * ************************************************************/
 const bool CST_SHADOW_ACTIVATED = <<<CST_SHADOW_ACTIVATED>>>;
+const bool CST_SPECULAR_ACTIVATED = false;
+
+const float CST_SPECULAR_SHININESS = 16;
 
 const uint CST_MAX_ITER_UNCERTAIN_BLOCKS = 32;
 const uint CST_MAX_ITER_TRANSPARENT = 16;
@@ -37,7 +40,8 @@ const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
 
 const vec3 CST_LIGHT_DIRECTION = normalize(vec3(-0.7, -1.5, -1.1));
 const vec3 CST_LIGHT_DIRECTION_INV = 1 / CST_LIGHT_DIRECTION;
-const vec3 CST_LIGHT_AMBIENT = vec3(0.3, 0.3, 0.3);
+//const vec3 CST_LIGHT_AMBIENT = vec3(0.3, 0.3, 0.3);
+const vec3 CST_LIGHT_AMBIENT = vec3(0.05, 0.05, 0.05);
 
 const vec3 CST_NORMAL_MAP[6] = {
     vec3(1, 0, 0),
@@ -173,7 +177,13 @@ vec3 ray_direction(const vec2 pixel) {
         - pixel.y * in_uni_screen.up);
 }
 
-Ray ray_make(const vec2 pixel) {
+Ray ray_make(const vec3 origin, const vec3 direction) {
+    const vec3 r_dir_inv = 1 / direction;
+
+    return Ray(origin, direction, r_dir_inv);
+}
+
+Ray ray_make_from_pixel(const vec2 pixel) {
     const vec3 origin = in_uni_origin - vec3(in_uni_cl_min_coords.x, 0, in_uni_cl_min_coords.y) * CST_LOCAL_TO_WORLD;
     const vec3 r_dir = ray_direction(pixel);
     const vec3 r_dir_inv = 1 / r_dir;
@@ -241,10 +251,10 @@ uint bl_value(const ivec2 chunk, ivec3 block) {
 /* ************************************************************
  * > -6- Section: Ray Tracer
  * ************************************************************/
-vec4 sky_color(const Ray r) {
+vec3 sky_color(const Ray r) {
     const vec3 color = vec3(0.149, 0.6471, 0.7961);
     const float coeff = abs(dot(r.direction, vec3(0, 1, 0))) * 0.2 + 0.8;
-    return vec4(color * coeff, 1);
+    return color * coeff;
 }
 
 float BBoxRayIntersects(const vec3 boxMin, const vec3 boxMax, const Ray r, out int face) {
@@ -460,103 +470,110 @@ float distance_before_next_intersection(const Ray ray) {
     return 1000;
 }
 
-vec4 lighting(vec4 color, vec3 intersection, vec3 normal) {
-    intersection += normal * CST_EPSILON;
-
+vec3 lighting(vec3 origin, vec3 color, vec3 intersection, vec3 normal) {
     Ray shadow_ray = Ray(intersection, -CST_LIGHT_DIRECTION, -CST_LIGHT_DIRECTION_INV);
 
     vec3 light_diffuse = CST_LIGHT_AMBIENT;
 
     if (!CST_SHADOW_ACTIVATED || distance_before_next_intersection(shadow_ray) >= CST_NB_CHUNKS_X) {
+        if (CST_SPECULAR_ACTIVATED) {
+            vec3 h = normalize(CST_LIGHT_DIRECTION + origin - intersection);
+            float specular_intensity = pow(max(dot(normal, h), 0.0), CST_SPECULAR_SHININESS);
+            light_diffuse += vec3(specular_intensity);
+        }
+
         light_diffuse = max(light_diffuse, dot(normal, -CST_LIGHT_DIRECTION));
     }
 
-    return vec4(light_diffuse, 1) * color;
+    return light_diffuse * color;
 }
 
-vec4 cast_ray(const Ray ray) {
-    DRAW_RAY_INIT(ray);
+#define CAST_RAY(R, RETURNING_BOCK)\
+    DRAW_RAY_INIT(R);\
+    DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);\
+    if (!DRAW_RAY_HAS_INTERSECTED())\
+        return sky_color(R);\
+    uint k = 0;\
+    do {\
+        float t;\
+        int face = 0;\
+        bool mustComputeIntersection = true;\
+        bool mustComputeUv = true;\
+        vec2 uv;\
+        vec3 normal;\
+        /* if uncertain of the box intersection because the box has special shapes, or is transparent,\
+        we compute expensive intersections, and continue the ray till we're not sure we can get\
+        an intersection with a box*/\
+        for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {\
+            if ((block_type == 9 || CST_BLOCK_MATERIALS[block_type].type == 4) && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], R, t, uv, normal)) {\
+                mustComputeUv = false;\
+                mustComputeIntersection = false;\
+                break;\
+            } else if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), R, face, t)) {\
+                mustComputeIntersection = false;\
+                break;\
+            }\
+            DRAW_RAY_ITER_RESET();\
+            DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);\
+            if (!DRAW_RAY_HAS_INTERSECTED())\
+                return sky_color(R);\
+        }\
+        /* need to re-compute the intersection */\
+        if (mustComputeIntersection) {\
+            t = BBoxRayIntersects(block, block + vec3(1), R, face);\
+        }\
+        vec3 intersection = R.origin + R.direction * t;\
+        if (mustComputeUv)\
+            uv = bbox_uv(block, intersection, face);\
+        if (block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))\
+            return vec3(0.5);\
+        int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];\
+        float t_qual = t / 10;\
+        vec4 color = texture_color(tex, uv, t_qual);\
+        if (color.a > 0.5)\
+        {\
+            switch (CST_BLOCK_MATERIALS[block_type].type)\
+            {\
+                case 1:\
+                    normal = texture_normal(tex, uv, face, t_qual);\
+                    break;\
+                case 2:\
+                    normal = CST_NORMAL_MAP[face];\
+                    break;\
+                case 3:\
+                    normal = texture_normal(tex, uv, t_qual, normal);\
+                    break;\
+            }\
+            {RETURNING_BOCK;}\
+        }\
+        DRAW_RAY_ITER_RESET();\
+        DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);\
+        if (!DRAW_RAY_HAS_INTERSECTED())\
+            return sky_color(R);\
+    } while (k++ < CST_MAX_ITER_TRANSPARENT);\
 
-    DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
-    if (!DRAW_RAY_HAS_INTERSECTED())
-        return sky_color(ray);
+vec3 cast_ray_reflection(vec3 intersection, vec3 normal) {
+    Ray reflect_ray = ray_make(intersection, normalize(reflect(intersection, normal)));
+    CAST_RAY(reflect_ray, {
+        return lighting(reflect_ray.origin, color.rgb, intersection, normal);
+    });
+}
 
-    uint k = 0;
-    do {
-        float t;
-        int face = 0;
+#define CST_REFLECTION_COEFF 0.3
 
-        bool mustComputeIntersection = true;
-        bool mustComputeUv = true;
-        vec2 uv;
-
-        vec3 normal;
-
-        // if uncertain of the box intersection because the box has special shapes, or is transparent,
-        // we compute expensive intersections, and continue the ray till we're not sure we can get
-        // an intersection with a box
-        for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {
-            if ((block_type == 9 || CST_BLOCK_MATERIALS[block_type].type == 4) && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], ray, t, uv, normal)) {
-                mustComputeUv = false;
-                mustComputeIntersection = false;
-                break;
-            } else if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), ray, face, t)) {
-                mustComputeIntersection = false;
-                break;
-            }
-
-            DRAW_RAY_ITER_RESET();
-            DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
-            if (!DRAW_RAY_HAS_INTERSECTED())
-                return sky_color(ray);
-        }
-
-        // need to re-compute the intersection
-        if (mustComputeIntersection) {
-            t = BBoxRayIntersects(block, block + vec3(1), ray, face);
-        } 
-
-        vec3 intersection = ray.origin + ray.direction * t;
-
-        if (mustComputeUv)
-            uv = bbox_uv(block, intersection, face);
-        if (block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
-            return vec4(0.5, 0.5, 0.5, 1);
-
-        int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
-        float t_qual = t / 10;
-        vec4 color = texture_color(tex, uv, t_qual);
-
-        if (color.a > 0.5)
-        {
-            switch (CST_BLOCK_MATERIALS[block_type].type)
-            {
-                case 1:
-                    normal = texture_normal(tex, uv, face, t_qual);
-                    break;
-                case 2:
-                    normal = CST_NORMAL_MAP[face];
-                    break;
-                case 3:
-                    normal = texture_normal(tex, uv, t_qual, normal);
-                    break;
-            }
-
-            return lighting(color, intersection, normal);
-        }
-
-        DRAW_RAY_ITER_RESET();
-        DRAW_RAY_ITER(2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH);
-        if (!DRAW_RAY_HAS_INTERSECTED())
-            return sky_color(ray);
-
-    } while (k++ < CST_MAX_ITER_TRANSPARENT);
+vec3 cast_ray(const Ray ray) {
+    CAST_RAY(ray, {
+        intersection += normal * CST_EPSILON;
+        vec3 color_reflected = cast_ray_reflection(intersection, normal);
+        vec3 color = (1 - CST_REFLECTION_COEFF) * lighting(ray.origin, color.rgb, intersection, normal) + CST_REFLECTION_COEFF * color_reflected;
+        return color;
+    });
 }
 
 void main() {
     const ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
-    const Ray ray = ray_make(vec2(pixel));
-    const vec4 color = cast_ray(ray);
+    const Ray ray = ray_make_from_pixel(vec2(pixel));
+    const vec3 color = cast_ray(ray);
 
-    imageStore(out_uni_frame, pixel, color);
+    imageStore(out_uni_frame, pixel, vec4(color, 1));
 }
