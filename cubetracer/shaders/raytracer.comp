@@ -58,7 +58,7 @@ const vec3 CST_NORMAL_MAP[6] = {
 const uint CST_BLOCK_TYPE_AIR    = 0;
 const uint CST_BLOCK_TYPE_WATER  = 1;
 
-const vec3  CST_WATER_TRANSMITTANCE = vec3(0.2, 0.08, 0.02);
+const vec3  CST_WATER_TRANSMITTANCE = vec3(0.4, 0.3, 0.1);
 const float CST_WATER_IOR = 1.29;
 
 #define CST_USE_FRESNEL true
