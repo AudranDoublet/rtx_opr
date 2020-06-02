@@ -184,7 +184,7 @@ impl DecoratorTree {
             return true;
         }
 
-        block.is_tough()
+        !block.is_tough()
     }
 
     fn can_be_placed_here(&self, world: &mut World, x: i32, y: i32, z: i32) -> bool {
