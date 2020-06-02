@@ -179,15 +179,19 @@ pub fn game(
                     input_handler.update_time(delta_time);
                     total_time += delta_time;
 
+                    let mut change = false;
+
                     // --- Process inputs ---
                     if input_handler.updated(wininput::StateChange::MouseScroll) {
                         let fov = fov_range.start
                             + input_handler.get_scroll() * (fov_range.end - fov_range.start);
+                        change = true;
                         camera.set_fov(fov)
                     }
 
                     if input_handler.updated(wininput::StateChange::MouseMotion) {
                         let offset = input_handler.get_mouse_offset() * delta_time;
+                        change = true;
                         camera.reorient(offset);
                     }
 
@@ -230,14 +234,14 @@ pub fn game(
 
                     // --- Update States ---
 
-                    player.update(
+                    change = player.update(
                         world,
                         &mut listener,
                         camera.forward(),
                         camera.left(),
                         inputs,
                         delta_time,
-                    );
+                    ) || change;
 
                     camera.origin = player.head_position();
                     //player.set_position(world, &mut listener, camera.origin);
@@ -328,7 +332,7 @@ pub fn game(
 
                     cubetracer
                         .args
-                        .set_camera(&camera, wind, highlighted_block)
+                        .set_camera(change, &camera, wind, highlighted_block)
                         .unwrap();
 
                     context.window().request_redraw();

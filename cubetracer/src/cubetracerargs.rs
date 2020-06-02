@@ -19,8 +19,9 @@ const VAR_IDX_CL_MIN_COORDS: usize = 4;
 const VAR_IDX_HIGHTLIGHTED_BLOCK: usize = 5;
 const VAR_IDX_TEXTURES: usize = 6;
 const VAR_IDX_WIND: usize = 7;
+const VAR_IDX_ITERATION_ID: usize = 8;
 
-const VARS_LEN: usize = 8;
+const VARS_LEN: usize = 9;
 
 pub struct CubeTracerArguments {
     program: u32,
@@ -30,6 +31,7 @@ pub struct CubeTracerArguments {
     chunks_mapping: HashMap<(i32, i32), u32>,
     cl_min_coords: Vector3<i32>,
     uniform_locations: [i32; VARS_LEN],
+    iteration_id: i32,
 }
 
 impl CubeTracerArguments {
@@ -73,6 +75,9 @@ impl CubeTracerArguments {
         uniform_locations[VAR_IDX_TEXTURES] =
             helper::get_uniform_location(program, "in_uni_textures")?;
 
+        uniform_locations[VAR_IDX_ITERATION_ID] =
+            helper::get_uniform_location(program, "in_uni_iteration_id")?;
+
         uniform_locations[VAR_IDX_WIND] = helper::get_uniform_location(program, "in_uni_wind")?;
 
         let res = CubeTracerArguments {
@@ -83,6 +88,7 @@ impl CubeTracerArguments {
             chunks_mapping: HashMap::new(),
             cl_min_coords: Vector3::zeros(),
             uniform_locations,
+            iteration_id: 0,
         };
 
         res.set_i(VAR_IDX_TEXTURES, 1)?;
@@ -215,25 +221,36 @@ impl CubeTracerArguments {
     }
 
     pub fn set_camera(
-        &self,
+        &mut self,
+        change: bool,
         value: &Camera,
         wind: Vector3<f32>,
         mut highlighted_block: Vector3<i32>,
     ) -> Result<(), GLError> {
-        let origin = value.origin;
-        let top_left = value.get_virtual_screen_top_left();
-        let (left, up) = value.get_virtual_screen_axes_scaled();
+        if !change {
+            self.iteration_id += 1;
+            self.set_i(VAR_IDX_ITERATION_ID, self.iteration_id);
+        } else {
+            self.iteration_id = 0;
 
-        highlighted_block -= self.cl_min_coords.component_mul(&Vector3::new(16, 0, 16));
+            let origin = value.origin;
+            let top_left = value.get_virtual_screen_top_left();
+            let (left, up) = value.get_virtual_screen_axes_scaled();
 
-        // FIXME: we should try to send the data as an array of 4 Vector3 in one shot
-        self.set_vector_3f(VAR_IDX_ORIGIN, origin)?;
-        self.set_vector_3f(VAR_IDX_SCREEN_DOT_TOP_LEFT, top_left)?;
-        self.set_vector_3f(VAR_IDX_SCREEN_DOT_LEFT, left)?;
-        self.set_vector_3f(VAR_IDX_SCREEN_DOT_UP, up)?;
-        self.set_vector_3i(VAR_IDX_HIGHTLIGHTED_BLOCK, highlighted_block)?;
+            highlighted_block -= self.cl_min_coords.component_mul(&Vector3::new(16, 0, 16));
+
+            // FIXME: we should try to send the data as an array of 4 Vector3 in one shot
+            self.set_vector_3f(VAR_IDX_ORIGIN, origin)?;
+            self.set_vector_3f(VAR_IDX_SCREEN_DOT_TOP_LEFT, top_left)?;
+            self.set_vector_3f(VAR_IDX_SCREEN_DOT_LEFT, left)?;
+            self.set_vector_3f(VAR_IDX_SCREEN_DOT_UP, up)?;
+            self.set_vector_3i(VAR_IDX_HIGHTLIGHTED_BLOCK, highlighted_block)?;
+            self.set_i(VAR_IDX_ITERATION_ID, self.iteration_id);
+            // FIXME-END
+
+        }
+
         self.set_vector_3f(VAR_IDX_WIND, wind)?;
-        // FIXME-END
 
         Ok(())
     }

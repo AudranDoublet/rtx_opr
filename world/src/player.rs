@@ -97,7 +97,7 @@ impl Player {
         listener: &mut dyn ChunkListener,
         movement: Vector3<f32>,
         dt: f32,
-    ) {
+    ) -> bool {
         self.velocity = self.velocity + Vector3::new(0.0, -self.gravity(), 0.0) * dt;
 
         if self.grounded && self.velocity.y < 0.0 {
@@ -168,6 +168,8 @@ impl Player {
 
         /* move */
         self.set_position(world, listener, self.position + diff);
+
+        diff.norm() > 1e-4
     }
 
     pub fn head_position(&self) -> Vector3<f32> {
@@ -260,7 +262,7 @@ impl Player {
         camera_right: Vector3<f32>,
         inputs: Vec<PlayerInput>,
         dt: f32,
-    ) {
+    ) -> bool {
         let mut directional_input: Vector2<f32> = Vector2::zeros();
         let mut jumping = false;
         let mut sprinting = false;
@@ -345,7 +347,7 @@ impl Player {
         }
 
         desired_move *= self.movement_speed();
-        self.move_player(world, listener, desired_move, dt);
+        self.move_player(world, listener, desired_move, dt)
     }
 
     fn update_seen_chunks(
