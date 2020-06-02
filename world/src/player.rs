@@ -101,7 +101,7 @@ impl Player {
         self.velocity = self.velocity + Vector3::new(0.0, -self.gravity(), 0.0) * dt;
 
         if self.grounded && self.velocity.y < 0.0 {
-            self.velocity.y = -self.gravity();
+            self.velocity.y = -self.gravity() * dt;
         }
 
         let mut diff = (movement + self.velocity) * dt;
