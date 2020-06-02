@@ -37,7 +37,7 @@ const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
 
 const vec3 CST_LIGHT_DIRECTION = normalize(vec3(-0.7, -1.5, -1.1));
 const vec3 CST_LIGHT_DIRECTION_INV = 1 / CST_LIGHT_DIRECTION;
-const vec3 CST_LIGHT_AMBIENT = vec3(0.3, 0.3, 0.3);
+const vec3 CST_LIGHT_AMBIENT = vec3(0.1, 0.1, 0.1);
 
 const uint CST_MAX_ITER_UNCERTAIN_BLOCKS = 32;
 const uint CST_MAX_ITER_TRANSPARENT = 16;
@@ -58,7 +58,7 @@ const vec3 CST_NORMAL_MAP[6] = {
 const uint CST_BLOCK_TYPE_AIR    = 0;
 const uint CST_BLOCK_TYPE_WATER  = 1;
 
-const vec3  CST_WATER_TRANSMITTANCE = vec3(0.2, 0.08, 0.02);
+const vec3  CST_WATER_TRANSMITTANCE = vec3(0.4, 0.3, 0.1);
 const float CST_WATER_IOR = 1.29;
 
 #define CST_USE_FRESNEL true

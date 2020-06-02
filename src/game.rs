@@ -136,6 +136,7 @@ pub fn game(
 
     let context = unsafe { context.make_current().unwrap() };
     gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
+    unsafe { gl::Enable(gl::FRAMEBUFFER_SRGB) };
 
     context.window().set_cursor_visible(false);
     context.window().set_cursor_grab(true)?;
