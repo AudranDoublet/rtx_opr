@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let resolution_coeff = args
             .value_of("resolution")
             .unwrap_or("1")
-            .parse::<f32>()?.max(1.0).min(10.0);
+            .parse::<f32>()?.max(0.125).min(10.0);
         let layout = game::Layout::parse(args
             .value_of("layout")
             .unwrap_or("fr"));
