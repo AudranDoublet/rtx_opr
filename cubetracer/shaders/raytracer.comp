@@ -9,6 +9,7 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
  * ************************************************************/
 const bool CST_SHADOW_ACTIVATED = <<<CST_SHADOW_ACTIVATED>>>;
 const bool CST_SPECULAR_ACTIVATED = false;
+const int  CST_TEXTURE_QUALITY_COEFF = <<<CST_TEXTURE_QUALITY_COEFF>>>;
 
 const float CST_SPECULAR_SHININESS = 16;
 
@@ -181,7 +182,7 @@ const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {
     if (!(_is_inside && (block_type != BLOCK_TYPE_TO_IGNORE))) \
         {BOCK_ON_NON_INTERSECTION}
 
-#define CAST_RAY(R, BLOCK_TYPE_TO_IGNORE, MAX_BLOCK_ITERATION, WITH_BLOCK_HIGHLIGHTING, BOCK_ON_NON_INTERSECTION, BOCK_ON_UV_COMPUTE, BOCK_ON_WATER_INTERSECTION, BOCK_ON_INTERSECTION)\
+#define CAST_RAY(T_BASE, R, BLOCK_TYPE_TO_IGNORE, MAX_BLOCK_ITERATION, WITH_BLOCK_HIGHLIGHTING, BOCK_ON_NON_INTERSECTION, BOCK_ON_UV_COMPUTE, BOCK_ON_WATER_INTERSECTION, BOCK_ON_INTERSECTION)\
     DRAW_RAY_INIT(R);\
     DRAW_RAY_ITER(BLOCK_TYPE_TO_IGNORE, false, MAX_BLOCK_ITERATION, BOCK_ON_NON_INTERSECTION);\
     uint k = 0;\
@@ -216,7 +217,7 @@ const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {
             uv = bbox_uv(block, intersection, face);\
         {BOCK_ON_UV_COMPUTE}\
         int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];\
-        float t_qual = t / 7;\
+        float t_qual = (t + T_BASE) / CST_TEXTURE_QUALITY_COEFF;\
         vec4 color = texture_color(tex, uv, t_qual);\
         if (color.a > 0.5)\
         {\
@@ -404,7 +405,7 @@ bool quadrilater_intersects(int tex, const vec3 pos, const vec3 edge1, const vec
     if (dot(normal, r.direction) > 0.0)
         normal = -normal;
 
-    return t > 0.0 && texture_color(tex, uv, t / 7.).a > 0.5;
+    return t > 0.0 && texture_color(tex, uv, t / CST_TEXTURE_QUALITY_COEFF).a > 0.5;
 }
 
 bool plant_intersects(const vec3 block_pos, int tex, Ray ray, out float t, out vec2 uv, out vec3 normal) {
@@ -479,7 +480,7 @@ vec3 computeBlockOffsetBot(uint block_type) {
     return float(block_type == 7) * vec3(0.1, 0, 0.1);
 }
 
-float distance_before_next_intersection(const Ray ray) {
+float distance_before_next_intersection(const Ray ray, const float dist) {
     DRAW_RAY_INIT(ray);
     DRAW_RAY_ITER(CST_BLOCK_TYPE_AIR, false, CST_MAX_ITER_SHADOW, {return 1000;});
 
@@ -516,7 +517,7 @@ float distance_before_next_intersection(const Ray ray) {
         if (mustComputeUv)
             uv = bbox_uv(block, intersection, face);
 
-        float t_qual = t / 7.;
+        float t_qual = (t + dist / 3) / CST_TEXTURE_QUALITY_COEFF;
         int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
         vec4 color = texture_color(tex, uv, t_qual);
 
@@ -536,13 +537,13 @@ vec3 lightingWithoutShadows(vec3 origin, vec3 color, vec3 intersection, vec3 nor
     return light_diffuse * color;
 }
 
-vec3 lighting(vec3 origin, vec3 color, vec3 intersection, vec3 normal) {
+vec3 lighting(vec3 origin, vec3 color, vec3 intersection, vec3 normal, float dist) {
     intersection += normal * CST_EPSILON;
     Ray shadow_ray = Ray(intersection, -CST_LIGHT_DIRECTION, -CST_LIGHT_DIRECTION_INV);
 
     vec3 light_diffuse = CST_LIGHT_AMBIENT;
 
-    if (!CST_SHADOW_ACTIVATED || distance_before_next_intersection(shadow_ray) >= CST_MAX_ITER_SHADOW) {
+    if (!CST_SHADOW_ACTIVATED || distance_before_next_intersection(shadow_ray, dist) >= CST_MAX_ITER_SHADOW) {
         light_diffuse = max(light_diffuse, dot(normal, -CST_LIGHT_DIRECTION));
 
         #if CST_SPECULAR_ACTIVATED
@@ -574,20 +575,20 @@ float fresnel(vec3 incident)
     #endif
 }
 
-vec3 lightingWaterReflection(const vec3 LWR_intersection, const vec3 LWR_incident) {
+vec3 lightingWaterReflection(const vec3 LWR_intersection, const vec3 LWR_incident, const float dist) {
     const Ray ray = ray_make(LWR_intersection, reflect(LWR_incident, vec3(0, 1, 0)));
 
-    CAST_RAY(ray, CST_BLOCK_TYPE_AIR, CST_MAX_ITER_WATER_REFLECTION, false, {
+    CAST_RAY(dist, ray, CST_BLOCK_TYPE_AIR, CST_MAX_ITER_WATER_REFLECTION, false, {
         return sky_color(ray);
     }, {}, { return vec3(1, 0, 0); }, {
         return lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
     });
 }
 
-vec3 lightingWaterRefraction(const vec3 LWR_intersection, const vec3 LWR_incident) {
+vec3 lightingWaterRefraction(const vec3 LWR_intersection, const vec3 LWR_incident, const float dist) {
     const Ray ray = ray_make(LWR_intersection, refract(LWR_incident, vec3(0, 1, 0), 1/CST_WATER_IOR));
 
-    CAST_RAY(ray, CST_BLOCK_TYPE_WATER, CST_MAX_ITER_WATER_REFRACTION, false, {
+    CAST_RAY(dist, ray, CST_BLOCK_TYPE_WATER, CST_MAX_ITER_WATER_REFRACTION, false, {
         return vec3(0, 0.1, 0.4);
     }, {}, { return vec3(1, 0, 0); }, {
         vec3 outColor = lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
@@ -600,24 +601,24 @@ vec3 lightingWaterRefraction(const vec3 LWR_intersection, const vec3 LWR_inciden
 }
 
 
-vec3 lightingWater(const vec3 intersection, const vec3 incident) {
-    vec3 colorRefract = lightingWaterRefraction(intersection, incident);
-    vec3 colorReflect = lightingWaterReflection(intersection, incident);
+vec3 lightingWater(const vec3 intersection, const vec3 incident, const float dist) {
+    vec3 colorRefract = lightingWaterRefraction(intersection, incident, dist);
+    vec3 colorReflect = lightingWaterReflection(intersection, incident, dist);
 
     const float coeffReflectivity = fresnel(incident);
     return coeffReflectivity * colorReflect + (1-coeffReflectivity) * colorRefract;
 }
 
 vec3 cast_ray(const Ray ray) {
-    CAST_RAY(ray, CST_BLOCK_TYPE_AIR, 2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH, true, {
+    CAST_RAY(0.0, ray, CST_BLOCK_TYPE_AIR, 2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH, true, {
         return sky_color(ray);
     }, {
         if (block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
             return vec3(0.5);
     }, {
-        return lightingWater(intersection, ray.direction);
+        return lightingWater(intersection, ray.direction, t);
     },{
-        return lighting(ray.origin, color.rgb, intersection, normal);
+        return lighting(ray.origin, color.rgb, intersection, normal, t);
     });
 }
 

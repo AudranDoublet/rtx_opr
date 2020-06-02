@@ -29,6 +29,11 @@ subcommands:
                         value_name: view-distance
                         help: player's view distance
                         takes_value: true
+                -   resolution:
+                        long: resolution
+                        value_name: resolution
+                        help: resolution modifier
+                        takes_value: true
                 -   with-shadows:
                         short: -s
                         long: with-shadows

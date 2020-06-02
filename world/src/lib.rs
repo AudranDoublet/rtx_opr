@@ -7,7 +7,6 @@ mod biome;
 mod block;
 mod chunk;
 mod chunk_manager;
-mod chunk_lightning;
 mod player;
 mod world;
 

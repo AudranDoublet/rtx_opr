@@ -21,6 +21,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .value_of("view-distance")
             .unwrap_or("2")
             .parse::<usize>()?;
+        let resolution_coeff = args
+            .value_of("resolution")
+            .unwrap_or("1")
+            .parse::<f32>()?.max(1.0).min(10.0);
         let layout = game::Layout::parse(args
             .value_of("layout")
             .unwrap_or("fr"));
@@ -30,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             //FIXME random seed ?
         }
 
-        game::game(seed, view_distance, with_shadows, layout)?;
+        game::game(seed, view_distance, with_shadows, resolution_coeff, layout)?;
     } else if let Some(args) = matches.subcommand_matches("render_chunks") {
         let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
         biome_generator::generate_biome(seed)?;

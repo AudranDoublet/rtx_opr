@@ -101,6 +101,7 @@ pub fn game(
     seed: isize,
     view_distance: usize,
     with_shadows: bool,
+    resolution_coeff: f32,
     layout: Layout,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // --- Configuration ---
@@ -156,7 +157,7 @@ pub fn game(
 
     // --- Cube Tracer ---
     let mut cubetracer =
-        cubetracer::CubeTracer::new(width, height, view_distance, with_shadows).unwrap();
+        cubetracer::CubeTracer::new(width, height, view_distance, resolution_coeff, with_shadows).unwrap();
 
     // --- Main loop ---
     let mut frame_counter = FrameCounter::new(60);
@@ -363,8 +364,8 @@ pub fn game(
                         context.resize(physical_size);
 
                         camera.set_image_size(
-                            physical_size.width as f32,
-                            physical_size.height as f32,
+                            physical_size.width as f32 / resolution_coeff,
+                            physical_size.height as f32 / resolution_coeff,
                         );
 
                         cubetracer

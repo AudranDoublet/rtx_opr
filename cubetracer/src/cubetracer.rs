@@ -6,6 +6,11 @@ use crate::glchk_stmt;
 use crate::helper;
 use crate::CubeTracerArguments;
 
+#[inline]
+fn coeff(i: u32, coeff: f32) -> u32 {
+    (i as f32 / coeff) as u32
+}
+
 pub struct CubeTracer {
     program_raytracer: u32,
     program_quad_screen: u32,
@@ -13,6 +18,7 @@ pub struct CubeTracer {
     vao_quad_cursor: u32,
     texture_raytracer: u32,
     texture_cursor: u32,
+    resolution_coeff: f32,
 
     pub args: CubeTracerArguments,
 }
@@ -22,9 +28,10 @@ impl CubeTracer {
         width: u32,
         height: u32,
         view_size: usize,
+        resolution_coeff: f32,
         shadow_activated: bool,
     ) -> Result<Self, GLError> {
-        let prog_raytracer_id = helper::build_program_raytracer(view_size, shadow_activated)?;
+        let prog_raytracer_id = helper::build_program_raytracer(view_size, shadow_activated, coeff(10, resolution_coeff))?;
         let prog_quad_screen_id = helper::build_program_quad()?;
 
         let program_raytracer = prog_raytracer_id;
@@ -32,7 +39,7 @@ impl CubeTracer {
 
         let vao_quad_screen = helper::make_quad_vao(prog_quad_screen_id, 1.0, 1.0)?;
         let vao_quad_cursor = helper::make_quad_vao(prog_quad_screen_id, 0.01125, 0.02)?;
-        let texture_raytracer = helper::generate_texture(width, height)?;
+        let texture_raytracer = helper::generate_texture(coeff(width, resolution_coeff), coeff(height, resolution_coeff))?;
 
         helper::texture_3d(
             1,
@@ -121,12 +128,16 @@ impl CubeTracer {
             vao_quad_cursor,
             texture_raytracer,
             texture_cursor,
+            resolution_coeff,
 
             args: CubeTracerArguments::new(program_raytracer, view_size)?,
         })
     }
 
     pub fn compute_image(&self, width: u32, height: u32) -> Result<(), GLError> {
+        let width = coeff(width, self.resolution_coeff);
+        let height = coeff(height, self.resolution_coeff);
+
         glchk_stmt!(
             gl::UseProgram(self.program_raytracer);
 
@@ -148,7 +159,7 @@ impl CubeTracer {
             );
         );
 
-        self.texture_raytracer = helper::generate_texture(width, height)?;
+        self.texture_raytracer = helper::generate_texture(coeff(width, self.resolution_coeff), coeff(height, self.resolution_coeff))?;
 
         Ok(())
     }
