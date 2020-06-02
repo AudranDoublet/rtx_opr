@@ -128,6 +128,16 @@ impl Block {
         }
     }
 
+    pub fn transparency(&self) -> f32 {
+        match self {
+            Block::Air => 1.0,
+            b if b.is_leaves() => 0.2,
+            Block::TallGrass    => 0.9,
+            b if b.is_flower() => 0.8,
+            _ => 0.0,
+        }
+    }
+
     pub fn aabb(&self, position: Vector3<f32>) -> Option<AABB> {
         let base = match self {
             Block::Air | Block::Water | Block::TallGrass => None,

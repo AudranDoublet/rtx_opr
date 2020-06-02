@@ -44,7 +44,7 @@ pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<u32, GLErro
         gl::GenTextures(1, &mut tex_out);
         gl::ActiveTexture(gl::TEXTURE0 + i);
         gl::BindTexture(gl::TEXTURE_2D_ARRAY, tex_out);
-        gl::TexStorage3D(gl::TEXTURE_2D_ARRAY, 8, gl::RGBA8, 256, 256, textures.len() as i32);
+        gl::TexStorage3D(gl::TEXTURE_2D_ARRAY, 8, gl::RGBA8, 512, 512, textures.len() as i32);
 
         gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
         gl::TexParameteri(gl::TEXTURE_2D_ARRAY, gl::TEXTURE_MIN_FILTER, gl::NEAREST_MIPMAP_NEAREST as i32);
@@ -56,7 +56,7 @@ pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<u32, GLErro
             .expect(format!("can't load texture {}", path.to_str().unwrap()).as_str())
             .into_rgba();
         let rimage =
-            image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Gaussian);
+            image::imageops::resize(&image, 512, 512, image::imageops::FilterType::Gaussian);
 
         glchk_stmt!(
             gl::TexSubImage3D(

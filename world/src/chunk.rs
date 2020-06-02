@@ -12,6 +12,7 @@ const COUNT: i32 = WIDTH * WIDTH * HEIGHT;
 pub struct Chunk {
     coords: Vector2<i32>,
     pub blocks: [Block; COUNT as usize],
+    pub lightning: [f32; COUNT as usize],
     biomes: [BiomeType; WIDTH as usize * WIDTH as usize],
 
     decorated: bool,
@@ -43,6 +44,7 @@ impl Chunk {
         Rc::new(Chunk {
             coords: Vector2::new(x, z),
             blocks: [Block::Air; COUNT as usize],
+            lightning: [0.0; COUNT as usize],
             decorated: false,
             biomes: [BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
             modified: true,

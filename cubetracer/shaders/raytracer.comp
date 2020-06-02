@@ -90,7 +90,7 @@ struct Material {
 #define MATERIAL_U(u) Material(1, int[6]( TEX_UNIQUE(u)) )
 #define MATERIAL_U_NO_NORM(u) Material(2, int[6]( TEX_UNIQUE(u)) )
 #define MATERIAL_PLANT(u) Material(3, int[6] (TEX_UNIQUE(u)))
-#define MATERIAL_FLOWER(i) Material(4, int[6] (TEX_UNIQUE(FLOWER_TEX + i)))
+#define MATERIAL_FLOWER(i) Material(3, int[6] (TEX_UNIQUE(FLOWER_TEX + i*2)))
 #define MATERIAL_C(v, w, z) Material(1, int[6]( TEX_COLUMN(v, w, z) ))
 #define MATERIAL_LOG(i) MATERIAL_C(LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
 #define MATERIAL_LEAVES(i) MATERIAL_U_NO_NORM(LEAVES_TEX + i)
@@ -196,7 +196,7 @@ const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {
         we compute expensive intersections, and continue the ray till we're not sure we can get\
         an intersection with a box*/\
         for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {\
-            if ((block_type == 9 || CST_BLOCK_MATERIALS[block_type].type == 4) && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], R, t, uv, normal)) {\
+            if (CST_BLOCK_MATERIALS[block_type].type == 3 && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], R, t, uv, normal)) {\
                 mustComputeUv = false;\
                 mustComputeIntersection = false;\
                 break;\
@@ -216,7 +216,7 @@ const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {
             uv = bbox_uv(block, intersection, face);\
         {BOCK_ON_UV_COMPUTE}\
         int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];\
-        float t_qual = t / 10;\
+        float t_qual = t / 7;\
         vec4 color = texture_color(tex, uv, t_qual);\
         if (color.a > 0.5)\
         {\
@@ -401,10 +401,10 @@ bool quadrilater_intersects(int tex, const vec3 pos, const vec3 edge1, const vec
 
     normal = cross(edge1, edge2);
 
-    if (dot(normal, r.direction) < 0.0)
+    if (dot(normal, r.direction) > 0.0)
         normal = -normal;
 
-    return t > 0.0 && texture_color(tex, uv, t / 10.).a > 0.5;
+    return t > 0.0 && texture_color(tex, uv, t / 7.).a > 0.5;
 }
 
 bool plant_intersects(const vec3 block_pos, int tex, Ray ray, out float t, out vec2 uv, out vec3 normal) {
@@ -466,6 +466,7 @@ bool isIntersectionCertain(uint block_type) {
         && block_type != 8
         && block_type != 7
         && block_type != 9
+        && CST_BLOCK_MATERIALS[block_type].type != 3
         && CST_BLOCK_MATERIALS[block_type].type != 4;
 }
 
@@ -515,7 +516,7 @@ float distance_before_next_intersection(const Ray ray) {
         if (mustComputeUv)
             uv = bbox_uv(block, intersection, face);
 
-        float t_qual = t / 10.;
+        float t_qual = t / 7.;
         int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
         vec4 color = texture_color(tex, uv, t_qual);
 
