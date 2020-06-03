@@ -143,7 +143,7 @@ impl ColumnProvider {
                 let x = (x * 4 + dx) as i32;
                 let z = (z * 4 + dz) as i32;
 
-                chunk.set_grass_color(x, z, Vector3::new(color.x as u32, color.y as u32, color.z as u32));
+                chunk.set_grass_color(x, z, color);
             }
         }
 

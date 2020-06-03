@@ -133,7 +133,9 @@ impl CubeTracerArguments {
 
             chunk_to_add_data.extend(
                 chunk_to_add.grass_color
-                    .iter().map(|&b| b)
+                    .iter().map(|&b| unsafe {
+                        std::mem::transmute::<f32, u32>(b)
+                    })
             );
 
             let chunk_idx = if let Some(idx) = self.chunks_mapping.get(&(x, y)) {
