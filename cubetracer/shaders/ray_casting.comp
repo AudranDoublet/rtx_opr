@@ -1,0 +1,148 @@
+bool bl_is_inside(const ivec3 block) {
+    return block.x >= 0 && block.x < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH
+        && block.y >= 0 && block.y < CST_CHUNK_HEIGHT
+        && block.z >= 0 && block.z < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH;
+}
+
+uint bl_value(const ivec2 chunk, ivec3 block) {
+    block -= ivec3(chunk.x, 0, chunk.y) * ivec3(CST_LOCAL_TO_WORLD);
+    const ivec2 a = chunk * ivec2(1, CST_NB_CHUNKS_X);
+    const ivec3 b = block.xzy * ivec3(1, CST_CHUNK_WIDTH, CST_CHUNK_WIDTH * CST_CHUNK_WIDTH);
+    const uint chunk_idx = cl_chunks_mapping[a.x + a.y];
+    return cl_blocks
+        [chunk_idx]
+        [b.x + b.y + b.z];
+}
+
+#define DRAW_RAY_INIT(R)\
+    vec3 _sgn = sign(R.direction);\
+    vec3 _dt_dist = abs(R.direction_inv);\
+    ivec3 block = ivec3(floor(R.origin));\
+    ivec3 _steps = ivec3(_sgn);\
+    vec3 _side_dist = (_sgn * (block - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
+    vec3 _mask;\
+    ivec3 chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
+    uint block_type = bl_value(chunk.xz, block);\
+    uint _i = 0;\
+    bool _is_inside = true;\
+
+#define DRAW_RAY_ITER(BLOCK_TYPE_TO_IGNORE, IGNORE_CURRENT_BLOCK, MAX_ITER, BOCK_ON_NON_INTERSECTION)\
+    if (IGNORE_CURRENT_BLOCK)\
+        block_type = BLOCK_TYPE_TO_IGNORE;\
+    for (;_i < MAX_ITER && block_type == BLOCK_TYPE_TO_IGNORE && _is_inside; _i++) {\
+        _mask = vec3(lessThanEqual(_side_dist.xyz, min(_side_dist.yzx, _side_dist.zxy)));\
+        _side_dist += _mask * _dt_dist;\
+        block += ivec3(_mask) * _steps;\
+        chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
+        _is_inside = bl_is_inside(block);\
+        block_type = bl_value(chunk.xz, block);\
+    }\
+    if (!(_is_inside && (block_type != BLOCK_TYPE_TO_IGNORE))) \
+        {BOCK_ON_NON_INTERSECTION}
+
+#define CAST_RAY(T_BASE, R, BLOCK_TYPE_TO_IGNORE, MAX_BLOCK_ITERATION, WITH_BLOCK_HIGHLIGHTING, BOCK_ON_NON_INTERSECTION, BOCK_ON_UV_COMPUTE, BOCK_ON_WATER_INTERSECTION, BOCK_ON_INTERSECTION)\
+    DRAW_RAY_INIT(R);\
+    DRAW_RAY_ITER(BLOCK_TYPE_TO_IGNORE, false, MAX_BLOCK_ITERATION, BOCK_ON_NON_INTERSECTION);\
+    uint k = 0;\
+    do {\
+        float t;\
+        int face = 0;\
+        bool mustComputeIntersection = true;\
+        bool mustComputeUv = true;\
+        vec2 uv;\
+        vec3 normal;\
+        /* if uncertain of the box intersection because the box has special shapes, or is transparent,\
+        we compute expensive intersections, and continue the ray till we're not sure we can get\
+        an intersection with a box*/\
+        for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {\
+            if (CST_BLOCK_MATERIALS[block_type].type == 3 && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], R, t, uv, normal)) {\
+                mustComputeUv = false;\
+                mustComputeIntersection = false;\
+                break;\
+            } else if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), R, face, t)) {\
+                mustComputeIntersection = false;\
+                break;\
+            }\
+            DRAW_RAY_ITER(BLOCK_TYPE_TO_IGNORE, true, MAX_BLOCK_ITERATION, BOCK_ON_NON_INTERSECTION);\
+        }\
+        /* need to re-compute the intersection */\
+        if (mustComputeIntersection) {\
+            t = BBoxRayIntersects(block, block + vec3(1), R, face);\
+        }\
+        vec3 intersection = R.origin + R.direction * t;\
+        if (block_type == CST_BLOCK_TYPE_WATER) {BOCK_ON_WATER_INTERSECTION}\
+        if (mustComputeUv)\
+            uv = bbox_uv(block, intersection, face);\
+        {BOCK_ON_UV_COMPUTE}\
+        int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];\
+        float t_qual = (t + T_BASE) / CST_TEXTURE_QUALITY_COEFF;\
+        vec4 color = texture_color(tex, uv, t_qual);\
+        if (color.a > 0.5)\
+        {\
+            switch (CST_BLOCK_MATERIALS[block_type].type)\
+            {\
+                case 1:\
+                    normal = texture_normal(tex, uv, face, t_qual);\
+                    break;\
+                case 2:\
+                    normal = CST_NORMAL_MAP[face];\
+                    break;\
+                case 3:\
+                    normal = texture_normal(tex, uv, t_qual, normal);\
+                    break;\
+            }\
+            {BOCK_ON_INTERSECTION;}\
+        }\
+        DRAW_RAY_ITER(BLOCK_TYPE_TO_IGNORE, true, MAX_BLOCK_ITERATION, BOCK_ON_NON_INTERSECTION);\
+    } while (k++ < CST_MAX_ITER_TRANSPARENT);\
+    {BOCK_ON_NON_INTERSECTION}
+
+float distance_before_next_intersection(const Ray ray, const float dist) {
+    DRAW_RAY_INIT(ray);
+    DRAW_RAY_ITER(CST_BLOCK_TYPE_AIR, false, CST_MAX_ITER_SHADOW, {return 1000;});
+
+    uint k = 0;
+    do {
+        float t;
+        int face = 0;
+        bool mustComputeIntersection = true;
+        bool mustComputeUv = true;
+        vec2 uv;
+
+        vec3 normal;
+
+        for (uint j = 0; j < CST_MAX_ITER_UNCERTAIN_BLOCKS && !isIntersectionCertain(block_type); j++) {
+            if ((block_type == 9 || CST_BLOCK_MATERIALS[block_type].type == 4) && plant_intersects(block, CST_BLOCK_MATERIALS[block_type].texture_coords[0], ray, t, uv, normal)) {
+                mustComputeUv = false;
+                mustComputeIntersection = false;
+                break;
+            } else if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), ray, face, t)) {
+                mustComputeIntersection = false;
+                break;
+            }
+
+            DRAW_RAY_ITER(CST_BLOCK_TYPE_AIR, true, CST_MAX_ITER_SHADOW, {return 1000;});
+        }
+
+        // need to re-compute the intersection
+        if (mustComputeIntersection) {
+            t = BBoxRayIntersects(block, block + vec3(1), ray, face);
+        } 
+
+        vec3 intersection = ray.origin + ray.direction * t;
+
+        if (mustComputeUv)
+            uv = bbox_uv(block, intersection, face);
+
+        float t_qual = (t + dist / 3) / CST_TEXTURE_QUALITY_COEFF;
+        int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];
+        vec4 color = texture_color(tex, uv, t_qual);
+
+        if (color.a > 0.5)
+            return t;
+
+        DRAW_RAY_ITER(CST_BLOCK_TYPE_AIR, true, CST_MAX_ITER_SHADOW, {return 1000;});
+    } while (k++ < CST_MAX_ITER_TRANSPARENT);
+
+    return 1000;
+}

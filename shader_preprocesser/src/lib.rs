@@ -22,8 +22,14 @@ impl<T: ToTokens> ToTokens for TokenList<T> {
 
 fn read_shader_litteral(readed_files: &mut Vec<String>, path: &str) -> String {
     let s = read_file(path);
+    let path = full_path(path);
 
-    readed_files.push(full_path(path));
+    // prevent double-include
+    if readed_files.contains(&path) {
+        return "".to_string();
+    }
+
+    readed_files.push(full_path(&path));
 
     let mut result = "".to_string();
 
