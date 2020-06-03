@@ -1,19 +1,32 @@
-bool bl_is_inside(const ivec3 block) {
-    return block.x >= 0 && block.x < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH
-        && block.y >= 0 && block.y < CST_CHUNK_HEIGHT
-        && block.z >= 0 && block.z < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH;
+int estimate_max_iter(const Ray ray)
+{
+    float res = 1e100;
+
+    if (ray.direction.x > 1e-3)
+        res = min((CST_NB_BLOCKS_X - ray.origin.x) * ray.direction_inv.x, res);
+    else if (ray.direction.x < -1e-3)
+        res = min(-ray.origin.x * ray.direction_inv.x, res);
+
+    if (ray.direction.z > 1e-3)
+        res = min((CST_NB_BLOCKS_X - ray.origin.z) * ray.direction_inv.z, res);
+    else if (ray.direction.z < -1e-3)
+        res = min(-ray.origin.z * ray.direction_inv.z, res);
+
+    if (ray.direction.y > 1e-3)
+        res = min((CST_CHUNK_HEIGHT - ray.origin.y) * ray.direction_inv.y, res);
+    else if (ray.direction.y < -1e-3)
+        res = min(-ray.origin.y * ray.direction_inv.y, res);
+
+    return int(res);
 }
 
-uint bl_value(const ivec2 chunk, ivec3 block, out vec3 grass_color) {
-    block -= ivec3(chunk.x, 0, chunk.y) * ivec3(CST_LOCAL_TO_WORLD);
-    const ivec2 a = chunk * ivec2(1, CST_NB_CHUNKS_X);
-    const ivec3 b = block.xzy * ivec3(1, CST_CHUNK_WIDTH, CST_CHUNK_WIDTH * CST_CHUNK_WIDTH);
-    const uint chunk_idx = cl_chunks_mapping[a.x + a.y];
+uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
+    const uint a = (block.x >> 4) + (block.z >> 4) * CST_NB_CHUNKS_X;
 
-    const uint[3] v = cl_blocks[chunk_idx].grass_color[b.x + b.y];
-    grass_color = vec3(float(v[0]) / 255.0, float(v[1]) / 255.0, float(v[2]) / 255.0);
+    column_idx = (block.x & 15) | ((block.z & 15) << 4);
+    chunk_idx = cl_chunks_mapping[a];
 
-    return cl_blocks[chunk_idx].blocks[b.x + b.y + b.z];
+    return cl_blocks[chunk_idx].blocks[column_idx | (uint(block.y) << 8)];
 }
 
 #define DRAW_RAY_INIT(R)\
@@ -23,24 +36,23 @@ uint bl_value(const ivec2 chunk, ivec3 block, out vec3 grass_color) {
     ivec3 _steps = ivec3(_sgn);\
     vec3 _side_dist = (_sgn * (block - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
     vec3 _mask;\
-    ivec3 chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
     vec3 grass_color = vec3(0);\
-    uint block_type = bl_value(chunk.xz, block, grass_color);\
+    uint chunk_idx;\
+    uint column_idx;\
+    uint block_type = bl_value(block, chunk_idx, column_idx);\
     uint _i = 0;\
-    bool _is_inside = true;\
+    uint _max_i = estimate_max_iter(R);\
 
 #define DRAW_RAY_ITER(BLOCK_TYPE_TO_IGNORE, IGNORE_CURRENT_BLOCK, MAX_ITER, BOCK_ON_NON_INTERSECTION)\
     if (IGNORE_CURRENT_BLOCK)\
         block_type = BLOCK_TYPE_TO_IGNORE;\
-    for (;_i < MAX_ITER && block_type == BLOCK_TYPE_TO_IGNORE && _is_inside; _i++) {\
+    for (;_i < MAX_ITER && block_type == BLOCK_TYPE_TO_IGNORE && _i < _max_i; _i++) {\
         _mask = vec3(lessThanEqual(_side_dist.xyz, min(_side_dist.yzx, _side_dist.zxy)));\
         _side_dist += _mask * _dt_dist;\
         block += ivec3(_mask) * _steps;\
-        chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
-        _is_inside = bl_is_inside(block);\
-        block_type = bl_value(chunk.xz, block, grass_color);\
+        block_type = bl_value(block, chunk_idx, column_idx);\
     }\
-    if (!(_is_inside && (block_type != BLOCK_TYPE_TO_IGNORE))) \
+    if (_i >= _max_i || (block_type == BLOCK_TYPE_TO_IGNORE)) \
         {BOCK_ON_NON_INTERSECTION}
 
 #define CAST_RAY(T_BASE, R, BLOCK_TYPE_TO_IGNORE, MAX_BLOCK_ITERATION, WITH_BLOCK_HIGHLIGHTING, BOCK_ON_NON_INTERSECTION, BOCK_ON_UV_COMPUTE, BOCK_ON_WATER_INTERSECTION, BOCK_ON_INTERSECTION)\
@@ -85,10 +97,18 @@ uint bl_value(const ivec2 chunk, ivec3 block, out vec3 grass_color) {
             if (block_type == 3 && face != 1 && face != 4) {\
                 vec4 ocolor = texture_color(GRASS_OVER_TEX, uv, t_qual);\
                 if (ocolor.a > 0.5)\
+                {\
+                    const uint[3] v = cl_blocks[chunk_idx].grass_color[column_idx];\
+                    grass_color = vec3(float(v[0]) / 255.0, float(v[1]) / 255.0, float(v[2]) / 255.0);\
                     color.xyz = ocolor.xyz * grass_color;\
+                }\
             }\
             else if (CST_BLOCK_MATERIALS[block_type].apply_grass_color)\
+            {\
+                const uint[3] v = cl_blocks[chunk_idx].grass_color[column_idx];\
+                grass_color = vec3(float(v[0]) / 255.0, float(v[1]) / 255.0, float(v[2]) / 255.0);\
                 color.xyz = color.xyz * grass_color;\
+            }\
             switch (CST_BLOCK_MATERIALS[block_type].type)\
             {\
                 case 1:\
