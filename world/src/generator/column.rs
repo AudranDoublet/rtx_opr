@@ -11,6 +11,7 @@ use rand::SeedableRng;
 pub struct ColumnProvider {
     perlins: [PerlinOctaves; 4],
     column_weights: [f32; 825],
+    grass_colors: [Vector3<f32>; 25],
     biome_provider: Box<Layer>,
     unzoomed_biome_provider: Box<Layer>,
 }
@@ -20,6 +21,11 @@ const Y_STRETCH: f32 = 12.;
 
 #[inline]
 fn lerp(t: f32, a: f32, b: f32) -> f32 {
+    a + (b - a) * t
+}
+
+#[inline]
+fn lerp3(t: f32, a: Vector3<f32>, b: Vector3<f32>) -> Vector3<f32> {
     a + (b - a) * t
 }
 
@@ -61,6 +67,7 @@ impl ColumnProvider {
                 PerlinOctaves::new(16, &mut rng),
             ],
             column_weights: [0.0; 825],
+            grass_colors: [Vector3::zeros(); 25],
             biome_provider: z,
             unzoomed_biome_provider: b,
         }
@@ -106,7 +113,7 @@ impl ColumnProvider {
     }
 
     #[inline]
-    fn interpolate_weights(&self, chunk: &mut Chunk, x: usize, y: usize, z: usize) {
+    fn interpolate_weights(&mut self, chunk: &mut Chunk, x: usize, y: usize, z: usize) {
         // for performance reasons, weights are generated for only a few blocks (each x/z: 4, y: 8)
         // this function make a trilinear interpolation to generate the missing weights
 
@@ -119,6 +126,26 @@ impl ColumnProvider {
         let v2_step = (self.column_weight_at(x + 0, y + 1, z + 1) - v2) / 8.;
         let v3_step = (self.column_weight_at(x + 1, y + 1, z + 0) - v3) / 8.;
         let v4_step = (self.column_weight_at(x + 1, y + 1, z + 1) - v4) / 8.;
+
+        let gc1 = *self.grass_color_at(x + 0, z + 0);
+        let gc2 = *self.grass_color_at(x + 0, z + 1);
+        let gc3 = *self.grass_color_at(x + 1, z + 0);
+        let gc4 = *self.grass_color_at(x + 1, z + 1);
+
+        for dx in 0..4 {
+            for dz in 0..4 {
+                let color = lerp3(
+                    dz as f32 / 4.,
+                    lerp3(dx as f32 / 4., gc1, gc3),
+                    lerp3(dx as f32 / 4., gc2, gc4),
+                );
+
+                let x = (x * 4 + dx) as i32;
+                let z = (z * 4 + dz) as i32;
+
+                chunk.set_grass_color(x, z, Vector3::new(color.x as u32, color.y as u32, color.z as u32));
+            }
+        }
 
         for dy in 0..8 {
             let mut v5 = v1;
@@ -162,6 +189,10 @@ impl ColumnProvider {
         self.column_weights[(x * 5 + z) * 33 + y]
     }
 
+    fn grass_color_at(&mut self, x: usize, z: usize) -> &mut Vector3<f32> {
+        &mut self.grass_colors[x * 5 + z]
+    }
+
     fn generate_weights(&mut self, biomes: &LayerResult, x: isize, z: isize) {
         let position = Vector3::new(x as f32, 0., z as f32);
         let noise_size = Vector3::new(5, 33, 5);
@@ -188,6 +219,7 @@ impl ColumnProvider {
 
                 // compute depth and scale considering neighbouring biomes
                 let self_biome = biomes.biome(z + 2, x + 2);
+                let mut grass_color = Vector3::zeros();
 
                 for dz in -2..=2 {
                     for dx in -2..=2 {
@@ -202,8 +234,12 @@ impl ColumnProvider {
                         scale += biome.depth() * c_force;
                         depth += biome.elevation() * c_force;
                         force += c_force;
+
+                        grass_color += biome.grass_color();
                     }
                 }
+
+                *self.grass_color_at(x as usize, z as usize) = grass_color / 25.0;
 
                 scale = (scale / force) * 0.9 + 0.1;
                 depth = ((depth / force) * 4. - 1.0) / 8.;

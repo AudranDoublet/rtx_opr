@@ -1,4 +1,6 @@
+#![feature(clamp)]
 #![feature(get_mut_unchecked)]
+
 #[macro_use]
 extern crate lazy_static;
 

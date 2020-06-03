@@ -116,6 +116,8 @@ impl CubeTracer {
                 &std::path::Path::new("data/flower_allium_n.png"),
                 &std::path::Path::new("data/flower_rose.png"),
                 &std::path::Path::new("data/flower_rose_n.png"),
+                &std::path::Path::new("data/grass_side_overlay.png"),
+                &std::path::Path::new("data/grass_side_overlay_n.png"),
             ],
         )?;
 

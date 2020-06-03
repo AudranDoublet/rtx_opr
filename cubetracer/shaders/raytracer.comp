@@ -38,11 +38,16 @@ uniform sampler2DArray in_uni_textures;
  * > -4- Data
  * ************************************************************/
 
+struct ChunkData {
+    uint blocks[CST_CHUNK_WIDTH*CST_CHUNK_WIDTH*CST_CHUNK_HEIGHT];
+    uint grass_color[CST_CHUNK_WIDTH*CST_CHUNK_WIDTH][3];
+};
+
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout (std430) readonly buffer shader_data {
     uint cl_chunks_mapping[CST_NB_CHUNKS_XZ];
-    uint cl_blocks[CST_NB_CHUNKS_XZ][CST_CHUNK_WIDTH*CST_CHUNK_WIDTH*CST_CHUNK_HEIGHT];
+    ChunkData cl_blocks[CST_NB_CHUNKS_XZ];
 };
 
 layout (binding = 0, rgba32f) uniform image2D out_uni_frame;

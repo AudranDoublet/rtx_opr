@@ -4,14 +4,16 @@ bool bl_is_inside(const ivec3 block) {
         && block.z >= 0 && block.z < CST_NB_CHUNKS_X * CST_CHUNK_WIDTH;
 }
 
-uint bl_value(const ivec2 chunk, ivec3 block) {
+uint bl_value(const ivec2 chunk, ivec3 block, out vec3 grass_color) {
     block -= ivec3(chunk.x, 0, chunk.y) * ivec3(CST_LOCAL_TO_WORLD);
     const ivec2 a = chunk * ivec2(1, CST_NB_CHUNKS_X);
     const ivec3 b = block.xzy * ivec3(1, CST_CHUNK_WIDTH, CST_CHUNK_WIDTH * CST_CHUNK_WIDTH);
     const uint chunk_idx = cl_chunks_mapping[a.x + a.y];
-    return cl_blocks
-        [chunk_idx]
-        [b.x + b.y + b.z];
+
+    const uint[3] v = cl_blocks[chunk_idx].grass_color[b.x + b.y];
+    grass_color = vec3(float(v[0]) / 255.0, float(v[1]) / 255.0, float(v[2]) / 255.0);
+
+    return cl_blocks[chunk_idx].blocks[b.x + b.y + b.z];
 }
 
 #define DRAW_RAY_INIT(R)\
@@ -22,7 +24,8 @@ uint bl_value(const ivec2 chunk, ivec3 block) {
     vec3 _side_dist = (_sgn * (block - R.origin) + _sgn * 0.5 + 0.5) * _dt_dist;\
     vec3 _mask;\
     ivec3 chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
-    uint block_type = bl_value(chunk.xz, block);\
+    vec3 grass_color = vec3(0);\
+    uint block_type = bl_value(chunk.xz, block, grass_color);\
     uint _i = 0;\
     bool _is_inside = true;\
 
@@ -35,7 +38,7 @@ uint bl_value(const ivec2 chunk, ivec3 block) {
         block += ivec3(_mask) * _steps;\
         chunk = ivec3(floor(block * CST_WORLD_TO_LOCAL));\
         _is_inside = bl_is_inside(block);\
-        block_type = bl_value(chunk.xz, block);\
+        block_type = bl_value(chunk.xz, block, grass_color);\
     }\
     if (!(_is_inside && (block_type != BLOCK_TYPE_TO_IGNORE))) \
         {BOCK_ON_NON_INTERSECTION}
@@ -79,6 +82,13 @@ uint bl_value(const ivec2 chunk, ivec3 block) {
         vec4 color = texture_color(tex, uv, t_qual);\
         if (color.a > 0.5)\
         {\
+            if (block_type == 3 && face != 1 && face != 4) {\
+                vec4 ocolor = texture_color(GRASS_OVER_TEX, uv, t_qual);\
+                if (ocolor.a > 0.5)\
+                    color.xyz = ocolor.xyz * grass_color;\
+            }\
+            else if (CST_BLOCK_MATERIALS[block_type].apply_grass_color)\
+                color.xyz = color.xyz * grass_color;\
             switch (CST_BLOCK_MATERIALS[block_type].type)\
             {\
                 case 1:\
