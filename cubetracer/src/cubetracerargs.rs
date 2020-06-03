@@ -112,8 +112,9 @@ impl CubeTracerArguments {
         let mem_blocks_offset = chunks_mapping.len() * mem::size_of::<u32>();
 
         for chunk_to_rm in chunks_to_remove {
-            let idx = self.chunks_mapping.remove(&chunk_to_rm).unwrap();
-            self.chunks_available_indices.push(idx);
+            if let Some(idx) = self.chunks_mapping.remove(&chunk_to_rm) {
+                self.chunks_available_indices.push(idx);
+            }
         }
 
         while let Some(chunk_to_add) = chunks_to_add.pop() {
