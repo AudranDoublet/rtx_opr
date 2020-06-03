@@ -1,4 +1,5 @@
 #![feature(clamp)]
+#![feature(proc_macro_hygiene)]
 
 mod camera;
 mod cubetracer;

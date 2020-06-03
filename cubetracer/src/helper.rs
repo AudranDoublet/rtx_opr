@@ -1,6 +1,8 @@
 extern crate gl;
 extern crate image;
 
+use shader_preprocesser::read_shader;
+
 use crate::errors::*;
 use crate::{glchk_expr, glchk_stmt, ConfigurableShader};
 
@@ -136,7 +138,8 @@ pub fn get_ssbo_location(program: u32, var_name: &str) -> Result<i32, GLError> {
 }
 
 pub fn build_program_raytracer(view_size: usize, shadow_activated: bool, resolution_coeff: u32) -> Result<u32, GLError> {
-    let mut shader_compute = ConfigurableShader::new(include_str!("../shaders/raytracer.comp"));
+    let mut shader_compute = ConfigurableShader::new(read_shader!("cubetracer/shaders/raytracer.comp"));
+
     shader_compute.var("CST_VIEW_DISTANCE", view_size);
     shader_compute.var("CST_SHADOW_ACTIVATED", shadow_activated);
     shader_compute.var("CST_TEXTURE_QUALITY_COEFF", resolution_coeff);

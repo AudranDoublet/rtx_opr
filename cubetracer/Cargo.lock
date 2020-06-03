@@ -289,6 +289,7 @@ dependencies = [
  "glutin",
  "image",
  "nalgebra",
+ "shader_preprocesser",
  "world",
 ]
 
@@ -1135,6 +1136,15 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "shader_preprocesser"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2 1.0.12",
+ "quote 1.0.4",
+ "syn",
+]
 
 [[package]]
 name = "shared_library"

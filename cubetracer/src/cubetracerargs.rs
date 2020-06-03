@@ -228,8 +228,8 @@ impl CubeTracerArguments {
         mut highlighted_block: Vector3<i32>,
     ) -> Result<(), GLError> {
         if !change {
-            self.iteration_id += 1;
-            self.set_i(VAR_IDX_ITERATION_ID, self.iteration_id);
+            self.iteration_id = 0; //FIXME += 1
+            self.set_i(VAR_IDX_ITERATION_ID, self.iteration_id)?;
         } else {
             self.iteration_id = 0;
 
@@ -245,9 +245,8 @@ impl CubeTracerArguments {
             self.set_vector_3f(VAR_IDX_SCREEN_DOT_LEFT, left)?;
             self.set_vector_3f(VAR_IDX_SCREEN_DOT_UP, up)?;
             self.set_vector_3i(VAR_IDX_HIGHTLIGHTED_BLOCK, highlighted_block)?;
-            self.set_i(VAR_IDX_ITERATION_ID, self.iteration_id);
+            self.set_i(VAR_IDX_ITERATION_ID, self.iteration_id)?;
             // FIXME-END
-
         }
 
         self.set_vector_3f(VAR_IDX_WIND, wind)?;

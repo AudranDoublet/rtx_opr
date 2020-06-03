@@ -1,0 +1,50 @@
+
+const bool CST_SHADOW_ACTIVATED = <<<CST_SHADOW_ACTIVATED>>>;
+const bool CST_SPECULAR_ACTIVATED = false;
+const int  CST_TEXTURE_QUALITY_COEFF = <<<CST_TEXTURE_QUALITY_COEFF>>>;
+
+const float CST_SPECULAR_SHININESS = 16;
+
+const float CST_EPSILON = 1e-4;
+const uint CST_CHUNK_WIDTH = 16;
+const uint CST_CHUNK_HEIGHT = 256;
+const vec3 CST_LOCAL_TO_WORLD = vec3(CST_CHUNK_WIDTH);
+const vec3 CST_WORLD_TO_LOCAL = 1 / CST_LOCAL_TO_WORLD;
+const vec3 CST_BLOCK_COLORS[] = {
+    vec3(1, 1, 0),
+    vec3(0, 0, 1),
+    vec3(0.2, 0.2, 0.2),
+    vec3(0, 1, 0),
+    vec3(0.7, 0.6, 0.),
+    vec3(0.4, 0.4, 0.4),
+
+    vec3(0.8, 0.6, 0.3),
+    vec3(0, 0.9, 0),
+    vec3(0.9),
+    vec3(0, 0.6, 0.1),
+};
+
+const uint CST_VIEW_DISTANCE = <<<CST_VIEW_DISTANCE>>>;
+const uint CST_NB_CHUNKS_X = (2*CST_VIEW_DISTANCE);
+const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
+
+const vec3 CST_LIGHT_DIRECTION = normalize(vec3(-0.7, -1.5, -1.1));
+const vec3 CST_LIGHT_DIRECTION_INV = 1 / CST_LIGHT_DIRECTION;
+const vec3 CST_LIGHT_AMBIENT = vec3(0.0, 0.0, 0.0);
+
+const uint CST_MAX_ITER_UNCERTAIN_BLOCKS = 32;
+const uint CST_MAX_ITER_TRANSPARENT = 16;
+const uint CST_MAX_ITER_SHADOW = 16;
+const uint CST_MAX_ITER_BLOCK_REFLECTION = 16;
+const uint CST_MAX_ITER_WATER_REFLECTION = 64;
+const uint CST_MAX_ITER_WATER_REFRACTION = 64;
+
+const vec3 CST_NORMAL_MAP[6] = {
+    vec3(1, 0, 0),
+    vec3(0, 1, 0),
+    vec3(0, 0, 1),
+    vec3(-1, 0, 0),
+    vec3(0, -1, 0),
+    vec3(0, 0, -1),
+};
+

@@ -1,10 +1,5 @@
 #version 430 core
 
-layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-
-/* ************************************************************
- * > --1- Constants
- * ************************************************************/
 const bool CST_SHADOW_ACTIVATED = <<<CST_SHADOW_ACTIVATED>>>;
 const bool CST_SPECULAR_ACTIVATED = false;
 const int  CST_TEXTURE_QUALITY_COEFF = <<<CST_TEXTURE_QUALITY_COEFF>>>;
@@ -36,7 +31,7 @@ const uint CST_NB_CHUNKS_XZ = CST_NB_CHUNKS_X * CST_NB_CHUNKS_X;
 
 const vec3 CST_LIGHT_DIRECTION = normalize(vec3(-0.7, -1.5, -1.1));
 const vec3 CST_LIGHT_DIRECTION_INV = 1 / CST_LIGHT_DIRECTION;
-const vec3 CST_LIGHT_AMBIENT = vec3(0.0, 0.0, 0.0);
+const vec3 CST_LIGHT_AMBIENT = vec3(0.1, 0.1, 0.1);
 
 const uint CST_MAX_ITER_UNCERTAIN_BLOCKS = 32;
 const uint CST_MAX_ITER_TRANSPARENT = 16;
@@ -54,6 +49,12 @@ const vec3 CST_NORMAL_MAP[6] = {
     vec3(0, 0, -1),
 };
 
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+/* ************************************************************
+ * > --1- Constants
+ * ************************************************************/
 const uint CST_BLOCK_TYPE_AIR    = 0;
 const uint CST_BLOCK_TYPE_WATER  = 1;
 

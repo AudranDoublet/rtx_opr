@@ -17,3 +17,5 @@ glutin = "0.24.0"
 nalgebra = "*"
 
 image = ""
+
+shader_preprocesser = { path = "../shader_preprocesser" }
