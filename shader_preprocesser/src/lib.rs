@@ -6,19 +6,7 @@ extern crate proc_macro2;
 use std::fs::read_to_string;
 
 use syn::Lit;
-use quote::{quote, ToTokens};
-
-struct TokenList<T> {
-    list: Vec<T>,
-}
-
-impl<T: ToTokens> ToTokens for TokenList<T> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        for i in &self.list {
-            i.to_tokens(tokens);
-        }
-    }
-}
+use quote::quote;
 
 fn read_shader_litteral(readed_files: &mut Vec<String>, path: &str) -> String {
     let s = read_file(path);
