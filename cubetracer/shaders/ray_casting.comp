@@ -17,9 +17,8 @@ int estimate_max_iter(const Ray ray)
     else if (ray.direction.y < -1e-5)
         res = min(-ray.origin.y * ray.direction_inv.y, res);
 
-    vec3 dist = (ray.direction * res);
-
-    return int(abs(dist.x) + abs(dist.y) + abs(dist.z)) - 1;
+    vec3 dist = abs(ray.direction * res);
+    return int(dist.x + dist.y + dist.z) - 1;
 }
 
 uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
