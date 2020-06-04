@@ -1,3 +1,23 @@
+const float wave_height = 0.04;
+const float wave_speed = 0.4;
+const float wave_resolution = 5.0;
+
+vec3 water_normal(vec3 pos) {
+    vec3 res = cross(vec3(
+        0.0,
+        wave_height * cos(wave_speed * in_uni_time + pos.x * wave_resolution),
+        1.0
+    ), vec3(
+        1.0,
+        -wave_height * sin(wave_speed * in_uni_time + pos.z * wave_resolution),
+        0.0
+    ));
+
+    if (res.y < 0.0)
+        res = -res;
+    return res;
+}
+
 int estimate_max_iter(const Ray ray)
 {
     float res = 1e100;

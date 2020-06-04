@@ -20,8 +20,9 @@ const VAR_IDX_HIGHTLIGHTED_BLOCK: usize = 5;
 const VAR_IDX_TEXTURES: usize = 6;
 const VAR_IDX_WIND: usize = 7;
 const VAR_IDX_ITERATION_ID: usize = 8;
+const VAR_IDX_TIME: usize = 9;
 
-const VARS_LEN: usize = 9;
+const VARS_LEN: usize = 10;
 
 pub struct CubeTracerArguments {
     program: u32,
@@ -81,6 +82,9 @@ impl CubeTracerArguments {
 
         uniform_locations[VAR_IDX_ITERATION_ID] =
             helper::get_uniform_location(program, "in_uni_iteration_id")?;
+
+        uniform_locations[VAR_IDX_TIME] =
+            helper::get_uniform_location(program, "in_uni_time")?;
 
         uniform_locations[VAR_IDX_WIND] = helper::get_uniform_location(program, "in_uni_wind")?;
 
@@ -192,6 +196,19 @@ impl CubeTracerArguments {
         Ok(())
     }
 
+    fn set_f(&self, var_idx: usize, value: f32) -> Result<(), GLError> {
+        glchk_stmt!(
+            gl::ProgramUniform1fv(
+                self.program,
+                self.uniform_locations[var_idx],
+                1,
+                (&value) as *const _
+            );
+        );
+
+        Ok(())
+    }
+
     fn set_vector_2i(&self, var_idx: usize, value: Vector2<i32>) -> Result<(), GLError> {
         glchk_stmt!(
             gl::ProgramUniform2iv(
@@ -234,6 +251,7 @@ impl CubeTracerArguments {
 
     pub fn set_camera(
         &mut self,
+        time: f32,
         change: bool,
         value: &Camera,
         wind: Vector3<f32>,
@@ -261,6 +279,7 @@ impl CubeTracerArguments {
             // FIXME-END
         }
 
+        self.set_f(VAR_IDX_TIME, time)?;
         self.set_vector_3f(VAR_IDX_WIND, wind)?;
 
         Ok(())
