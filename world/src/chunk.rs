@@ -13,6 +13,7 @@ pub struct Chunk {
     coords: Vector2<i32>,
     pub blocks: [Block; COUNT as usize],
     pub lightning: [f32; COUNT as usize],
+    pub grass_color: [f32; (WIDTH * WIDTH * 3) as usize],
     biomes: [BiomeType; WIDTH as usize * WIDTH as usize],
 
     decorated: bool,
@@ -46,6 +47,7 @@ impl Chunk {
             blocks: [Block::Air; COUNT as usize],
             lightning: [0.0; COUNT as usize],
             decorated: false,
+            grass_color: [0.0; (WIDTH * WIDTH * 3) as usize],
             biomes: [BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
             modified: true,
         })
@@ -97,6 +99,14 @@ impl Chunk {
         }
 
         0
+    }
+
+    pub fn set_grass_color(&mut self, x: i32, z: i32, color: Vector3<f32>) {
+        let pos = (x + z * WIDTH) as usize * 3;
+
+        self.grass_color[pos + 0] = color.x / 255.;
+        self.grass_color[pos + 1] = color.y / 255.;
+        self.grass_color[pos + 2] = color.z / 255.;
     }
 
     pub fn block_at_chunk(&self, x: i32, y: i32, z: i32) -> Block {

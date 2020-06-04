@@ -1,5 +1,7 @@
 extern crate rand;
 
+use nalgebra::Vector3;
+
 use rand::prelude::*;
 use std::collections::HashMap;
 
@@ -39,6 +41,12 @@ lazy_static! {
 
         map
     };
+
+    static ref GRASS_COLORS: [Vector3<f32>; 3] = [
+        Vector3::new(191.0, 183.0,  85.0),
+        Vector3::new(128.0, 180.0, 151.0),
+        Vector3::new(71.0 , 205.0,  51.0),
+    ];
 }
 
 pub enum BiomeShapeType {
@@ -234,6 +242,102 @@ impl BiomeType {
             BiomeType::IceTaiga => BiomeType::IceTaigaHills,
 
             v => *v,
+        }
+    }
+
+    pub fn temperature(&self) -> f32 {
+        match self {
+            BiomeType::Ocean            => 0.5,
+            BiomeType::DeepOcean        => 0.5,
+            BiomeType::Plain            => 0.8,
+            BiomeType::Hills            => 0.8,
+
+            BiomeType::Desert           => 2.0,
+            BiomeType::DesertHills      => 2.0,
+            BiomeType::Savanna          => 1.2,
+            BiomeType::SavannaPlateau   => 1.0,
+
+            BiomeType::Jungle           => 0.95,
+            BiomeType::JungleHills      => 0.95,
+            BiomeType::Moutains         => 0.2,
+            BiomeType::HighMoutains     => 0.1,
+
+            BiomeType::Taiga            => 0.25,
+            BiomeType::TaigaHills       => 0.25,
+
+            BiomeType::Beach            => 0.8,
+            BiomeType::Forest           => 0.7,
+            BiomeType::ForestHills      => 0.7,
+            BiomeType::Swampland        => 0.8,
+            BiomeType::IceBeach         => 0.05,
+            BiomeType::IcePlain         => 0.05,
+            BiomeType::IceHills         => 0.05,
+            BiomeType::IceForest        => 0.05,
+            BiomeType::IceForestHills   => 0.05,
+            BiomeType::IceMoutains      => -0.5,
+            BiomeType::IceHighMoutains  => -0.6,
+            BiomeType::IceTaiga         => -0.5,
+            BiomeType::IceTaigaHills    => -0.5,
+
+            BiomeType::River            => 0.5,
+        }
+    }
+
+    pub fn rainfall(&self) -> f32 {
+        match self {
+            BiomeType::Ocean            => 0.5,
+            BiomeType::DeepOcean        => 0.5,
+            BiomeType::Plain            => 0.4,
+            BiomeType::Hills            => 0.4,
+
+            BiomeType::Desert           => 0.0,
+            BiomeType::DesertHills      => 0.0,
+            BiomeType::Savanna          => 0.0,
+            BiomeType::SavannaPlateau   => 0.0,
+
+            BiomeType::Jungle           => 0.9,
+            BiomeType::JungleHills      => 0.9,
+            BiomeType::Moutains         => 0.3,
+            BiomeType::HighMoutains     => 0.3,
+
+            BiomeType::Taiga            => 0.8,
+            BiomeType::TaigaHills       => 0.8,
+
+            BiomeType::Beach            => 0.4,
+            BiomeType::Forest           => 0.8,
+            BiomeType::ForestHills      => 0.8,
+            BiomeType::Swampland        => 0.9,
+            BiomeType::IceBeach         => 0.3,
+            BiomeType::IcePlain         => 0.3,
+            BiomeType::IceHills         => 0.3,
+            BiomeType::IceForest        => 0.3,
+            BiomeType::IceForestHills   => 0.3,
+            BiomeType::IceMoutains      => 0.5,
+            BiomeType::IceHighMoutains  => 0.5,
+            BiomeType::IceTaiga         => -0.5,
+            BiomeType::IceTaigaHills    => -0.5,
+
+            BiomeType::River            => 0.5,
+        }
+    }
+
+    pub fn grass_color(&self) -> Vector3<f32> {
+        match self {
+            BiomeType::Swampland => Vector3::new(106.0, 112.0, 57.0),
+            biome => {
+                let temperature = biome.temperature().clamp(0.0, 1.0);
+                let rainfall = biome.rainfall().clamp(0.0, 1.0) * temperature;
+
+                let color = (temperature - rainfall) * GRASS_COLORS[0]
+                                + (1.0 - temperature) * GRASS_COLORS[1]
+                                + (rainfall) * GRASS_COLORS[2];
+
+                Vector3::new(
+                    color.x.clamp(0., 255.),
+                    color.y.clamp(0., 255.),
+                    color.z.clamp(0., 255.),
+                )
+            }
         }
     }
 

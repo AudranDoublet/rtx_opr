@@ -34,13 +34,17 @@ pub struct CubeTracerArguments {
     iteration_id: i32,
 }
 
+fn chunk_size() -> usize {
+    16*16*256 + 16*16*3
+}
+
 impl CubeTracerArguments {
     pub fn new(program: u32, view_size: usize) -> Result<Self, GLError> {
         let mut uniform_locations = [-1; VARS_LEN];
 
         let nb_chunks = (2 * view_size).pow(2);
         let cl_nb_mapping = 1;
-        let cl_nb_blocks = 16 * 16 * 256;
+        let cl_nb_blocks = chunk_size();
 
         let ssbo_raytracer_cl = helper::make_ssbo(
             program,
@@ -108,23 +112,31 @@ impl CubeTracerArguments {
         let nb_chunks_xz = nb_chunks_x.pow(2);
 
         let mut chunks_mapping = vec![(nb_chunks_xz + 1) as u32; nb_chunks_xz];
-        let mem_chunk_size = 16 * 16 * 256 * mem::size_of::<u32>();
+        let mem_chunk_size = chunk_size() * mem::size_of::<u32>();
         let mem_blocks_offset = chunks_mapping.len() * mem::size_of::<u32>();
 
         for chunk_to_rm in chunks_to_remove {
-            let idx = self.chunks_mapping.remove(&chunk_to_rm).unwrap();
-            self.chunks_available_indices.push(idx);
+            if let Some(idx) = self.chunks_mapping.remove(&chunk_to_rm) {
+                self.chunks_available_indices.push(idx);
+            }
         }
 
         while let Some(chunk_to_add) = chunks_to_add.pop() {
             let coords = chunk_to_add.coords();
             let (x, y) = (coords.x, coords.y);
 
-            let chunk_to_add_data = chunk_to_add
+            let mut chunk_to_add_data = chunk_to_add
                 .blocks
                 .iter()
                 .map(|&b| b as u32)
                 .collect::<Vec<u32>>();
+
+            chunk_to_add_data.extend(
+                chunk_to_add.grass_color
+                    .iter().map(|&b| unsafe {
+                        std::mem::transmute::<f32, u32>(b)
+                    })
+            );
 
             let chunk_idx = if let Some(idx) = self.chunks_mapping.get(&(x, y)) {
                 *idx

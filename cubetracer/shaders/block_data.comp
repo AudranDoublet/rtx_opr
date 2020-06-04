@@ -1,18 +1,19 @@
 struct Material {
     int type;
+    bool apply_grass_color;
     int texture_coords[6];
 };
 
 #define TEX_UNIQUE(v) (v), (v), (v), (v), (v), (v)
 #define TEX_COLUMN(v, w, z) (v), (w), (v), (v), (z), (v)
-#define MATERIAL_EMPTY() Material(0, int[6]( TEX_UNIQUE(0) ))
-#define MATERIAL_U(u) Material(1, int[6]( TEX_UNIQUE(u)) )
-#define MATERIAL_U_NO_NORM(u) Material(2, int[6]( TEX_UNIQUE(u)) )
-#define MATERIAL_PLANT(u) Material(3, int[6] (TEX_UNIQUE(u)))
-#define MATERIAL_FLOWER(i) Material(3, int[6] (TEX_UNIQUE(FLOWER_TEX + i*2)))
-#define MATERIAL_C(v, w, z) Material(1, int[6]( TEX_COLUMN(v, w, z) ))
-#define MATERIAL_LOG(i) MATERIAL_C(LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
-#define MATERIAL_LEAVES(i) MATERIAL_U_NO_NORM(LEAVES_TEX + i)
+#define MATERIAL_EMPTY() Material(0, false, int[6]( TEX_UNIQUE(0) ))
+#define MATERIAL_U(u) Material(1, false, int[6]( TEX_UNIQUE(u)) )
+#define MATERIAL_U_T(u) Material(1, true, int[6]( TEX_UNIQUE(u)) )
+#define MATERIAL_PLANT(u) Material(3, true, int[6] (TEX_UNIQUE(u)))
+#define MATERIAL_FLOWER(i) Material(3, false, int[6] (TEX_UNIQUE(FLOWER_TEX + i*2)))
+#define MATERIAL_C(c, v, w, z) Material(1, c, int[6]( TEX_COLUMN(v, w, z) ))
+#define MATERIAL_LOG(i) MATERIAL_C(false, LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
+#define MATERIAL_LEAVES(i) MATERIAL_U_T(LEAVES_TEX + i*2)
 
 #define STONE_TEX       0
 #define DIRT_TEX        2
@@ -28,17 +29,18 @@ struct Material {
 #define LOGS_TEX        22
 #define TOP_LOGS_TEX    34
 #define LEAVES_TEX      46
-#define FLOWER_TEX      52
+#define FLOWER_TEX      58
+#define GRASS_OVER_TEX  78
 
 const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_EMPTY(),
     MATERIAL_EMPTY(),                                               // 1-Water
     MATERIAL_U(STONE_TEX),                                          // 2-Stone
-    MATERIAL_C(GRASS_SIDE_TEX, GRASS_TOP_TEX, DIRT_TEX),            // 3-Grass
+    MATERIAL_C(true, GRASS_SIDE_TEX, GRASS_TOP_TEX, DIRT_TEX),            // 3-Grass
     MATERIAL_U(DIRT_TEX),                                           // 4-Dirt
     MATERIAL_U(GRAVEL_TEX),                                         // 5-Gravel
     MATERIAL_U(SAND_TEX),                                           // 6-Sand
-    MATERIAL_C(CACTUS_SIDE_TEX, CACTUS_TOP_TEX, CACTUS_BOTT_TEX),   // 7-Cactus
+    MATERIAL_C(false, CACTUS_SIDE_TEX, CACTUS_TOP_TEX, CACTUS_BOTT_TEX),   // 7-Cactus
     MATERIAL_U(SNOW_TEX),                                           // 8-Snow
     MATERIAL_PLANT(TALLGRASS_TEX),                                  // 9-Tall grass
     MATERIAL_LOG(0),
