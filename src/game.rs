@@ -332,7 +332,7 @@ pub fn game(
 
                     cubetracer
                         .args
-                        .set_camera(change, &camera, wind, highlighted_block)
+                        .set_camera(total_time, change, &camera, wind, highlighted_block)
                         .unwrap();
 
                     context.window().request_redraw();

@@ -22,6 +22,7 @@ uniform ivec2 in_uni_cl_min_coords; // chunks min coord in
 uniform ivec3 in_uni_highlighted_block;
 
 uniform vec3 in_uni_wind;
+uniform float in_uni_time;
 
 uniform sampler2DArray in_uni_textures;
 

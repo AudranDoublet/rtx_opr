@@ -106,7 +106,7 @@ vec3 lightingJunctureRefractionFromAir(const vec3 LWR_intersection, const vec3 L
 }
 
 vec3 lightingJunctureFromWater(const vec3 intersection, const vec3 incident, const float acc_dist) {
-    const vec3 lwNormal = vec3(0, -1, 0);
+    const vec3 lwNormal = -water_normal(intersection);
     const float coeffReflectivity = fresnelFromWater(incident, -lwNormal);
 
     vec3 outColor = lightingJunctureReflectionFromWater(intersection, incident, lwNormal, acc_dist);
@@ -120,7 +120,7 @@ vec3 lightingJunctureFromWater(const vec3 intersection, const vec3 incident, con
 }
 
 vec3 lightingJunctureFromAir(const vec3 intersection, const vec3 incident, const float acc_dist) {
-    const vec3 lwNormal = vec3(0, 1, 0);
+    const vec3 lwNormal = water_normal(intersection);
     const float coeffReflectivity = fresnelFromAir(incident, -lwNormal);
 
     vec3 outColor = lightingJunctureReflectionFromAir(intersection, incident, lwNormal, acc_dist);
