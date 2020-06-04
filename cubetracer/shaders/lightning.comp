@@ -1,5 +1,3 @@
-
-
 vec3 sky_color(const Ray r) {
     float sun = dot(CST_LIGHT_DIRECTION, normalize(r.direction));
 
@@ -143,7 +141,7 @@ vec3 trace_ray(const Ray ray) {
     DRAW_RAY_INIT(ray);
     if (block_type == CST_BLOCK_TYPE_WATER) {
         CAST_RAY_INTO_WATER(ray, 0.0, CST_MAX_ITER_RAY_WATER, true, {
-            return vec3(0.05, 0., 0.4);
+            return vec3(0.00, 0., 0.02);
         }, { if (isHighlighting(block, uv)) return vec3(0.8); }, {
             return lightingJunctureFromWater(intersection, ray.direction, t);
         },{
