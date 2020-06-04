@@ -30,9 +30,13 @@ uniform sampler2DArray in_uni_textures;
  * > -3- Includes
  * ************************************************************/
 
+// 44
 #include cubetracer/shaders/hyperparameters.comp
+// 101
 #include cubetracer/shaders/block_data.comp
+// 25
 #include cubetracer/shaders/ray.comp
+// 131
 #include cubetracer/shaders/block_intersection.comp
 
 /* ************************************************************
@@ -57,7 +61,9 @@ layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
  * > -5- main
  * ************************************************************/
 
+//65 (365)
 #include cubetracer/shaders/ray_casting.comp
+//121
 #include cubetracer/shaders/lightning.comp
 
 void main() {

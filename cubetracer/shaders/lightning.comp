@@ -41,67 +41,122 @@ vec3 lighting(vec3 origin, vec3 color, vec3 intersection, vec3 normal, float dis
     return light_diffuse * color;
 }
 
-float fresnel(vec3 incident)
-{
-    const vec3 normal = vec3(0, -1, 0);
-
-    #if CST_USE_FRESNEL
-        const float n1 = 1.;
-        const float n2 = CST_WATER_IOR;
-
-        float r0 = (n1 - n2) / (n1 + n2);
-        r0 *= r0;
-
-        float x  = 1.0 + dot(normal, incident);
-        return clamp(r0 + (1.0 - r0) * x * x * x * x * x, 0, 1);;
-    #else
-        return 1-clamp(dot(normal, incident), 0, 1);
-    #endif
+#define R0 ((1 - CST_WATER_IOR) / (1 + CST_WATER_IOR)) * ((1 - CST_WATER_IOR) / (1 + CST_WATER_IOR))
+float fresnelFromWater(vec3 incident, vec3 normal) {
+    const float r0 = R0;
+    float cos_i = max(0.0, dot(normal, incident));
+    const float sin_t2 = CST_WATER_IOR * CST_WATER_IOR * (1.0 - cos_i * cos_i);
+    if (sin_t2 > 1.0) return 1.0;
+    cos_i = sqrt(1.0 - sin_t2);
+    const float x  = 1.0 - cos_i;
+    return r0 + (1.0 - r0) * x * x * x * x * x;
 }
 
-vec3 lightingWaterReflection(const vec3 LWR_intersection, const vec3 LWR_incident, const float dist, const vec3 normal) {
-    const Ray ray = ray_make(LWR_intersection, reflect(LWR_incident, normal));
+float fresnelFromAir(vec3 incident, vec3 normal) {
+    const float r0 = R0;
+    const float x  = 1.0 - max(0.0, dot(normal, incident));
+    return r0 + (1.0 - r0) * x * x * x * x * x;
+}
+#undef R0
 
-    CAST_RAY(dist, ray, CST_BLOCK_TYPE_AIR, CST_MAX_ITER_WATER_REFLECTION, false, {
+vec3 lightingJunctureReflectionFromWater(const vec3 LWR_intersection, const vec3 LWR_incident, const vec3 LWR_normal, const float LWR_acc_dist) {
+    const Ray ray = ray_make(LWR_intersection, reflect(LWR_incident, LWR_normal));
+    DRAW_RAY_INIT(ray);
+    CAST_RAY_INTO_WATER(ray, LWR_acc_dist, CST_MAX_ITER_RAY_WATER, false, {
+        return vec3(0.0, 0.01, 0.2);
+    }, {}, { return vec3(1, 0, 0); }, {
+        return lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
+    });
+}
+
+vec3 lightingJunctureReflectionFromAir(const vec3 LWR_intersection, const vec3 LWR_incident, const vec3 LWR_normal, const float LWR_acc_dist) {
+    const Ray ray = ray_make(LWR_intersection, reflect(LWR_incident, LWR_normal));
+    DRAW_RAY_INIT(ray);
+    CAST_RAY_INTO_AIR(ray, LWR_acc_dist, CST_MAX_ITER_RAY_AIR, false, {
         return sky_color(ray);
     }, {}, { return vec3(1, 0, 0); }, {
         return lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
     });
 }
 
-vec3 lightingWaterRefraction(const vec3 LWR_intersection, const vec3 LWR_incident, const float dist, const vec3 normal) {
-    const Ray ray = ray_make(LWR_intersection, refract(LWR_incident, normal, 1/CST_WATER_IOR));
-
-    CAST_RAY(dist, ray, CST_BLOCK_TYPE_WATER, CST_MAX_ITER_WATER_REFRACTION, false, {
-        return vec3(0, 0.1, 0.4);
+vec3 lightingJunctureRefractionFromWater(const vec3 LWR_intersection, const vec3 LWR_incident, const vec3 LWR_normal, const float LWR_acc_dist) {
+    const Ray ray = ray_make(LWR_intersection, refract(LWR_incident, LWR_normal, CST_WATER_IOR));
+    DRAW_RAY_INIT(ray);
+    CAST_RAY_INTO_AIR(ray, LWR_acc_dist, CST_MAX_ITER_RAY_AIR, false, {
+        return sky_color(ray);
     }, {}, { return vec3(1, 0, 0); }, {
         vec3 outColor = lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
-
         if (CST_USE_BEER_ATTENUATION)
-            outColor *= exp(-CST_WATER_TRANSMITTANCE * t);
-
+            outColor *= exp(-CST_WATER_TRANSMITTANCE * LWR_acc_dist);
         return outColor;
     });
 }
 
+vec3 lightingJunctureRefractionFromAir(const vec3 LWR_intersection, const vec3 LWR_incident, const vec3 LWR_normal, const float LWR_acc_dist) {
+    const Ray ray = ray_make(LWR_intersection, refract(LWR_incident, LWR_normal, 1/CST_WATER_IOR));
+    DRAW_RAY_INIT(ray);
+    CAST_RAY_INTO_WATER(ray, LWR_acc_dist, CST_MAX_ITER_RAY_WATER, false, {
+        return vec3(0.0, 0.01, 0.2);
+    }, {}, { return vec3(1, 0, 0); }, {
+        vec3 outColor = lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
+        if (CST_USE_BEER_ATTENUATION)
+            outColor *= exp(-CST_WATER_TRANSMITTANCE * t);
+        return outColor;
+    });
+}
 
-vec3 lightingWater(const vec3 intersection, const vec3 incident, const float dist, const vec3 normal) {
-    vec3 colorRefract = lightingWaterRefraction(intersection, incident, dist, normal);
-    vec3 colorReflect = lightingWaterReflection(intersection, incident, dist, normal);
+vec3 lightingJunctureFromWater(const vec3 intersection, const vec3 incident, const float acc_dist) {
+    const vec3 lwNormal = -water_normal(intersection);
+    const float coeffReflectivity = fresnelFromWater(incident, -lwNormal);
 
-    const float coeffReflectivity = fresnel(incident);
-    return coeffReflectivity * colorReflect + (1-coeffReflectivity) * colorRefract;
+    vec3 outColor = lightingJunctureReflectionFromWater(intersection, incident, lwNormal, acc_dist);
+
+    if (coeffReflectivity < 0.99) {
+        vec3 colorRefract = lightingJunctureRefractionFromWater(intersection, incident, lwNormal, acc_dist);
+        outColor = coeffReflectivity * outColor + (1.0 - coeffReflectivity) * colorRefract;
+    }
+
+    return outColor;
+}
+
+vec3 lightingJunctureFromAir(const vec3 intersection, const vec3 incident, const float acc_dist) {
+    const vec3 lwNormal = water_normal(intersection);
+    const float coeffReflectivity = fresnelFromAir(incident, -lwNormal);
+
+    vec3 outColor = lightingJunctureReflectionFromAir(intersection, incident, lwNormal, acc_dist);
+
+    if (coeffReflectivity < 0.99) {
+        vec3 colorRefract = lightingJunctureRefractionFromAir(intersection, incident, lwNormal, acc_dist);
+        outColor = coeffReflectivity * outColor + (1.0 - coeffReflectivity) * colorRefract;
+    }
+
+    return outColor;
+}
+
+bool isHighlighting(ivec3 block, vec2 uv) {
+    return block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995);
 }
 
 vec3 trace_ray(const Ray ray) {
-    CAST_RAY(0.0, ray, CST_BLOCK_TYPE_AIR, 2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH, true, {
-        return sky_color(ray);
-    }, {
-        if (block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995))
-            return vec3(0.5);
-    }, {
-        return lightingWater(intersection, ray.direction, t, water_normal(intersection));
-    },{
-        return lighting(ray.origin, color.rgb, intersection, normal, t);
-    });
+    DRAW_RAY_INIT(ray);
+    if (block_type == CST_BLOCK_TYPE_WATER) {
+        CAST_RAY_INTO_WATER(ray, 0.0, CST_MAX_ITER_RAY_WATER, true, {
+            return vec3(0.05, 0., 0.4);
+        }, { if (isHighlighting(block, uv)) return vec3(0.8); }, {
+            return lightingJunctureFromWater(intersection, ray.direction, t);
+        },{
+            vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
+            if (CST_USE_BEER_ATTENUATION)
+                outColor *= exp(-CST_WATER_TRANSMITTANCE * t);
+            return outColor;
+        });
+    } else {
+        CAST_RAY_INTO_AIR(ray, 0.0, CST_MAX_ITER_RAY_AIR, true, {
+            return sky_color(ray);
+        }, { if (isHighlighting(block, uv)) return vec3(0.5); }, {
+            return lightingJunctureFromAir(intersection, ray.direction, t);
+        },{
+            return lighting(ray.origin, color.rgb, intersection, normal, t);
+        });
+    }
 }
