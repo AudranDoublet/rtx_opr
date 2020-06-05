@@ -258,7 +258,7 @@ impl CubeTracerArguments {
         mut highlighted_block: Vector3<i32>,
     ) -> Result<(), GLError> {
         if !change {
-            self.iteration_id = 0; //FIXME += 1
+            self.iteration_id += 1; //FIXME += 1
             self.set_i(VAR_IDX_ITERATION_ID, self.iteration_id)?;
         } else {
             self.iteration_id = 0;

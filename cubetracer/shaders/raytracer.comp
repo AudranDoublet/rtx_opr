@@ -56,21 +56,39 @@ layout (std430) readonly buffer shader_data {
 };
 
 layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
+layout (binding = 1, rgba32f) uniform image2D cache_intersections;
+layout (binding = 2, rgba32f) uniform image2D cache_normals;
 
 /* ************************************************************
  * > -5- main
  * ************************************************************/
 
-//65 (365)
 #include cubetracer/shaders/ray_casting.comp
-//121
 #include cubetracer/shaders/lightning.comp
 
 void main() {
     const ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     const Ray ray = ray_make_from_pixel(vec2(pixel));
-    vec4 color = vec4(trace_ray(ray), 1);
+    vec3 color;
 
-    color += imageLoad(out_uni_frame, pixel) * float(in_uni_iteration_id);
-    imageStore(out_uni_frame, pixel, color / (in_uni_iteration_id + 1));
+    if (in_uni_iteration_id == 0) {
+        mat3 pixelDirectIllumInfo = trace_ray_direct_illumination(ray);
+
+        color = pixelDirectIllumInfo[0];
+        imageStore(cache_intersections, pixel, vec4(pixelDirectIllumInfo[1], 1));
+        imageStore(cache_normals, pixel, vec4(pixelDirectIllumInfo[2], 1));
+    } else {
+        vec3 normal = imageLoad(cache_normals, pixel).xyz;
+        vec3 intersection = imageLoad(cache_intersections, pixel).xyz;
+
+        vec3 pixelIndirectIllumSample = trace_ray_indirect_illumination(intersection, normal);
+
+        // FIXME: the direct illum color must not be influenced by the sampling -> we need another cache
+        color = imageLoad(out_uni_frame, pixel).rgb * float(in_uni_iteration_id);
+        color = (color + pixelIndirectIllumSample) / (in_uni_iteration_id + 1);
+        // FIXME-END
+    }
+
+    imageStore(out_uni_frame, pixel, vec4(color, 1));
 }
+

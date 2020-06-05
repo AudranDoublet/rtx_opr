@@ -78,6 +78,32 @@ pub fn texture_3d(i: u32, textures: Vec<&std::path::Path>) -> Result<u32, GLErro
     Ok(tex_out)
 }
 
+pub fn generate_image_cache(idx: u32, width: u32, height: u32) -> Result<u32, GLError> {
+    let mut tex_out = 0;
+
+    glchk_stmt!(
+        gl::GenTextures(1, &mut tex_out);
+
+        gl::ActiveTexture(gl::TEXTURE0);
+        gl::BindTexture(gl::TEXTURE_2D, tex_out);
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGBA32F as i32,
+            width as i32,
+            height as i32,
+            0,
+            gl::RGBA,
+            gl::FLOAT,
+            ptr::null(),
+        );
+
+        gl::BindImageTexture(idx, tex_out, 0, gl::FALSE, 0, gl::READ_WRITE, gl::RGBA32F);
+    );
+
+    Ok(tex_out)
+}
+
 pub fn generate_texture(width: u32, height: u32) -> Result<u32, GLError> {
     let mut tex_out = 0;
 

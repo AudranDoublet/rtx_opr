@@ -105,8 +105,7 @@ vec3 lightingJunctureRefractionFromAir(const vec3 LWR_intersection, const vec3 L
     });
 }
 
-vec3 lightingJunctureFromWater(const vec3 intersection, const vec3 incident, const float acc_dist) {
-    const vec3 lwNormal = -water_normal(intersection);
+vec3 lightingJunctureFromWater(const vec3 intersection, const vec3 lwNormal, const vec3 incident, const float acc_dist) {
     const float coeffReflectivity = fresnelFromWater(incident, -lwNormal);
 
     vec3 outColor = lightingJunctureReflectionFromWater(intersection, incident, lwNormal, acc_dist);
@@ -119,8 +118,7 @@ vec3 lightingJunctureFromWater(const vec3 intersection, const vec3 incident, con
     return outColor;
 }
 
-vec3 lightingJunctureFromAir(const vec3 intersection, const vec3 incident, const float acc_dist) {
-    const vec3 lwNormal = water_normal(intersection);
+vec3 lightingJunctureFromAir(const vec3 intersection, const vec3 lwNormal, const vec3 incident, const float acc_dist) {
     const float coeffReflectivity = fresnelFromAir(incident, -lwNormal);
 
     vec3 outColor = lightingJunctureReflectionFromAir(intersection, incident, lwNormal, acc_dist);
@@ -137,26 +135,46 @@ bool isHighlighting(ivec3 block, vec2 uv) {
     return block == in_uni_highlighted_block && (uv.x < 0.005 || uv.x > 0.995 || uv.y < 0.005 || uv.y > 0.995);
 }
 
-vec3 trace_ray(const Ray ray) {
+#include cubetracer/shaders/random.comp
+
+mat3 trace_ray_direct_illumination(const Ray ray) {
     DRAW_RAY_INIT(ray);
     if (block_type == CST_BLOCK_TYPE_WATER) {
         CAST_RAY_INTO_WATER(ray, 0.0, CST_MAX_ITER_RAY_WATER, true, {
-            return vec3(0.00, 0., 0.02);
-        }, { if (isHighlighting(block, uv)) return vec3(0.8); }, {
-            return lightingJunctureFromWater(intersection, ray.direction, t);
-        },{
+            return mat3(vec3(0.00, 0., 0.02), vec3(0), vec3(0));
+        }, {
+            if (isHighlighting(block, uv))
+                return mat3(vec3(0.8), vec3(0), vec3(0));
+        }, {
+            vec3 lwNormal = -water_normal(intersection);
+            vec3 outColor = lightingJunctureFromWater(intersection, lwNormal, ray.direction, t);
+            return mat3(outColor, intersection, lwNormal);
+        }, {
             vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
             if (CST_USE_BEER_ATTENUATION)
                 outColor *= exp(-CST_WATER_TRANSMITTANCE * t);
-            return outColor;
+            return mat3(outColor, intersection, normal);
         });
     } else {
         CAST_RAY_INTO_AIR(ray, 0.0, CST_MAX_ITER_RAY_AIR, true, {
-            return sky_color(ray);
-        }, { if (isHighlighting(block, uv)) return vec3(0.5); }, {
-            return lightingJunctureFromAir(intersection, ray.direction, t);
-        },{
-            return lighting(ray.origin, color.rgb, intersection, normal, t);
+            return mat3(sky_color(ray), vec3(0), vec3(0));
+        }, { 
+            if (isHighlighting(block, uv)) return mat3(vec3(0.5), vec3(0), vec3(0)); 
+        }, {
+            vec3 lwNormal = water_normal(intersection);
+            vec3 outColor = lightingJunctureFromAir(intersection, lwNormal, ray.direction, t);
+            return mat3(outColor, intersection, lwNormal);
+        }, {
+            vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
+            return mat3(outColor, intersection, normal);
         });
     }
 }
+
+vec3 trace_ray_indirect_illumination(vec3 trii_intersection, vec3 trii_normal) {
+    // FIXME: add better rand seed than int(in_uni_time * 1000)
+    Ray ray = ray_make(trii_intersection, random_ray(int(in_uni_time * 1000), trii_normal));
+    // FIXME-END
+    return trace_ray_direct_illumination(ray)[0];
+}
+
