@@ -1,6 +1,6 @@
 int estimate_max_iter(const Ray ray)
 {
-    float res = 1e100;
+    float res = 1e20;
 
     if (ray.direction.x > 1e-5)
         res = min((float(CST_NB_BLOCKS_X) - ray.origin.x) * ray.direction_inv.x, res);
