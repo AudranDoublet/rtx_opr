@@ -200,10 +200,29 @@ mat3 trace_ray_reflection(const Ray ray) {
     }
 }
 
+#define CST_MAX_BOUNCE 2
+#define CST_RAY_REFLECTANCE 0.1
 vec3 trace_ray_indirect_illumination(vec3 trii_intersection, vec3 trii_normal) {
-    // FIXME: add better rand seed than int(in_uni_time * 1000)
-    Ray ray = ray_make(trii_intersection, random_ray(int(in_uni_time * 10000), trii_normal));
-    // FIXME-END
-    return trace_ray_reflection(ray)[0];
+    vec3 color = vec3(0);
+    float coeffIllumLoss = CST_RAY_REFLECTANCE;
+
+    for (uint i = 0; i < CST_MAX_BOUNCE; i ++) {
+        // FIXME: add better rand seed than int(in_uni_time * 1000)
+        Ray ray = ray_make(trii_intersection, random_ray(int(in_uni_time * 10000), trii_normal));
+        // FIXME-END
+
+        mat3 rayRefectionHit = trace_ray_reflection(ray);
+        color += coeffIllumLoss * rayRefectionHit[0];
+        trii_intersection = rayRefectionHit[1];
+        trii_normal = rayRefectionHit[2];
+
+        if (trii_normal == vec3(0))
+            break;
+
+        coeffIllumLoss *= CST_RAY_REFLECTANCE;
+    }
+
+    return color;
 }
+#undef CST_MAX_BOUNCE
 
