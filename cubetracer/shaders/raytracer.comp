@@ -56,8 +56,10 @@ layout (std430) readonly buffer shader_data {
 };
 
 layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
-layout (binding = 1, rgba32f) uniform image2D cache_intersections;
-layout (binding = 2, rgba32f) uniform image2D cache_normals;
+layout (binding = 1, rgba32f) uniform image2D cache_illum_direct;
+layout (binding = 2, rgba32f) uniform image2D cache_illum_indirect_sampling;
+layout (binding = 3, rgba32f) uniform image2D cache_intersections;
+layout (binding = 4, rgba32f) uniform image2D cache_normals;
 
 /* ************************************************************
  * > -5- main
@@ -69,26 +71,38 @@ layout (binding = 2, rgba32f) uniform image2D cache_normals;
 void main() {
     const ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     const Ray ray = ray_make_from_pixel(vec2(pixel));
-    vec3 color;
+
+    vec3 outColor = vec3(0);
 
     if (in_uni_iteration_id == 0) {
         mat3 pixelDirectIllumInfo = trace_ray_direct_illumination(ray);
 
-        color = pixelDirectIllumInfo[0];
+        outColor = pixelDirectIllumInfo[0];
+
+        imageStore(cache_illum_direct, pixel, vec4(pixelDirectIllumInfo[0], 1));
         imageStore(cache_intersections, pixel, vec4(pixelDirectIllumInfo[1], 1));
         imageStore(cache_normals, pixel, vec4(pixelDirectIllumInfo[2], 1));
     } else {
         vec3 normal = imageLoad(cache_normals, pixel).xyz;
+        // check if initial ray has hit the sky
+        if (normal == vec3(0)) {
+            // FIXME: free compute time => can be used to sample more rays for another pixel?
+            return;
+        }
         vec3 intersection = imageLoad(cache_intersections, pixel).xyz;
 
-        vec3 pixelIndirectIllumSample = trace_ray_indirect_illumination(intersection, normal);
+        vec3 illum_sampling;
+        if (in_uni_iteration_id == 1) {
+            illum_sampling = vec3(0);
+        } else {
+            illum_sampling = imageLoad(cache_illum_indirect_sampling, pixel).rgb;
+        }
+        illum_sampling += trace_ray_indirect_illumination(intersection, normal);
 
-        // FIXME: the direct illum color must not be influenced by the sampling -> we need another cache
-        color = imageLoad(out_uni_frame, pixel).rgb * float(in_uni_iteration_id);
-        color = (color + pixelIndirectIllumSample) / (in_uni_iteration_id + 1);
-        // FIXME-END
+        imageStore(cache_illum_indirect_sampling, pixel, vec4(illum_sampling, 1));
+        outColor = imageLoad(cache_illum_direct, pixel).rgb + (illum_sampling / in_uni_iteration_id);
     }
 
-    imageStore(out_uni_frame, pixel, vec4(color, 1));
+    imageStore(out_uni_frame, pixel, vec4(outColor, 1));
 }
 

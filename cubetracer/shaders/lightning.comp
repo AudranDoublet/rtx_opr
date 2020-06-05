@@ -171,10 +171,39 @@ mat3 trace_ray_direct_illumination(const Ray ray) {
     }
 }
 
+mat3 trace_ray_reflection(const Ray ray) {
+    DRAW_RAY_INIT(ray);
+    if (block_type == CST_BLOCK_TYPE_WATER) {
+        CAST_RAY_INTO_WATER(ray, 0.0, CST_MAX_ITER_RAY_WATER, true, {
+                return mat3(0);
+        }, {}, {
+            vec3 lwNormal = -water_normal(intersection);
+            vec3 outColor = lightingJunctureFromWater(intersection, lwNormal, ray.direction, t);
+            return mat3(outColor, intersection, lwNormal);
+        }, {
+            vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
+            if (CST_USE_BEER_ATTENUATION)
+                outColor *= exp(-CST_WATER_TRANSMITTANCE * t);
+            return mat3(outColor, intersection, normal);
+        });
+    } else {
+        CAST_RAY_INTO_AIR(ray, 0.0, CST_MAX_ITER_RAY_AIR, false, {
+            return mat3(0);
+        }, {}, {
+            vec3 lwNormal = water_normal(intersection);
+            vec3 outColor = lightingJunctureFromAir(intersection, lwNormal, ray.direction, t);
+            return mat3(outColor, intersection, lwNormal);
+        }, {
+            vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
+            return mat3(outColor, intersection, normal);
+        });
+    }
+}
+
 vec3 trace_ray_indirect_illumination(vec3 trii_intersection, vec3 trii_normal) {
     // FIXME: add better rand seed than int(in_uni_time * 1000)
-    Ray ray = ray_make(trii_intersection, random_ray(int(in_uni_time * 1000), trii_normal));
+    Ray ray = ray_make(trii_intersection, random_ray(int(in_uni_time * 10000), trii_normal));
     // FIXME-END
-    return trace_ray_direct_illumination(ray)[0];
+    return trace_ray_reflection(ray)[0];
 }
 

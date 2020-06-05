@@ -21,7 +21,7 @@ const uint CST_NB_BLOCKS_X = CST_NB_CHUNKS_X * CST_CHUNK_WIDTH;
 
 const vec3 CST_LIGHT_DIRECTION = normalize(vec3(-0.7, -1.5, -1.1));
 const vec3 CST_LIGHT_DIRECTION_INV = 1 / CST_LIGHT_DIRECTION;
-const vec3 CST_LIGHT_AMBIENT = vec3(0.1, 0.1, 0.1);
+const vec3 CST_LIGHT_AMBIENT = vec3(0);
 
 const uint CST_MAX_ITER_UNCERTAIN_BLOCKS = 32;
 const uint CST_MAX_ITER_TRANSPARENT = 16;
