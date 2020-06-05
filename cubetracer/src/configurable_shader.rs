@@ -42,7 +42,7 @@ impl ConfigurableShader {
             gl::CompileShader(shader);
         );
 
-        gl_check_error_shader(shader, gl::COMPILE_STATUS)?;
+        gl_check_error_shader(shader, &self.shader, gl::COMPILE_STATUS)?;
 
         Ok(shader)
     }

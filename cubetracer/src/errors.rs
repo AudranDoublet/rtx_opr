@@ -18,7 +18,7 @@ pub enum GLError {
     SSBONotFound { name: String },
 
     ProgramError { program: u32 },
-    ShaderError { shader: u32 },
+    ShaderError { shader: u32, context: String },
 }
 
 #[macro_export]
@@ -73,6 +73,16 @@ macro_rules! glchk_expr {
     };
 }
 
+fn shader_error_str(shader: u32) -> String {
+    let mut err_buf = make_error_buffer(GL_MAX_ERROR_LEN);
+    let mut err_length = 0;
+
+    unsafe {gl::GetShaderInfoLog(shader, GL_MAX_ERROR_LEN as i32, &mut err_length, err_buf.as_mut_ptr() as *mut GLchar)};
+    err_buf.resize(err_length as usize, 0);
+
+    str::from_utf8(&err_buf).unwrap().to_string()
+}
+
 fn fmt(err: &GLError, f: &mut fmt::Formatter) -> fmt::Result {
     match err {
         GLError::InvalidEnum => f.write_str("An unacceptable value is specified for an enumerated argument. 
@@ -114,14 +124,8 @@ fn fmt(err: &GLError, f: &mut fmt::Formatter) -> fmt::Result {
 
             f.write_str(str::from_utf8(&err_buf).unwrap())
         },
-        GLError::ShaderError {shader} => {
-            let mut err_buf = make_error_buffer(GL_MAX_ERROR_LEN);
-            let mut err_length = 0;
-
-            unsafe {gl::GetShaderInfoLog(*shader, GL_MAX_ERROR_LEN as i32, &mut err_length, err_buf.as_mut_ptr() as *mut GLchar)};
-            err_buf.resize(err_length as usize, 0);
-
-            f.write_str(str::from_utf8(&err_buf).unwrap())
+        GLError::ShaderError {shader, context} => {
+            f.write_fmt(format_args!("{}\n{}", shader_error_str(*shader).as_str(), context))
         },
     }
 }
@@ -145,12 +149,23 @@ fn make_error_buffer(capacity: usize) -> Vec<u8> {
     info_log
 }
 
-pub fn gl_check_error_shader(shader: u32, err_type: gl::types::GLenum) -> Result<u32, GLError> {
+pub fn gl_check_error_shader(shader: u32, cshader: &str, err_type: gl::types::GLenum) -> Result<u32, GLError> {
     let mut success = gl::FALSE as GLint;
     unsafe { gl::GetShaderiv(shader, err_type, &mut success) };
 
+    let context = if let Ok(line) = shader_error_str(shader).split(":").collect::<Vec<&str>>()[1]
+                                              .split("(").collect::<Vec<&str>>()[0].parse::<usize>() {
+        let lines = cshader.lines().collect::<Vec<&str>>();
+        let min = (line - 3).max(0);
+        let max = (line + 3).min(lines.len() - 1);
+
+        lines[min..=max].join("\n")
+    } else {
+        "".to_string()
+    };
+
     if success != gl::TRUE as GLint {
-        Err(GLError::ShaderError { shader })
+        Err(GLError::ShaderError { shader, context })
     } else {
         Ok(shader)
     }
