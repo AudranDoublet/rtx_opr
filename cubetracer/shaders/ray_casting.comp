@@ -187,6 +187,21 @@ uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
         vec4 color = texture_color(tex, uv, t_qual);\
         if (color.a > 0.5)\
         {\
+            if (block_type == 3 && face != 1 && face != 4) {\
+                vec4 ocolor = texture_color(GRASS_OVER_TEX, uv, t_qual);\
+                if (ocolor.a > 0.5)\
+                {\
+                    const float[3] v = cl_blocks[chunk_idx].grass_color[column_idx];\
+                    grass_color = vec3(v[0], v[1], v[2]);\
+                    color.xyz = ocolor.xyz * grass_color;\
+                }\
+            }\
+            else if (CST_BLOCK_MATERIALS[block_type].apply_grass_color)\
+            {\
+                const float[3] v = cl_blocks[chunk_idx].grass_color[column_idx];\
+                grass_color = vec3(v[0], v[1], v[2]);\
+                color.xyz = color.xyz * grass_color;\
+            }\
             switch (CST_BLOCK_MATERIALS[block_type].type)\
             {\
                 case 1:\
