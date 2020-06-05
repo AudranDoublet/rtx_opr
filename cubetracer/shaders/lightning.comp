@@ -23,19 +23,25 @@ vec3 lightingWithoutShadows(vec3 origin, vec3 color, vec3 intersection, vec3 nor
 }
 
 vec3 lighting(vec3 origin, vec3 color, vec3 intersection, vec3 normal, float dist) {
-    intersection += normal * CST_EPSILON;
-    Ray shadow_ray = Ray(intersection, -CST_LIGHT_DIRECTION, -CST_LIGHT_DIRECTION_INV);
-
     vec3 light_diffuse = CST_LIGHT_AMBIENT;
+    float lightingIntensity = dot(normal, -CST_LIGHT_DIRECTION);
 
-    if (!CST_SHADOW_ACTIVATED || distance_before_next_intersection(shadow_ray, dist) >= CST_MAX_ITER_SHADOW) {
-        light_diffuse = max(light_diffuse, dot(normal, -CST_LIGHT_DIRECTION));
+    if (CST_SHADOW_ACTIVATED) {
+        if (lightingIntensity < CST_MIN_LIGHTNING_INTENSITY) {
+            lightingIntensity = 0.0;
+        } else {
+            intersection += normal * CST_EPSILON;
+            Ray shadow_ray = Ray(intersection, -CST_LIGHT_DIRECTION, -CST_LIGHT_DIRECTION_INV);
+            lightingIntensity = lightingIntensity * float(distance_before_next_intersection(shadow_ray, dist) >= CST_MAX_ITER_SHADOW);
+        }
+    }
 
-        #if CST_SPECULAR_ACTIVATED
-            vec3 h = normalize(CST_LIGHT_DIRECTION + origin - intersection);
-            float specular_intensity = pow(max(dot(normal, h), 0.0), CST_SPECULAR_SHININESS);
-            light_diffuse += vec3(specular_intensity);
-        #endif
+    light_diffuse = max(light_diffuse, lightingIntensity);
+
+    if (CST_SPECULAR_ACTIVATED) {
+        vec3 h = normalize(CST_LIGHT_DIRECTION + origin - intersection);
+        float specular_intensity = pow(max(dot(normal, h), 0.0), CST_SPECULAR_SHININESS);
+        light_diffuse += vec3(specular_intensity);
     }
 
     return light_diffuse * color;

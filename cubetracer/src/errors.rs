@@ -3,7 +3,7 @@ extern crate gl;
 use gl::types::*;
 use std::{fmt, str};
 
-const GL_MAX_ERROR_LEN: usize = 512;
+const GL_MAX_ERROR_LEN: usize = 1024;
 pub enum GLError {
     InvalidEnum,
     InvalidValue,
@@ -77,7 +77,14 @@ fn shader_error_str(shader: u32) -> String {
     let mut err_buf = make_error_buffer(GL_MAX_ERROR_LEN);
     let mut err_length = 0;
 
-    unsafe {gl::GetShaderInfoLog(shader, GL_MAX_ERROR_LEN as i32, &mut err_length, err_buf.as_mut_ptr() as *mut GLchar)};
+    unsafe {
+        gl::GetShaderInfoLog(
+            shader,
+            GL_MAX_ERROR_LEN as i32,
+            &mut err_length,
+            err_buf.as_mut_ptr() as *mut GLchar,
+        )
+    };
     err_buf.resize(err_length as usize, 0);
 
     str::from_utf8(&err_buf).unwrap().to_string()
@@ -149,22 +156,30 @@ fn make_error_buffer(capacity: usize) -> Vec<u8> {
     info_log
 }
 
-pub fn gl_check_error_shader(shader: u32, cshader: &str, err_type: gl::types::GLenum) -> Result<u32, GLError> {
+pub fn gl_check_error_shader(
+    shader: u32,
+    cshader: &str,
+    err_type: gl::types::GLenum,
+) -> Result<u32, GLError> {
     let mut success = gl::FALSE as GLint;
     unsafe { gl::GetShaderiv(shader, err_type, &mut success) };
 
-    let context = if let Ok(line) = shader_error_str(shader).split(":").collect::<Vec<&str>>()[1]
-                                              .split("(").collect::<Vec<&str>>()[0].parse::<usize>() {
-        let lines = cshader.lines().collect::<Vec<&str>>();
-        let min = (line - 3).max(0);
-        let max = (line + 3).min(lines.len() - 1);
-
-        lines[min..=max].join("\n")
-    } else {
-        "".to_string()
-    };
-
     if success != gl::TRUE as GLint {
+        let err_message = shader_error_str(shader);
+        dbg!(&err_message);
+        let context = if let Ok(line) = err_message.split(":").collect::<Vec<&str>>()[1]
+            .split("(")
+            .collect::<Vec<&str>>()[0]
+            .parse::<usize>()
+        {
+            let lines = cshader.lines().collect::<Vec<&str>>();
+            let min = (line - 3).max(0);
+            let max = (line + 3).min(lines.len() - 1);
+
+            lines[min..=max].join("\n")
+        } else {
+            "".to_string()
+        };
         Err(GLError::ShaderError { shader, context })
     } else {
         Ok(shader)
