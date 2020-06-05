@@ -32,6 +32,8 @@ const uint CST_MAX_ITER_WATER_REFRACTION = 64;
 const uint CST_MAX_ITER_RAY_AIR = 2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH;
 const uint CST_MAX_ITER_RAY_WATER = min(64, CST_MAX_ITER_RAY_AIR);
 
+const float CST_MIN_LIGHTNING_INTENSITY = 0.01;
+
 const vec3 CST_NORMAL_MAP[6] = {
     vec3(1, 0, 0),
     vec3(0, 1, 0),
