@@ -86,27 +86,28 @@ void main() {
         imageStore(cache_illum_direct, pixel, vec4(pixelDirectIllumInfo[0], 1));
         imageStore(cache_intersections, pixel, vec4(pixelDirectIllumInfo[1], 1));
         imageStore(cache_normals, pixel, vec4(pixelDirectIllumInfo[2], 1));
-    } else {
-        vec3 normal = imageLoad(cache_normals, pixel).xyz;
-        // check if initial ray has hit the sky
-        if (normal == vec3(0)) {
-            // FIXME: free compute time => can be used to sample more rays for another pixel?
-            return;
-        }
-        vec3 intersection = imageLoad(cache_intersections, pixel).xyz;
-
-        vec3 illum_sampling;
-        if (in_uni_iteration_id == 1) {
-            illum_sampling = vec3(0);
-        } else {
-            illum_sampling = imageLoad(cache_illum_indirect_sampling, pixel).rgb;
-        }
-
-        illum_sampling += trace_ray_indirect_illumination(seed, intersection, normal);
-
-        imageStore(cache_illum_indirect_sampling, pixel, vec4(illum_sampling, 1));
-        outColor = imageLoad(cache_illum_direct, pixel).rgb + (illum_sampling / in_uni_iteration_id);
+        imageStore(out_uni_frame, pixel, vec4(outColor, 1));
     }
+
+    vec3 normal = imageLoad(cache_normals, pixel).xyz;
+    // check if initial ray has hit the sky
+    if (normal == vec3(0)) {
+        // FIXME: free compute time => can be used to sample more rays for another pixel?
+        return;
+    }
+    vec3 intersection = imageLoad(cache_intersections, pixel).xyz;
+
+    vec3 illum_sampling;
+    if (in_uni_iteration_id == 0) {
+        illum_sampling = vec3(0);
+    } else {
+        illum_sampling = imageLoad(cache_illum_indirect_sampling, pixel).rgb;
+    }
+
+    illum_sampling += trace_ray_indirect_illumination(seed, intersection, normal);
+
+    imageStore(cache_illum_indirect_sampling, pixel, vec4(illum_sampling, 1));
+    outColor = imageLoad(cache_illum_direct, pixel).rgb + (illum_sampling / (in_uni_iteration_id + 1));
 
     imageStore(out_uni_frame, pixel, vec4(outColor, 1));
 }
