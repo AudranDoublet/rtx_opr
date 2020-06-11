@@ -289,6 +289,7 @@ dependencies = [
  "glutin",
  "image",
  "nalgebra",
+ "rand",
  "shader_preprocesser",
  "world",
 ]

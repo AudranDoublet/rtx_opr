@@ -17,6 +17,7 @@ pub struct CubeTracer {
     vao_quad_screen: u32,
     vao_quad_cursor: u32,
     texture_raytracer: u32,
+    texture_random: u32,
     texture_cursor: u32,
     resolution_coeff: f32,
 
@@ -49,11 +50,12 @@ impl CubeTracer {
         let height = coeff(height, resolution_coeff);
 
         let texture_raytracer = helper::generate_texture(width, height)?;
+        let texture_random = helper::generate_texture_random(1, width, height)?;
 
-        let cache_illum_direct = helper::generate_image_cache(1, width, height)?;
-        let cache_illum_indirect_sampling = helper::generate_image_cache(2, width, height)?;
-        let cache_intersections = helper::generate_image_cache(3, width, height)?;
-        let cache_normals = helper::generate_image_cache(4, width, height)?;
+        let cache_illum_direct = helper::generate_image_cache(2, width, height)?;
+        let cache_illum_indirect_sampling = helper::generate_image_cache(3, width, height)?;
+        let cache_intersections = helper::generate_image_cache(4, width, height)?;
+        let cache_normals = helper::generate_image_cache(5, width, height)?;
 
         helper::texture_3d(
             1,
@@ -149,6 +151,7 @@ impl CubeTracer {
             vao_quad_screen,
             vao_quad_cursor,
             texture_raytracer,
+            texture_random,
             texture_cursor,
             resolution_coeff,
 
@@ -176,7 +179,7 @@ impl CubeTracer {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), GLError> {
-        let textures_ids = [self.texture_raytracer, self.cache_intersections, self.cache_normals, self.cache_illum_direct, self.cache_illum_indirect_sampling];
+        let textures_ids = [self.texture_raytracer, self.texture_random, self.cache_intersections, self.cache_normals, self.cache_illum_direct, self.cache_illum_indirect_sampling];
         glchk_stmt!(
             gl::DeleteTextures(textures_ids.len() as i32, textures_ids.as_ptr());
             gl::Viewport(
@@ -189,10 +192,11 @@ impl CubeTracer {
 
         let (w, h) = (coeff(width, self.resolution_coeff), coeff(height, self.resolution_coeff));
         self.texture_raytracer = helper::generate_texture(w, h)?;
-        self.cache_illum_direct = helper::generate_image_cache(1, w, h)?;
-        self.cache_illum_indirect_sampling = helper::generate_image_cache(2, w, h)?;
-        self.cache_intersections = helper::generate_image_cache(3, w, h)?;
-        self.cache_normals = helper::generate_image_cache(4, w, h)?;
+        self.texture_random = helper::generate_texture_random(1, w, h)?;
+        self.cache_illum_direct = helper::generate_image_cache(2, w, h)?;
+        self.cache_illum_indirect_sampling = helper::generate_image_cache(3, w, h)?;
+        self.cache_intersections = helper::generate_image_cache(4, w, h)?;
+        self.cache_normals = helper::generate_image_cache(5, w, h)?;
 
         Ok(())
     }

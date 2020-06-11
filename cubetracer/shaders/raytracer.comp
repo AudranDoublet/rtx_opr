@@ -1,4 +1,5 @@
 #version 430 core
+#extension GL_ARB_gpu_shader_int64 : require
 
 /* ************************************************************
  * > -0- Types
@@ -56,10 +57,11 @@ layout (std430) readonly buffer shader_data {
 };
 
 layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
-layout (binding = 1, rgba32f) uniform image2D cache_illum_direct;
-layout (binding = 2, rgba32f) uniform image2D cache_illum_indirect_sampling;
-layout (binding = 3, rgba32f) uniform image2D cache_intersections;
-layout (binding = 4, rgba32f) uniform image2D cache_normals;
+layout (binding = 1, rgba32f) uniform image2D random_image;
+layout (binding = 2, rgba32f) uniform image2D cache_illum_direct;
+layout (binding = 3, rgba32f) uniform image2D cache_illum_indirect_sampling;
+layout (binding = 4, rgba32f) uniform image2D cache_intersections;
+layout (binding = 5, rgba32f) uniform image2D cache_normals;
 
 /* ************************************************************
  * > -5- main
@@ -72,7 +74,9 @@ void main() {
     const ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     const Ray ray = ray_make_from_pixel(vec2(pixel));
 
-    vec3 outColor = vec3(0);
+    int64_t seed = int64_t(imageLoad(random_image, pixel).x * 255) + int64_t(in_uni_iteration_id) * 31;
+
+    vec3 outColor = vec3(0); 
 
     if (in_uni_iteration_id == 0) {
         mat3 pixelDirectIllumInfo = trace_ray_direct_illumination(ray);
@@ -97,7 +101,8 @@ void main() {
         } else {
             illum_sampling = imageLoad(cache_illum_indirect_sampling, pixel).rgb;
         }
-        illum_sampling += trace_ray_indirect_illumination(intersection, normal);
+
+        illum_sampling += trace_ray_indirect_illumination(seed, intersection, normal);
 
         imageStore(cache_illum_indirect_sampling, pixel, vec4(illum_sampling, 1));
         outColor = imageLoad(cache_illum_direct, pixel).rgb + (illum_sampling / in_uni_iteration_id);
@@ -105,4 +110,3 @@ void main() {
 
     imageStore(out_uni_frame, pixel, vec4(outColor, 1));
 }
-

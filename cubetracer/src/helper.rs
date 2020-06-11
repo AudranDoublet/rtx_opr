@@ -1,5 +1,8 @@
 extern crate gl;
 extern crate image;
+extern crate rand;
+
+use rand::Rng;
 
 use shader_preprocesser::read_shader;
 
@@ -129,6 +132,42 @@ pub fn generate_texture(width: u32, height: u32) -> Result<u32, GLError> {
         );
 
         gl::BindImageTexture(0, tex_out, 0, gl::FALSE, 0, gl::WRITE_ONLY, gl::RGBA32F);
+    );
+
+    Ok(tex_out)
+}
+
+pub fn generate_texture_random(idx: u32, width: u32, height: u32) -> Result<u32, GLError> {
+    let mut tex_out = 0;
+    let mut data = vec![0.0; (width * height * 3) as usize];
+
+    for i in 0..data.len() {
+        data[i] = rand::thread_rng().gen::<u8>() as f32 / 255.;
+    }
+
+    glchk_stmt!(
+        gl::GenTextures(1, &mut tex_out);
+
+        gl::ActiveTexture(gl::TEXTURE0);
+        gl::BindTexture(gl::TEXTURE_2D, tex_out);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGBA32F as i32,
+            width as i32,
+            height as i32,
+            0,
+            gl::RGBA,
+            gl::FLOAT,
+            data.as_ptr() as *const _ as *const c_void
+        );
+
+        gl::BindImageTexture(idx, tex_out, 0, gl::FALSE, 0, gl::READ_ONLY, gl::RGBA32F);
     );
 
     Ok(tex_out)

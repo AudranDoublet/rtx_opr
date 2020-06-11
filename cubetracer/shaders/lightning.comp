@@ -208,12 +208,12 @@ mat3 trace_ray_reflection(const Ray ray) {
 
 #define CST_MAX_BOUNCE 2
 #define CST_RAY_REFLECTANCE 0.2
-vec3 trace_ray_indirect_illumination(vec3 trii_intersection, vec3 trii_normal) {
+vec3 trace_ray_indirect_illumination(out int64_t seed, vec3 trii_intersection, vec3 trii_normal) {
     vec3 color = vec3(0);
     float coeffIllumLoss = CST_RAY_REFLECTANCE;
 
     for (uint i = 0; i < CST_MAX_BOUNCE; i ++) {
-        Ray ray = ray_make(trii_intersection, random_ray(in_uni_iteration_id, trii_normal));
+        Ray ray = ray_make(trii_intersection, random_ray(seed, trii_normal));
 
         mat3 rayRefectionHit = trace_ray_reflection(ray);
         color += coeffIllumLoss * rayRefectionHit[0];

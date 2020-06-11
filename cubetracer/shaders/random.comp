@@ -1,17 +1,43 @@
 #define GLUS_PI 3.1415926535897932384626433832795
 
-float radicalInverse_VdC(uint bits) {
- bits = (bits << 16u) | (bits >> 16u);
- bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
- bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
- bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
- bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
- return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+const uint u_numberSamples = 64;
+const uint u_m = 6;
+const float u_binaryFractionFactor = 0.015873015873015872;
+
+const int64_t RANDOM_N_A = int64_t(252149)*10000 + 3917;
+const int64_t RANDOM_N_B = 11;
+
+const int64_t RANDOM_IMAX = (1 << 48) - 1;
+const float RANDOM_FMAX = float(1 << 48);
+
+float randf(out int64_t seed) {
+    seed = (RANDOM_N_A * seed + RANDOM_N_B) & RANDOM_IMAX;
+    return float(seed) / RANDOM_FMAX;
 }
 
-vec2 hammersley(uint i) {
- return vec2(float(i)*(1.0/512.0), radicalInverse_VdC(i));
+vec2 rand2(out int64_t seed) {
+    return vec2(randf(seed), randf(seed));
 }
+
+// see http://mathworld.wolfram.com/HammersleyPointSet.html
+// see https://github.com/wdas/brdf/blob/master/src/shaderTemplates/brdfIBL.frag
+vec2 hammersley(uint originalSample)
+{
+    uint revertSample;
+
+    // Revert bits by swapping blockwise. Lower bits are moved up and higher bits down.
+    revertSample = (originalSample << 16u) | (originalSample >> 16u);
+    revertSample = ((revertSample & 0x00ff00ffu) << 8u) | ((revertSample & 0xff00ff00u) >> 8u);
+    revertSample = ((revertSample & 0x0f0f0f0fu) << 4u) | ((revertSample & 0xf0f0f0f0u) >> 4u);
+    revertSample = ((revertSample & 0x33333333u) << 2u) | ((revertSample & 0xccccccccu) >> 2u);
+    revertSample = ((revertSample & 0x55555555u) << 1u) | ((revertSample & 0xaaaaaaaau) >> 1u);
+
+    // Shift back, as only m bits are used.
+    revertSample = revertSample >> (32 - u_m);
+
+    return vec2(float(revertSample) * u_binaryFractionFactor, float(originalSample) * u_binaryFractionFactor);
+}
+
 
 // see Physically Based Rendering Chapter 13.6.1 and 13.6.3
 vec3 cosineWeightedSampling(vec2 e) {
@@ -32,7 +58,7 @@ vec3 brdfLambert(vec2 randomPoint, mat3 basis) {
     return basis * LtangentSpace;
 }
 
-vec3 random_ray(int sampleIndex, vec3 normal) {
+vec3 random_ray(out int64_t sampleIndex, vec3 normal) {
     vec3 tangent;
 
     if (abs(dot(normal, vec3(0.0, 1.0, 0.0))) < 1e-3)
@@ -42,6 +68,6 @@ vec3 random_ray(int sampleIndex, vec3 normal) {
 
     vec3 bitangent = cross(normal, tangent);
 
-    return brdfLambert(hammersley(sampleIndex), mat3(tangent, bitangent, normal));
+    return brdfLambert(rand2(sampleIndex), mat3(tangent, bitangent, normal));
 }
 

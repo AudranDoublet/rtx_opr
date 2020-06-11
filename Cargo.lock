@@ -312,6 +312,7 @@ dependencies = [
  "glutin 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "image 0.23.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "shader_preprocesser 0.1.0",
  "world 0.1.0",
 ]
