@@ -139,7 +139,7 @@ pub fn generate_texture(width: u32, height: u32) -> Result<u32, GLError> {
 
 pub fn generate_texture_random(idx: u32, width: u32, height: u32) -> Result<u32, GLError> {
     let mut tex_out = 0;
-    let mut data = vec![0.0; (width * height * 3) as usize];
+    let mut data = vec![0.0; (width * height * 4) as usize];
 
     for i in 0..data.len() {
         data[i] = rand::thread_rng().gen::<u8>() as f32 / 255.;
@@ -339,8 +339,6 @@ pub fn build_program_quad() -> Result<u32, GLError> {
             gl::GetUniformLocation(program, CString::new("uni_text").unwrap().as_ptr()),
             0,
         );
-
-
     );
 
     Ok(program)
