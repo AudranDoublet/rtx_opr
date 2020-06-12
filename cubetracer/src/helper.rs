@@ -89,6 +89,8 @@ pub fn generate_image_cache(idx: u32, width: u32, height: u32) -> Result<u32, GL
 
         gl::ActiveTexture(gl::TEXTURE0);
         gl::BindTexture(gl::TEXTURE_2D, tex_out);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
         gl::TexImage2D(
             gl::TEXTURE_2D,
             0,
@@ -202,8 +204,13 @@ pub fn get_ssbo_location(program: u32, var_name: &str) -> Result<i32, GLError> {
     }
 }
 
-pub fn build_program_raytracer(view_size: usize, shadow_activated: bool, resolution_coeff: u32) -> Result<u32, GLError> {
-    let mut shader_compute = ConfigurableShader::new(read_shader!("cubetracer/shaders/raytracer.comp"));
+pub fn build_program_raytracer(
+    view_size: usize,
+    shadow_activated: bool,
+    resolution_coeff: u32,
+) -> Result<u32, GLError> {
+    let mut shader_compute =
+        ConfigurableShader::new(read_shader!("cubetracer/shaders/raytracer.comp"));
 
     shader_compute.var("CST_VIEW_DISTANCE", view_size);
     shader_compute.var("CST_SHADOW_ACTIVATED", shadow_activated);
@@ -272,10 +279,8 @@ pub fn make_ssbo(program: u32, var_name: &str, size: usize) -> Result<u32, GLErr
 
 pub fn make_quad_vao(program: u32, width: f32, height: f32) -> Result<u32, GLError> {
     let vertices: [f32; 16] = [
-        -width, -height,   0.0, 0.0,
-        -width, height,    0.0, 1.0,
-        width, -height,    1.0, 0.0,
-        width, height,     1.0, 1.0,
+        -width, -height, 0.0, 0.0, -width, height, 0.0, 1.0, width, -height, 1.0, 0.0, width,
+        height, 1.0, 1.0,
     ];
 
     let (mut vbo, mut vao) = (0, 0);
