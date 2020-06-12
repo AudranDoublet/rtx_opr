@@ -80,6 +80,8 @@ pub enum Block {
     BlueOrchid,
     Allium,
     Poppy,
+
+    Light,
 }
 
 impl Block {
