@@ -2,18 +2,20 @@ struct Material {
     int type;
     bool apply_grass_color;
     int texture_coords[6];
+    vec3 color;
 };
 
 #define TEX_UNIQUE(v) (v), (v), (v), (v), (v), (v)
 #define TEX_COLUMN(v, w, z) (v), (w), (v), (v), (z), (v)
-#define MATERIAL_EMPTY() Material(0, false, int[6]( TEX_UNIQUE(0) ))
-#define MATERIAL_U(u) Material(1, false, int[6]( TEX_UNIQUE(u)) )
-#define MATERIAL_U_T(u) Material(1, true, int[6]( TEX_UNIQUE(u)) )
-#define MATERIAL_PLANT(u) Material(3, true, int[6] (TEX_UNIQUE(u)))
-#define MATERIAL_FLOWER(i) Material(3, false, int[6] (TEX_UNIQUE(FLOWER_TEX + i*2)))
-#define MATERIAL_C(c, v, w, z) Material(1, c, int[6]( TEX_COLUMN(v, w, z) ))
+#define MATERIAL_EMPTY() Material(0, false, int[6]( TEX_UNIQUE(0) ), vec3(0))
+#define MATERIAL_U(u) Material(1, false, int[6]( TEX_UNIQUE(u)), vec3(0))
+#define MATERIAL_U_T(u) Material(1, true, int[6]( TEX_UNIQUE(u)), vec3(0) )
+#define MATERIAL_PLANT(u) Material(3, true, int[6] (TEX_UNIQUE(u)), vec3(0))
+#define MATERIAL_FLOWER(i) Material(3, false, int[6] (TEX_UNIQUE(FLOWER_TEX + i*2)), vec3(0))
+#define MATERIAL_C(c, v, w, z) Material(1, c, int[6]( TEX_COLUMN(v, w, z) ), vec3(0))
 #define MATERIAL_LOG(i) MATERIAL_C(false, LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
 #define MATERIAL_LEAVES(i) MATERIAL_U_T(LEAVES_TEX + i*2)
+#define MATERIAL_LIGHT(color) Material(4, false, int[6](TEX_UNIQUE(0)), color)
 
 #define STONE_TEX       0
 #define DIRT_TEX        2
@@ -65,6 +67,12 @@ const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_FLOWER(7),
     MATERIAL_FLOWER(8),
     MATERIAL_FLOWER(9),
+    MATERIAL_LIGHT(vec3(1)), // 32
+    MATERIAL_LIGHT(vec3(1,0,0)),
+    MATERIAL_LIGHT(vec3(0,1,0)),
+    MATERIAL_LIGHT(vec3(0,0,1)),
+    MATERIAL_LIGHT(vec3(1,1,0)),
+    MATERIAL_LIGHT(vec3(0,1,1)),
 };
 
 const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {
@@ -100,4 +108,8 @@ vec3 texture_normal(const int tex, vec2 uv, const float t, vec3 normal) {
     const vec3 map_normal = color.xyz * 2 - vec3(1);
 
     return mat3(tangeant, b, normal) * map_normal;
+}
+
+bool block_is_light(uint type) {
+    return type > 31;
 }

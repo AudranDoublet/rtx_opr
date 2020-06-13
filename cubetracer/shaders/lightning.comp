@@ -70,7 +70,7 @@ vec3 lightingJunctureReflectionFromWater(const vec3 LWR_intersection, const vec3
     DRAW_RAY_INIT(ray);
     CAST_RAY_INTO_WATER(ray, LWR_acc_dist, CST_MAX_ITER_RAY_WATER, false, {
         return vec3(0.0, 0.01, 0.2);
-    }, {}, { return vec3(1, 0, 0); }, {
+    }, {}, { return vec3(1, 0, 0); }, { return CST_BLOCK_MATERIALS[block_type].color; }, {
         return lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
     });
 }
@@ -80,7 +80,7 @@ vec3 lightingJunctureReflectionFromAir(const vec3 LWR_intersection, const vec3 L
     DRAW_RAY_INIT(ray);
     CAST_RAY_INTO_AIR(ray, LWR_acc_dist, CST_MAX_ITER_RAY_AIR, false, {
         return sky_color(ray);
-    }, {}, { return vec3(1, 0, 0); }, {
+    }, {}, { return vec3(1, 0, 0); }, {return CST_BLOCK_MATERIALS[block_type].color;}, {
         return lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
     });
 }
@@ -90,7 +90,7 @@ vec3 lightingJunctureRefractionFromWater(const vec3 LWR_intersection, const vec3
     DRAW_RAY_INIT(ray);
     CAST_RAY_INTO_AIR(ray, LWR_acc_dist, CST_MAX_ITER_RAY_AIR, false, {
         return sky_color(ray);
-    }, {}, { return vec3(1, 0, 0); }, {
+    }, {}, { return vec3(1, 0, 0); }, {return CST_BLOCK_MATERIALS[block_type].color;}, {
         vec3 outColor = lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
         if (CST_USE_BEER_ATTENUATION)
             outColor *= exp(-CST_WATER_TRANSMITTANCE * LWR_acc_dist);
@@ -103,7 +103,7 @@ vec3 lightingJunctureRefractionFromAir(const vec3 LWR_intersection, const vec3 L
     DRAW_RAY_INIT(ray);
     CAST_RAY_INTO_WATER(ray, LWR_acc_dist, CST_MAX_ITER_RAY_WATER, false, {
         return vec3(0.0, 0.01, 0.2);
-    }, {}, { return vec3(1, 0, 0); }, {
+    }, {}, { return vec3(1, 0, 0); }, { return CST_BLOCK_MATERIALS[block_type].color; }, {
         vec3 outColor = lightingWithoutShadows(ray.origin, color.rgb, intersection, normal);
         if (CST_USE_BEER_ATTENUATION)
             outColor *= exp(-CST_WATER_TRANSMITTANCE * t);
@@ -156,6 +156,8 @@ mat3 trace_ray_direct_illumination(const Ray ray) {
             vec3 outColor = lightingJunctureFromWater(intersection, lwNormal, ray.direction, t);
             return mat3(outColor, intersection, lwNormal);
         }, {
+            return mat3(CST_BLOCK_MATERIALS[block_type].color, vec3(0), vec3(0));
+        }, {
             vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
             if (CST_USE_BEER_ATTENUATION)
                 outColor *= exp(-CST_WATER_TRANSMITTANCE * t);
@@ -170,7 +172,9 @@ mat3 trace_ray_direct_illumination(const Ray ray) {
             vec3 lwNormal = water_normal(intersection);
             vec3 outColor = lightingJunctureFromAir(intersection, lwNormal, ray.direction, t);
             return mat3(outColor, intersection, lwNormal);
-        }, {
+        },{
+            return mat3(CST_BLOCK_MATERIALS[block_type].color, vec3(0), vec3(0));
+        } ,{
             vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
             return mat3(outColor, intersection, normal);
         });
@@ -187,6 +191,8 @@ mat3 trace_ray_reflection(const Ray ray) {
             vec3 outColor = lightingJunctureFromWater(intersection, lwNormal, ray.direction, t);
             return mat3(outColor, intersection, lwNormal);
         }, {
+            return mat3(CST_BLOCK_MATERIALS[block_type].color, vec3(0), vec3(0));
+        }, {
             vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
             if (CST_USE_BEER_ATTENUATION)
                 outColor *= exp(-CST_WATER_TRANSMITTANCE * t);
@@ -199,6 +205,8 @@ mat3 trace_ray_reflection(const Ray ray) {
             vec3 lwNormal = water_normal(intersection);
             vec3 outColor = lightingJunctureFromAir(intersection, lwNormal, ray.direction, t);
             return mat3(outColor, intersection, lwNormal);
+        }, {
+            return mat3(CST_BLOCK_MATERIALS[block_type].color, vec3(0), vec3(0));
         }, {
             vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
             return mat3(outColor, intersection, normal);

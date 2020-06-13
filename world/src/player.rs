@@ -1,4 +1,4 @@
-use crate::{ivec_to_f, worldf_to_chunk, World, AABB, Block, BlockFace};
+use crate::{ivec_to_f, worldf_to_chunk, Block, BlockFace, World, AABB};
 use nalgebra::{Vector2, Vector3};
 use std::{collections::HashSet, rc::Rc};
 
@@ -44,6 +44,8 @@ pub trait ChunkListener {
 }
 
 pub struct Player {
+    _debug_light_type: u32, // FIXME: only to debug lights
+
     view_distance: i32,
     position: Vector3<f32>,
     sprinting: bool,
@@ -66,6 +68,8 @@ pub struct Player {
 impl Player {
     pub fn new(view_distance: usize) -> Player {
         Player {
+            _debug_light_type: 0,
+
             view_distance: view_distance as i32,
             position: Vector3::zeros(),
             velocity: Vector3::zeros(),
@@ -119,33 +123,49 @@ impl Player {
         if self.sneaking {
             let delta = 0.05;
 
-            while diff.x != 0.0 && !self.collider().translate3(diff.x, -1.0, 0.0).has_blocks(world) {
+            while diff.x != 0.0
+                && !self
+                    .collider()
+                    .translate3(diff.x, -1.0, 0.0)
+                    .has_blocks(world)
+            {
                 diff.x = match diff.x {
                     dx if dx < delta && dx > -delta => 0.0,
-                    dx if dx > 0.0                  => dx - delta,
-                    dx                              => dx + delta,
+                    dx if dx > 0.0 => dx - delta,
+                    dx => dx + delta,
                 };
             }
 
-            while diff.z != 0.0 && !self.collider().translate3(diff.x, -1.0, diff.z).has_blocks(world) {
+            while diff.z != 0.0
+                && !self
+                    .collider()
+                    .translate3(diff.x, -1.0, diff.z)
+                    .has_blocks(world)
+            {
                 diff.z = match diff.z {
                     dz if dz < delta && dz > -delta => 0.0,
-                    dz if dz > 0.0                  => dz - delta,
-                    dz                              => dz + delta,
+                    dz if dz > 0.0 => dz - delta,
+                    dz => dz + delta,
                 };
             }
 
-            while diff.x != 0.0 && diff.z != 0.0 && !self.collider().translate3(diff.x, -1.0, diff.z).has_blocks(world) {
+            while diff.x != 0.0
+                && diff.z != 0.0
+                && !self
+                    .collider()
+                    .translate3(diff.x, -1.0, diff.z)
+                    .has_blocks(world)
+            {
                 diff.x = match diff.x {
                     dx if dx < delta && dx > -delta => 0.0,
-                    dx if dx > 0.0                  => dx - delta,
-                    dx                              => dx + delta,
+                    dx if dx > 0.0 => dx - delta,
+                    dx => dx + delta,
                 };
 
                 diff.z = match diff.z {
                     dz if dz < delta && dz > -delta => 0.0,
-                    dz if dz > 0.0                  => dz - delta,
-                    dz                              => dz + delta,
+                    dz if dz > 0.0 => dz - delta,
+                    dz => dz + delta,
                 };
             }
         }
@@ -173,10 +193,15 @@ impl Player {
     }
 
     pub fn head_position(&self) -> Vector3<f32> {
-        self.position + Vector3::new(0.0, match self.sneaking {
-            true => 1.3,
-            false => 1.5,
-        }, 0.0)
+        self.position
+            + Vector3::new(
+                0.0,
+                match self.sneaking {
+                    true => 1.3,
+                    false => 1.5,
+                },
+                0.0,
+            )
     }
 
     pub fn position(&self) -> Vector3<f32> {
@@ -227,7 +252,11 @@ impl Player {
         base * sprint
     }
 
-    pub fn looked_block(&self, world: &World, forward: Vector3<f32>) -> Option<(Vector3<i32>, BlockFace)> {
+    pub fn looked_block(
+        &self,
+        world: &World,
+        forward: Vector3<f32>,
+    ) -> Option<(Vector3<i32>, BlockFace)> {
         let direction = forward.normalize();
         let origin = self.head_position();
 
@@ -285,14 +314,17 @@ impl Player {
                         if let Some((pos, _)) = self.looked_block(world, camera_forward) {
                             world.set_block_at(pos, Block::Air);
                             self.block_break_cooldown = BLOCK_BREAK_COOLDOWN;
+                            // FIXME: hack to update map on click
+                            directional_input.x -= 1e-5 * dt;
+                            // FIXME-END
                         }
                     }
-                },
+                }
                 PlayerInput::RightInteract => {
                     if self.block_place_cooldown <= 0.0 {
                         if let Some((pos, face)) = self.looked_block(world, camera_forward) {
                             let pos = pos + face.relative();
-                            let btype = Block::Light;
+                            let btype = Block::get_light(self._debug_light_type);
 
                             let mut allowed = true;
 
@@ -305,14 +337,19 @@ impl Player {
                             if allowed {
                                 world.set_block_at(pos, btype);
                                 self.block_place_cooldown = BLOCK_PLACE_COOLDOWN;
+                                // FIXME: hack to update map on click
+                                directional_input.x -= 1e-5 * dt;
+                                // FIXME-END
+                                self._debug_light_type =
+                                    (self._debug_light_type + 1) % Block::get_nb_lights();
                             }
                         }
                     }
-                },
+                }
                 PlayerInput::FlyToggle => {
                     self.flying = !self.flying;
                     self.velocity.y = 0.0;
-                },
+                }
             }
         }
 
@@ -341,7 +378,7 @@ impl Player {
         if self.flying && sneaking {
             desired_move.y -= FLYING_Y_SPEED / self.movement_speed();
         } else if self.in_water() && sneaking {
-            desired_move.y -= WATER_Y_SPEED/ self.movement_speed();
+            desired_move.y -= WATER_Y_SPEED / self.movement_speed();
         } else if self.on_ground() && sneaking {
             self.sneaking = true;
         }
@@ -377,7 +414,7 @@ impl Player {
             let va = *a - curr_chunk;
             let vb = *b - curr_chunk;
 
-            (va.x*va.x + va.y*va.y).cmp(&(vb.x*vb.x + vb.y*vb.y))
+            (va.x * va.x + va.y * va.y).cmp(&(vb.x * vb.x + vb.y * vb.y))
         });
 
         for chunk in new_chunks_vec {

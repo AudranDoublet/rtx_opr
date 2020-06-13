@@ -13,23 +13,23 @@ pub enum BlockFace {
 impl BlockFace {
     pub fn opposite(&self) -> BlockFace {
         match self {
-            BlockFace::Up       => BlockFace::Down,
-            BlockFace::Down     => BlockFace::Up,
-            BlockFace::North    => BlockFace::South,
-            BlockFace::South    => BlockFace::North,
-            BlockFace::East     => BlockFace::West,
-            BlockFace::West     => BlockFace::East,
+            BlockFace::Up => BlockFace::Down,
+            BlockFace::Down => BlockFace::Up,
+            BlockFace::North => BlockFace::South,
+            BlockFace::South => BlockFace::North,
+            BlockFace::East => BlockFace::West,
+            BlockFace::West => BlockFace::East,
         }
     }
 
     pub fn relative(&self) -> Vector3<i32> {
         match self {
-            BlockFace::Up       => Vector3::new(0, 1, 0),
-            BlockFace::Down     => Vector3::new(0, -1, 0),
-            BlockFace::North    => Vector3::new(0, 0, 1),
-            BlockFace::South    => Vector3::new(0, 0, -1),
-            BlockFace::East     => Vector3::new(1, 0, 0),
-            BlockFace::West     => Vector3::new(-1, 0, 0),
+            BlockFace::Up => Vector3::new(0, 1, 0),
+            BlockFace::Down => Vector3::new(0, -1, 0),
+            BlockFace::North => Vector3::new(0, 0, 1),
+            BlockFace::South => Vector3::new(0, 0, -1),
+            BlockFace::East => Vector3::new(1, 0, 0),
+            BlockFace::West => Vector3::new(-1, 0, 0),
         }
     }
 
@@ -81,10 +81,30 @@ pub enum Block {
     Allium,
     Poppy,
 
-    Light,
+    LightWhite,
+    LightRed,
+    LightGreen,
+    LightBlue,
+    LightYellow,
+    LightCyan,
 }
 
 impl Block {
+    pub fn get_nb_lights() -> u32 {
+        6
+    }
+
+    pub fn get_light(t: u32) -> Block {
+        match t {
+            0 => Block::LightWhite,
+            1 => Block::LightRed,
+            2 => Block::LightGreen,
+            3 => Block::LightBlue,
+            4 => Block::LightYellow,
+            _ => Block::LightCyan,
+        }
+    }
+
     pub fn is_tough(&self) -> bool {
         match self {
             Block::Air | Block::Snow => false,
@@ -96,29 +116,39 @@ impl Block {
     pub fn is_flower(&self) -> bool {
         match self {
             Block::OrangeTulipe
-                | Block::PinkTulip
-                | Block::RedTulip
-                | Block::WhiteTulip
-                | Block::Dandelion
-                | Block::AzureBluet
-                | Block::OxeyeDaisy
-                | Block::BlueOrchid
-                | Block::Allium
-                | Block::Poppy => true,
-                _ => false,
+            | Block::PinkTulip
+            | Block::RedTulip
+            | Block::WhiteTulip
+            | Block::Dandelion
+            | Block::AzureBluet
+            | Block::OxeyeDaisy
+            | Block::BlueOrchid
+            | Block::Allium
+            | Block::Poppy => true,
+            _ => false,
         }
     }
 
     pub fn is_log(&self) -> bool {
         match self {
-            Block::OakLog | Block::AcaciaLog | Block::BigOakLog | Block::BirchLog | Block::JungleLog | Block::SpruceLog => true,
+            Block::OakLog
+            | Block::AcaciaLog
+            | Block::BigOakLog
+            | Block::BirchLog
+            | Block::JungleLog
+            | Block::SpruceLog => true,
             _ => false,
         }
     }
 
     pub fn is_leaves(&self) -> bool {
         match self {
-            Block::OakLeaves | Block::AcaciaLeaves | Block::BigOakLeaves | Block::BirchLeaves | Block::JungleLeaves | Block::SpruceLeaves => true,
+            Block::OakLeaves
+            | Block::AcaciaLeaves
+            | Block::BigOakLeaves
+            | Block::BirchLeaves
+            | Block::JungleLeaves
+            | Block::SpruceLeaves => true,
             _ => false,
         }
     }
@@ -134,7 +164,7 @@ impl Block {
         match self {
             Block::Air => 1.0,
             b if b.is_leaves() => 0.2,
-            Block::TallGrass    => 0.9,
+            Block::TallGrass => 0.9,
             b if b.is_flower() => 0.8,
             _ => 0.0,
         }
