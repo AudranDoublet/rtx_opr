@@ -117,8 +117,7 @@ bool isIntersectionCertain(uint block_type) {
         && block_type != 8
         && block_type != 7
         && block_type != 9
-        && CST_BLOCK_MATERIALS[block_type].type != 3
-        && CST_BLOCK_MATERIALS[block_type].type != 4;
+        && CST_BLOCK_MATERIALS[block_type].type != 3;
 }
 
 vec3 computeBlockOffsetTop(uint block_type) {

@@ -81,7 +81,6 @@ uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
     DRAW_RAY_ITER(BLOCK_TYPE_INSIDE, true, MAX_BLOCK_ITERATION, BOCK_ON_NON_INTERSECTION);\
     uint k = 0;\
     do {\
-        if (CST_BLOCK_MATERIALS[block_type].type == 4) {BOCK_ON_LIGHT_INTERSECTION}\
         float t;\
         int face = 0;\
         bool mustComputeIntersection = true;\
@@ -106,6 +105,7 @@ uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
         if (mustComputeIntersection) {\
             t = BBoxRayIntersects(block, block + vec3(1), R, face);\
         }\
+        if (CST_BLOCK_MATERIALS[block_type].type == 4) {BOCK_ON_LIGHT_INTERSECTION}\
         vec3 intersection = R.origin + R.direction * t;\
         if (block_type == BLOCK_TYPE_OUTSIDE) {BOCK_ON_ENVIRONMENT_CHANGE}\
         if (mustComputeUv)\

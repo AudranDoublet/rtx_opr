@@ -181,7 +181,7 @@ mat3 trace_ray_direct_illumination(const Ray ray) {
     }
 }
 
-mat3 trace_ray_reflection(const Ray ray) {
+mat3 trace_ray_reflection(const Ray ray, inout bool out_hitLight) {
     DRAW_RAY_INIT(ray);
     if (block_type == CST_BLOCK_TYPE_WATER) {
         CAST_RAY_INTO_WATER(ray, 0.0, CST_MAX_ITER_RAY_WATER, true, {
@@ -191,7 +191,8 @@ mat3 trace_ray_reflection(const Ray ray) {
             vec3 outColor = lightingJunctureFromWater(intersection, lwNormal, ray.direction, t);
             return mat3(outColor, intersection, lwNormal);
         }, {
-            return mat3(CST_BLOCK_MATERIALS[block_type].color, vec3(0), vec3(0));
+            out_hitLight = true;
+            return mat3(CST_BLOCK_MATERIALS[block_type].color, vec3(t), vec3(0));
         }, {
             vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
             if (CST_USE_BEER_ATTENUATION)
@@ -206,7 +207,8 @@ mat3 trace_ray_reflection(const Ray ray) {
             vec3 outColor = lightingJunctureFromAir(intersection, lwNormal, ray.direction, t);
             return mat3(outColor, intersection, lwNormal);
         }, {
-            return mat3(CST_BLOCK_MATERIALS[block_type].color, vec3(0), vec3(0));
+            out_hitLight = true;
+            return mat3(CST_BLOCK_MATERIALS[block_type].color, vec3(t), vec3(0));
         }, {
             vec3 outColor = lighting(ray.origin, color.rgb, intersection, normal, t);
             return mat3(outColor, intersection, normal);
@@ -223,7 +225,14 @@ vec3 trace_ray_indirect_illumination(out int64_t seed, vec3 trii_intersection, v
     for (uint i = 0; i < CST_MAX_BOUNCE; i ++) {
         Ray ray = ray_make(trii_intersection, random_ray(seed, trii_normal));
 
-        mat3 rayRefectionHit = trace_ray_reflection(ray);
+        bool rayHasHittenLight = false;
+        mat3 rayRefectionHit = trace_ray_reflection(ray, rayHasHittenLight);
+
+        if (rayHasHittenLight) {
+            color += rayRefectionHit[0] / (rayRefectionHit[1].r + 0.5);
+            break;
+        }
+
         color += coeffIllumLoss * rayRefectionHit[0];
         trii_intersection = rayRefectionHit[1];
         trii_normal = rayRefectionHit[2];
