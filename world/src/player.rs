@@ -300,6 +300,8 @@ impl Player {
         self.block_break_cooldown -= dt;
         self.block_place_cooldown -= dt;
 
+        let mut changed = false;
+
         for input in &inputs {
             match input {
                 PlayerInput::MoveLeft => directional_input.x -= 1.,
@@ -312,11 +314,10 @@ impl Player {
                 PlayerInput::LeftInteract => {
                     if self.block_break_cooldown <= 0.0 {
                         if let Some((pos, _)) = self.looked_block(world, camera_forward) {
+                            changed = true;
+
                             world.set_block_at(pos, Block::Air);
                             self.block_break_cooldown = BLOCK_BREAK_COOLDOWN;
-                            // FIXME: hack to update map on click
-                            directional_input.x -= 1e-5 * dt;
-                            // FIXME-END
                         }
                     }
                 }
@@ -335,11 +336,10 @@ impl Player {
                             }
 
                             if allowed {
+                                changed = true;
+
                                 world.set_block_at(pos, btype);
                                 self.block_place_cooldown = BLOCK_PLACE_COOLDOWN;
-                                // FIXME: hack to update map on click
-                                directional_input.x -= 1e-5 * dt;
-                                // FIXME-END
                                 self._debug_light_type =
                                     (self._debug_light_type + 1) % Block::get_nb_lights();
                             }
@@ -384,7 +384,7 @@ impl Player {
         }
 
         desired_move *= self.movement_speed();
-        self.move_player(world, listener, desired_move, dt)
+        self.move_player(world, listener, desired_move, dt) || changed
     }
 
     fn update_seen_chunks(
