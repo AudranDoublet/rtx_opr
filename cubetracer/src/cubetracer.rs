@@ -27,6 +27,8 @@ pub struct CubeTracer {
     cache_intersections: u32,
     cache_normals: u32,
 
+    enable_global_illum: bool,
+
     pub args: CubeTracerArguments,
 }
 
@@ -37,6 +39,7 @@ impl CubeTracer {
         view_size: usize,
         resolution_coeff: f32,
         shadow_activated: bool,
+        enable_global_illum: bool,
     ) -> Result<Self, GLError> {
         let prog_raytracer_id = helper::build_program_raytracer(
             view_size,
@@ -166,8 +169,15 @@ impl CubeTracer {
             cache_intersections,
             cache_normals,
 
+            enable_global_illum,
+
             args: CubeTracerArguments::new(program_raytracer, view_size)?,
         })
+    }
+
+    pub fn toggle_global_illum(&mut self) -> Result<(), GLError> {
+        self.enable_global_illum = !self.enable_global_illum;
+        self.args.set_global_illum_state(self.enable_global_illum)
     }
 
     pub fn compute_image(&self, width: u32, height: u32) -> Result<(), GLError> {

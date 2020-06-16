@@ -1,4 +1,6 @@
-use glutin::event::{DeviceEvent, ElementState, KeyboardInput, MouseScrollDelta, VirtualKeyCode, MouseButton};
+use glutin::event::{
+    DeviceEvent, ElementState, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode,
+};
 use nalgebra::Vector2;
 
 pub enum StateChange {
@@ -93,6 +95,15 @@ impl WinInput {
         self.keys_states[k as usize] == ElementState::Pressed
     }
 
+    pub fn is_pressed_once(&mut self, k: VirtualKeyCode) -> bool {
+        let k = k as usize;
+        if self.keys_states[k] == ElementState::Pressed {
+            self.keys_states[k] = ElementState::Released;
+            return true;
+        }
+        return false;
+    }
+
     pub fn is_double_pressed(&mut self, k: VirtualKeyCode) -> bool {
         let k = k as usize;
 
@@ -143,12 +154,18 @@ impl WinInput {
             if input.state == ElementState::Pressed {
                 self.double_pressed_states[k] = match self.double_pressed_states[k] {
                     DoublePressState::Released => DoublePressState::PressedOnce(self.time),
-                    DoublePressState::ReleasedAfterPressed(t) if self.time - t < MAX_TIME_DOUBLE_PRESS => DoublePressState::Pressed,
+                    DoublePressState::ReleasedAfterPressed(t)
+                        if self.time - t < MAX_TIME_DOUBLE_PRESS =>
+                    {
+                        DoublePressState::Pressed
+                    }
                     _ => DoublePressState::Released,
                 }
             } else {
                 self.double_pressed_states[k] = match self.double_pressed_states[k] {
-                    DoublePressState::PressedOnce(t) if self.time - t < MAX_TIME_DOUBLE_PRESS => DoublePressState::ReleasedAfterPressed(self.time),
+                    DoublePressState::PressedOnce(t) if self.time - t < MAX_TIME_DOUBLE_PRESS => {
+                        DoublePressState::ReleasedAfterPressed(self.time)
+                    }
                     _ => DoublePressState::Released,
                 };
             }

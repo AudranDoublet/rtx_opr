@@ -142,8 +142,6 @@ pub fn game(
     context.window().set_cursor_visible(false);
     context.window().set_cursor_grab(true)?;
 
-    //set_cursor_middle_window(&context);
-
     let (width, height) = get_window_dim(&context);
 
     let mut camera = cubetracer::Camera::new(
@@ -156,8 +154,15 @@ pub fn game(
     );
 
     // --- Cube Tracer ---
-    let mut cubetracer =
-        cubetracer::CubeTracer::new(width, height, view_distance, resolution_coeff, with_shadows).unwrap();
+    let mut cubetracer = cubetracer::CubeTracer::new(
+        width,
+        height,
+        view_distance,
+        resolution_coeff,
+        with_shadows,
+        false,
+    )
+    .unwrap();
 
     // --- Main loop ---
     let mut frame_counter = FrameCounter::new(60);
@@ -167,6 +172,7 @@ pub fn game(
     let mut __debug_min_coords: Vector2<i32> = Vector2::zeros();
 
     let mut total_time = 0.0;
+    let mut update_rendering = false;
 
     event_loop.run(
         move |event, _, control_flow: &mut glutin::event_loop::ControlFlow| {
@@ -179,19 +185,17 @@ pub fn game(
                     input_handler.update_time(delta_time);
                     total_time += delta_time;
 
-                    let mut change = false;
-
                     // --- Process inputs ---
                     if input_handler.updated(wininput::StateChange::MouseScroll) {
                         let fov = fov_range.start
                             + input_handler.get_scroll() * (fov_range.end - fov_range.start);
-                        change = true;
+                        update_rendering = true;
                         camera.set_fov(fov)
                     }
 
                     if input_handler.updated(wininput::StateChange::MouseMotion) {
                         let offset = input_handler.get_mouse_offset() * delta_time;
-                        change = true;
+                        update_rendering = true;
                         camera.reorient(offset);
                     }
 
@@ -234,14 +238,14 @@ pub fn game(
 
                     // --- Update States ---
 
-                    change = player.update(
+                    update_rendering = player.update(
                         world,
                         &mut listener,
                         camera.forward(),
                         camera.left(),
                         inputs,
                         delta_time,
-                    ) || change;
+                    ) || update_rendering;
 
                     camera.origin = player.head_position();
                     //player.set_position(world, &mut listener, camera.origin);
@@ -332,10 +336,17 @@ pub fn game(
 
                     cubetracer
                         .args
-                        .set_camera(total_time, change, &camera, wind, highlighted_block)
+                        .set_camera(
+                            total_time,
+                            update_rendering,
+                            &camera,
+                            wind,
+                            highlighted_block,
+                        )
                         .unwrap();
 
                     context.window().request_redraw();
+                    update_rendering = false;
                 }
                 event::Event::RedrawRequested(_) => {
                     let (width, height) = get_window_dim(&context);
@@ -359,7 +370,11 @@ pub fn game(
                 event::Event::DeviceEvent { event, .. } => input_handler.on_device_event(event),
                 event::Event::WindowEvent { event, .. } => match event {
                     WindowEvent::KeyboardInput { input, .. } => {
-                        input_handler.on_keyboard_input(input)
+                        input_handler.on_keyboard_input(input);
+                        if input_handler.is_pressed_once(KeyCode::P) {
+                            update_rendering = true;
+                            cubetracer.toggle_global_illum().unwrap();
+                        }
                     }
                     WindowEvent::MouseInput { button, state, .. } => {
                         input_handler.on_mouse_input(button, state)

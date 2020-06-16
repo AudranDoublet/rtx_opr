@@ -236,7 +236,7 @@ mat3 trace_ray_reflection(const Ray ray, inout bool out_hitLight) {
 }
 
 #define CST_MAX_BOUNCE 4
-#define CST_RAY_REFLECTANCE 0.2
+#define CST_RAY_REFLECTANCE 0.3
 vec3 trace_ray_indirect_illumination(out int64_t seed, vec3 trii_intersection, vec3 trii_normal) {
     vec3 illum = vec3(0);
     float coeffIllumLoss = CST_RAY_REFLECTANCE;

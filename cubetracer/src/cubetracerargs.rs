@@ -21,8 +21,9 @@ const VAR_IDX_TEXTURES: usize = 6;
 const VAR_IDX_WIND: usize = 7;
 const VAR_IDX_ITERATION_ID: usize = 8;
 const VAR_IDX_TIME: usize = 9;
+const VAR_IDX_ENABLE_GLOBAL_ILLUM: usize = 10;
 
-const VARS_LEN: usize = 10;
+const VARS_LEN: usize = 11;
 
 pub struct CubeTracerArguments {
     program: u32,
@@ -36,7 +37,7 @@ pub struct CubeTracerArguments {
 }
 
 fn chunk_size() -> usize {
-    16*16*256 + 16*16*3
+    16 * 16 * 256 + 16 * 16 * 3
 }
 
 impl CubeTracerArguments {
@@ -83,10 +84,12 @@ impl CubeTracerArguments {
         uniform_locations[VAR_IDX_ITERATION_ID] =
             helper::get_uniform_location(program, "in_uni_iteration_id")?;
 
-        uniform_locations[VAR_IDX_TIME] =
-            helper::get_uniform_location(program, "in_uni_time")?;
+        uniform_locations[VAR_IDX_TIME] = helper::get_uniform_location(program, "in_uni_time")?;
 
         uniform_locations[VAR_IDX_WIND] = helper::get_uniform_location(program, "in_uni_wind")?;
+
+        uniform_locations[VAR_IDX_ENABLE_GLOBAL_ILLUM] =
+            helper::get_uniform_location(program, "in_uni_enable_global_illum")?;
 
         let res = CubeTracerArguments {
             program,
@@ -101,6 +104,10 @@ impl CubeTracerArguments {
 
         res.set_i(VAR_IDX_TEXTURES, 1)?;
         Ok(res)
+    }
+
+    pub fn set_global_illum_state(&mut self, state: bool) -> Result<(), GLError> {
+        self.set_i(VAR_IDX_ENABLE_GLOBAL_ILLUM, state as i32)
     }
 
     pub fn nb_mapped_chunks(&self) -> usize {
@@ -136,10 +143,10 @@ impl CubeTracerArguments {
                 .collect::<Vec<u32>>();
 
             chunk_to_add_data.extend(
-                chunk_to_add.grass_color
-                    .iter().map(|&b| unsafe {
-                        std::mem::transmute::<f32, u32>(b)
-                    })
+                chunk_to_add
+                    .grass_color
+                    .iter()
+                    .map(|&b| unsafe { std::mem::transmute::<f32, u32>(b) }),
             );
 
             let chunk_idx = if let Some(idx) = self.chunks_mapping.get(&(x, y)) {
