@@ -58,10 +58,11 @@ layout (std430) readonly buffer shader_data {
 
 layout (binding = 0, rgba32f) uniform image2D out_uni_frame;
 layout (binding = 1, rgba32f) uniform image2D random_image;
-layout (binding = 2, rgba32f) uniform image2D cache_illum_direct;
-layout (binding = 3, rgba32f) uniform image2D cache_illum_indirect_sampling;
-layout (binding = 4, rgba32f) uniform image2D cache_intersections;
-layout (binding = 5, rgba32f) uniform image2D cache_normals;
+layout (binding = 2, rgba32f) uniform image2D cache_albedos;
+layout (binding = 3, rgba32f) uniform image2D cache_illum_direct;
+layout (binding = 4, rgba32f) uniform image2D cache_illum_indirect_sampling;
+layout (binding = 5, rgba32f) uniform image2D cache_intersections;
+layout (binding = 6, rgba32f) uniform image2D cache_normals;
 
 /* ************************************************************
  * > -5- main
@@ -76,38 +77,40 @@ void main() {
 
     int64_t seed = int64_t(imageLoad(random_image, pixel).x * 255) + int64_t(in_uni_iteration_id) * 31;
 
-    vec3 outColor = vec3(0); 
+    vec3 cAlbedo = vec3(0);
+    vec3 cIllumDirect;
+    vec3 cIllumIndirect;
+    vec3 cIntersection;
+    vec3 cNormal;
 
     if (in_uni_iteration_id == 0) {
-        mat3 pixelDirectIllumInfo = trace_ray_direct_illumination(ray);
+        if (!trace_ray_direct_illumination(ray, cAlbedo, cIllumDirect, cIntersection, cNormal)) {
+            cNormal = vec3(0);
+            cIllumDirect = vec3(1);
+        }
 
-        outColor = pixelDirectIllumInfo[0];
-
-        imageStore(cache_illum_direct, pixel, vec4(pixelDirectIllumInfo[0], 1));
-        imageStore(cache_intersections, pixel, vec4(pixelDirectIllumInfo[1], 1));
-        imageStore(cache_normals, pixel, vec4(pixelDirectIllumInfo[2], 1));
-        imageStore(out_uni_frame, pixel, vec4(outColor, 1));
-    }
-
-    vec3 normal = imageLoad(cache_normals, pixel).xyz;
-    // check if initial ray has hit the sky
-    if (normal == vec3(0)) {
-        // FIXME: free compute time => can be used to sample more rays for another pixel?
-        return;
-    }
-    vec3 intersection = imageLoad(cache_intersections, pixel).xyz;
-
-    vec3 illum_sampling;
-    if (in_uni_iteration_id == 0) {
-        illum_sampling = vec3(0);
+        cIllumIndirect = vec3(0);
+        imageStore(cache_albedos, pixel, vec4(cAlbedo, 1));
+        imageStore(cache_illum_direct, pixel, vec4(cIllumDirect, 1));
+        imageStore(cache_intersections, pixel, vec4(cIntersection, 1));
+        imageStore(cache_normals, pixel, vec4(cNormal, 1));
     } else {
-        illum_sampling = imageLoad(cache_illum_indirect_sampling, pixel).rgb;
+        cNormal = imageLoad(cache_normals, pixel).xyz;
+        if (cNormal == vec3(0)) {
+            // FIXME: free compute time => can be used to sample more rays for another pixel?
+            return;
+        }
+
+        cAlbedo = imageLoad(cache_albedos, pixel).rgb;
+        cIllumDirect = imageLoad(cache_illum_direct, pixel).rgb;
+        cIllumIndirect = imageLoad(cache_illum_indirect_sampling, pixel).rgb;
+        cIntersection = imageLoad(cache_intersections, pixel).xyz;
     }
 
-    illum_sampling += trace_ray_indirect_illumination(seed, intersection, normal);
+    cIllumIndirect += trace_ray_indirect_illumination(seed, cIntersection, cNormal);
 
-    imageStore(cache_illum_indirect_sampling, pixel, vec4(illum_sampling, 1));
-    outColor = imageLoad(cache_illum_direct, pixel).rgb + (illum_sampling / (in_uni_iteration_id + 1));
+    imageStore(cache_illum_indirect_sampling, pixel, vec4(cIllumIndirect, 1));
 
+    const vec3 outColor = (cIllumDirect + cIllumIndirect / (in_uni_iteration_id + 1)) * cAlbedo;
     imageStore(out_uni_frame, pixel, vec4(outColor, 1));
 }

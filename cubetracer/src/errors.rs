@@ -166,7 +166,7 @@ pub fn gl_check_error_shader(
 
     if success != gl::TRUE as GLint {
         let err_message = shader_error_str(shader);
-        dbg!(&err_message);
+        //dbg!(&err_message);
         let context = if let Ok(line) = err_message.split(":").collect::<Vec<&str>>()[1]
             .split("(")
             .collect::<Vec<&str>>()[0]
@@ -178,7 +178,9 @@ pub fn gl_check_error_shader(
 
             lines[min..=max].join("\n")
         } else {
-            "".to_string()
+            let lines = cshader.lines().collect::<Vec<&str>>();
+            lines[810..=830].join("\n")
+            //"".to_string()
         };
         Err(GLError::ShaderError { shader, context })
     } else {

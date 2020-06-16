@@ -21,10 +21,11 @@ pub struct CubeTracer {
     texture_cursor: u32,
     resolution_coeff: f32,
 
-    cache_intersections: u32,
-    cache_normals: u32,
+    cache_albedos: u32,
     cache_illum_direct: u32,
     cache_illum_indirect_sampling: u32,
+    cache_intersections: u32,
+    cache_normals: u32,
 
     pub args: CubeTracerArguments,
 }
@@ -37,7 +38,11 @@ impl CubeTracer {
         resolution_coeff: f32,
         shadow_activated: bool,
     ) -> Result<Self, GLError> {
-        let prog_raytracer_id = helper::build_program_raytracer(view_size, shadow_activated, coeff(10, resolution_coeff))?;
+        let prog_raytracer_id = helper::build_program_raytracer(
+            view_size,
+            shadow_activated,
+            coeff(10, resolution_coeff),
+        )?;
         let prog_quad_screen_id = helper::build_program_quad()?;
 
         let program_raytracer = prog_raytracer_id;
@@ -51,11 +56,11 @@ impl CubeTracer {
 
         let texture_raytracer = helper::generate_texture(width, height)?;
         let texture_random = helper::generate_texture_random(1, width, height)?;
-
-        let cache_illum_direct = helper::generate_image_cache(2, width, height)?;
-        let cache_illum_indirect_sampling = helper::generate_image_cache(3, width, height)?;
-        let cache_intersections = helper::generate_image_cache(4, width, height)?;
-        let cache_normals = helper::generate_image_cache(5, width, height)?;
+        let cache_albedos = helper::generate_image_cache(2, width, height)?;
+        let cache_illum_direct = helper::generate_image_cache(3, width, height)?;
+        let cache_illum_indirect_sampling = helper::generate_image_cache(4, width, height)?;
+        let cache_intersections = helper::generate_image_cache(5, width, height)?;
+        let cache_normals = helper::generate_image_cache(6, width, height)?;
 
         helper::texture_3d(
             1,
@@ -155,10 +160,11 @@ impl CubeTracer {
             texture_cursor,
             resolution_coeff,
 
-            cache_intersections,
-            cache_normals,
+            cache_albedos,
             cache_illum_direct,
             cache_illum_indirect_sampling,
+            cache_intersections,
+            cache_normals,
 
             args: CubeTracerArguments::new(program_raytracer, view_size)?,
         })
@@ -179,7 +185,15 @@ impl CubeTracer {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), GLError> {
-        let textures_ids = [self.texture_raytracer, self.texture_random, self.cache_intersections, self.cache_normals, self.cache_illum_direct, self.cache_illum_indirect_sampling];
+        let textures_ids = [
+            self.texture_raytracer,
+            self.texture_random,
+            self.cache_albedos,
+            self.cache_illum_direct,
+            self.cache_illum_indirect_sampling,
+            self.cache_intersections,
+            self.cache_normals,
+        ];
         glchk_stmt!(
             gl::DeleteTextures(textures_ids.len() as i32, textures_ids.as_ptr());
             gl::Viewport(
@@ -190,13 +204,17 @@ impl CubeTracer {
             );
         );
 
-        let (w, h) = (coeff(width, self.resolution_coeff), coeff(height, self.resolution_coeff));
+        let (w, h) = (
+            coeff(width, self.resolution_coeff),
+            coeff(height, self.resolution_coeff),
+        );
         self.texture_raytracer = helper::generate_texture(w, h)?;
         self.texture_random = helper::generate_texture_random(1, w, h)?;
-        self.cache_illum_direct = helper::generate_image_cache(2, w, h)?;
-        self.cache_illum_indirect_sampling = helper::generate_image_cache(3, w, h)?;
-        self.cache_intersections = helper::generate_image_cache(4, w, h)?;
-        self.cache_normals = helper::generate_image_cache(5, w, h)?;
+        self.cache_albedos = helper::generate_image_cache(2, w, h)?;
+        self.cache_illum_direct = helper::generate_image_cache(3, w, h)?;
+        self.cache_illum_indirect_sampling = helper::generate_image_cache(4, w, h)?;
+        self.cache_intersections = helper::generate_image_cache(5, w, h)?;
+        self.cache_normals = helper::generate_image_cache(6, w, h)?;
 
         Ok(())
     }

@@ -62,7 +62,7 @@ uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
     uint column_idx;\
     uint block_type = bl_value(block, chunk_idx, column_idx);\
     uint _i = 0;\
-    uint _max_i = estimate_max_iter(R);\
+    uint _max_i = estimate_max_iter(R);
 
 #define DRAW_RAY_ITER(BLOCK_TYPE_TO_IGNORE, IGNORE_CURRENT_BLOCK, MAX_ITER, BOCK_ON_NON_INTERSECTION)\
     if (IGNORE_CURRENT_BLOCK)\
