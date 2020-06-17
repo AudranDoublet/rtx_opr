@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::AABB;
 use nalgebra::Vector3;
 
@@ -42,7 +44,7 @@ impl BlockFace {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum Block {
     Air,

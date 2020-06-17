@@ -1,6 +1,9 @@
+extern crate serde;
+
 use std::{cmp::Ordering, fs::File, io::prelude::*, path::Path, rc::Rc};
 
 use nalgebra::{Vector2, Vector3};
+use serde::{Deserialize, Serialize, Serializer};
 
 use crate::generator::decorators::decorator_random;
 use crate::{main_world, BiomeType, Block, MAX_HEIGHT, SEA_LEVEL};
@@ -9,12 +12,47 @@ const WIDTH: i32 = 16;
 const HEIGHT: i32 = MAX_HEIGHT;
 const COUNT: i32 = WIDTH * WIDTH * HEIGHT;
 
+pub fn serialize_array<S, T>(array: &[T], serializer: S) -> Result<S::Ok, S::Error>
+where S: Serializer, T: Serialize {
+    array.serialize(serializer)
+}
+
+#[macro_export]
+macro_rules! serde_array { ($m:ident, $n:expr) => {
+    pub mod $m {
+        use std::{ptr, mem};
+        use serde::{Deserialize, Deserializer, de};
+        pub use $crate::serialize_array as serialize;
+        use super::*;
+
+        pub fn deserialize<'de, D, T>(deserializer: D) -> Result<[T; $n], D::Error>
+        where D: Deserializer<'de>, T: Deserialize<'de> + 'de {
+            let slice: Vec<T> = Deserialize::deserialize(deserializer)?;
+            if slice.len() != $n {
+                return Err(de::Error::custom("input slice has wrong length"));
+            }
+            unsafe {
+                let mut result: [T; $n] = mem::MaybeUninit::uninit().assume_init();
+                for (src, dst) in slice.into_iter().zip(&mut result[..]) {
+                    ptr::write(dst, src);
+                }
+                Ok(result)
+            }
+        }
+    }
+}}
+
+serde_array!(block_arr, COUNT as usize);
+serde_array!(color_arr, (WIDTH * WIDTH * 3) as usize);
+serde_array!(biome_arr, (WIDTH * WIDTH) as usize);
+
+#[derive(Serialize, Deserialize)]
 pub struct Chunk {
     coords: Vector2<i32>,
-    pub blocks: [Block; COUNT as usize],
-    pub lightning: [f32; COUNT as usize],
-    pub grass_color: [f32; (WIDTH * WIDTH * 3) as usize],
-    biomes: [BiomeType; WIDTH as usize * WIDTH as usize],
+    pub blocks: Vec<Block>,
+    pub lightning: Vec<f32>,
+    pub grass_color: Vec<f32>,
+    biomes: Vec<BiomeType>,
 
     decorated: bool,
     modified: bool,
@@ -44,11 +82,11 @@ impl Chunk {
     pub fn new_empty(x: i32, z: i32) -> Rc<Chunk> {
         Rc::new(Chunk {
             coords: Vector2::new(x, z),
-            blocks: [Block::Air; COUNT as usize],
-            lightning: [0.0; COUNT as usize],
+            blocks: vec![Block::Air; COUNT as usize],
+            lightning: vec![0.0; COUNT as usize],
             decorated: false,
-            grass_color: [0.0; (WIDTH * WIDTH * 3) as usize],
-            biomes: [BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
+            grass_color: vec![0.0; (WIDTH * WIDTH * 3) as usize],
+            biomes: vec![BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
             modified: true,
         })
     }

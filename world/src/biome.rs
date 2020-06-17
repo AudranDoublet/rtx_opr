@@ -1,5 +1,7 @@
 extern crate rand;
 
+use serde::{Deserialize, Serialize};
+
 use nalgebra::Vector3;
 
 use rand::prelude::*;
@@ -100,7 +102,7 @@ impl BiomeShapeType {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(isize)]
 pub enum BiomeType {
     Ocean = 0,

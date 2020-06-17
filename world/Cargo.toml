@@ -7,9 +7,15 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nalgebra = ""
+nalgebra = { version = "0.21.0", features = ["serde-serialize"] }
 rand = ""
 dashmap = "3.10.0"
 lazy_static = "1.4.0"
+
+# serialization
+flate2 = { version = "*", features = ["cloudflare_zlib"], default-features = false }
+serde = {version = "1.0.105", features = ["derive", "rc"]}
+serde_json = "1.0.48"
+serde_derive = "1.0.105"
 
 perlin = { path = "../perlin" }
