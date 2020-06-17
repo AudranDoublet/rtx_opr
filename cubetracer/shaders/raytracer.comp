@@ -87,6 +87,7 @@ void renderGlobalIllum(const ivec2 pixel) {
         if (!trace_ray_direct_illumination(ray, cAlbedo, cIllumDirect, cIntersection.xyz, cNormal, cIntersection.w)) {
             cNormal = vec3(0);
             cIllumDirect = vec3(1);
+            cIllumIndirect = vec3(0);
         } else {
             cIllumIndirect = trace_ray_indirect_illumination(seed, cIntersection.xyz, cNormal, cIntersection.w);
         }
