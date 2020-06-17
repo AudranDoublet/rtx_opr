@@ -1,5 +1,3 @@
-#![feature(str_strip)]
-
 extern crate proc_macro;
 extern crate proc_macro2;
 
