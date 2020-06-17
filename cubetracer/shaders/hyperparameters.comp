@@ -40,6 +40,7 @@ const float CST_GI_DISTANCE_STIFFNESS = 10.0; // greater the value, better the q
 const float CST_GI_REFLECTANCE    = 0.3;
 // FIXME-END: each material should have its own reflectance
 const float CST_GI_MIN_COEF_LOSS  = 1e-5;
+const float CST_GI_SKY_CONTRIBUTION = 1.0; // range: [0.0, 1.0]
 
 const float CST_MIN_LIGHTNING_INTENSITY = 0.01;
 
