@@ -79,12 +79,12 @@ void renderGlobalIllum(const ivec2 pixel) {
     vec3 cAlbedo;
     vec3 cIllumDirect;
     vec3 cIllumIndirect;
-    vec3 cIntersection;
+    vec4 cIntersection;
     vec3 cNormal;
 
     if (in_uni_iteration_id == 0) {
         const Ray ray = ray_make_from_pixel(vec2(pixel));
-        if (!trace_ray_direct_illumination(ray, cAlbedo, cIllumDirect, cIntersection, cNormal)) {
+        if (!trace_ray_direct_illumination(ray, cAlbedo, cIllumDirect, cIntersection.xyz, cNormal, cIntersection.w)) {
             cNormal = vec3(0);
             cIllumDirect = vec3(1);
         }
@@ -92,7 +92,7 @@ void renderGlobalIllum(const ivec2 pixel) {
         cIllumIndirect = vec3(0);
         imageStore(cache_albedos, pixel, vec4(cAlbedo, 1));
         imageStore(cache_illum_direct, pixel, vec4(cIllumDirect, 1));
-        imageStore(cache_intersections, pixel, vec4(cIntersection, 1));
+        imageStore(cache_intersections, pixel, cIntersection);
         imageStore(cache_normals, pixel, vec4(cNormal, 1));
     } else {
         cNormal = imageLoad(cache_normals, pixel).xyz;
@@ -104,10 +104,10 @@ void renderGlobalIllum(const ivec2 pixel) {
         cAlbedo = imageLoad(cache_albedos, pixel).rgb;
         cIllumDirect = imageLoad(cache_illum_direct, pixel).rgb;
         cIllumIndirect = imageLoad(cache_illum_indirect_sampling, pixel).rgb;
-        cIntersection = imageLoad(cache_intersections, pixel).xyz;
+        cIntersection = imageLoad(cache_intersections, pixel);
     }
 
-    cIllumIndirect += trace_ray_indirect_illumination(seed, cIntersection, cNormal);
+    cIllumIndirect += trace_ray_indirect_illumination(seed, cIntersection.xyz, cNormal, cIntersection.w);
 
     imageStore(cache_illum_indirect_sampling, pixel, vec4(cIllumIndirect, 1));
 
@@ -118,11 +118,11 @@ void renderGlobalIllum(const ivec2 pixel) {
 void renderBasicIllum(const ivec2 pixel) {
     vec3 cAlbedo;
     vec3 cIllumDirect;
-    vec3 cIntersection;
+    vec4 cIntersection;
     vec3 cNormal;
 
     const Ray ray = ray_make_from_pixel(vec2(pixel));
-    if (!trace_ray_direct_illumination(ray, cAlbedo, cIllumDirect, cIntersection, cNormal)) {
+    if (!trace_ray_direct_illumination(ray, cAlbedo, cIllumDirect, cIntersection.xyz, cNormal, cIntersection.w)) {
         cNormal = vec3(0);
         cIllumDirect = vec3(1);
     }

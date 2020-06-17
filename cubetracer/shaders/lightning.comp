@@ -143,7 +143,7 @@ bool isHighlighting(ivec3 block, vec2 uv) {
 
 #include cubetracer/shaders/random.comp
 
-bool trace_ray_direct_illumination(const Ray ray, out vec3 out_hitAlbedo, out vec3 out_hitDirectIllum, out vec3 out_hitIntersection, out vec3 out_hitNormal) {
+bool trace_ray_direct_illumination(const Ray ray, out vec3 out_hitAlbedo, out vec3 out_hitDirectIllum, out vec3 out_hitIntersection, out vec3 out_hitNormal, out float out_hitDistance) {
     DRAW_RAY_INIT(ray);
 
     if (block_type == CST_BLOCK_TYPE_WATER) {
@@ -170,6 +170,7 @@ bool trace_ray_direct_illumination(const Ray ray, out vec3 out_hitAlbedo, out ve
                 out_hitDirectIllum *= exp(-CST_WATER_TRANSMITTANCE * t);
             out_hitIntersection = intersection;
             out_hitNormal = normal;
+            out_hitDistance = t;
             return true;
         });
     } else {
@@ -194,6 +195,7 @@ bool trace_ray_direct_illumination(const Ray ray, out vec3 out_hitAlbedo, out ve
             out_hitDirectIllum = lighting(ray.origin, intersection, normal, t);
             out_hitIntersection = intersection;
             out_hitNormal = normal;
+            out_hitDistance = t;
             return true;
         });
     }
@@ -235,13 +237,13 @@ mat3 trace_ray_reflection(const Ray ray, inout bool out_hitLight) {
     }
 }
 
-#define CST_MAX_BOUNCE 4
-#define CST_RAY_REFLECTANCE 0.3
-vec3 trace_ray_indirect_illumination(out int64_t seed, vec3 trii_intersection, vec3 trii_normal) {
+vec3 trace_ray_indirect_illumination(out int64_t seed, vec3 trii_intersection, vec3 trii_normal, float t) {
     vec3 illum = vec3(0);
-    float coeffIllumLoss = CST_RAY_REFLECTANCE;
+    float coeffIllumLoss = CST_GI_REFLECTANCE;
 
-    for (uint i = 0; i < CST_MAX_BOUNCE; i ++) {
+    const uint maxNbReflection = uint(round(CST_GI_MAX_BOUNCE * exp(-t/CST_GI_DISTANCE_STIFFNESS)));
+
+    for (uint i = 0; i < CST_GI_MAX_BOUNCE && i < maxNbReflection; i ++) {
         Ray ray = ray_make(trii_intersection, random_ray(seed, trii_normal));
 
         bool rayHasHittenLight = false;
@@ -259,10 +261,10 @@ vec3 trace_ray_indirect_illumination(out int64_t seed, vec3 trii_intersection, v
         if (trii_normal == vec3(0))
             break;
 
-        coeffIllumLoss *= CST_RAY_REFLECTANCE;
+        coeffIllumLoss *= CST_GI_REFLECTANCE;
+        if (coeffIllumLoss < CST_GI_MIN_COEF_LOSS)
+            break;
     }
 
     return illum;
 }
-#undef CST_MAX_BOUNCE
-

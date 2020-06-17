@@ -32,6 +32,15 @@ const uint CST_MAX_ITER_WATER_REFRACTION = 64;
 const uint CST_MAX_ITER_RAY_AIR = 2 * CST_NB_CHUNKS_X * CST_CHUNK_WIDTH;
 const uint CST_MAX_ITER_RAY_WATER = min(128, CST_MAX_ITER_RAY_AIR);
 
+// Global Illum constants
+const float CST_GI_MAXIMUM_RADIUS = 30.0; // radius of activation of the global illum
+const uint  CST_GI_MAX_BOUNCE     = 5; // maximum number of bounces
+const float CST_GI_DISTANCE_STIFFNESS = 10.0; // greater the value, better the quality of the GI will be at high distances, but slower (should range from 1 to 30)
+// FIXME: each material should have its own reflectance
+const float CST_GI_REFLECTANCE    = 0.3;
+// FIXME-END: each material should have its own reflectance
+const float CST_GI_MIN_COEF_LOSS  = 1e-5;
+
 const float CST_MIN_LIGHTNING_INTENSITY = 0.01;
 
 const vec3 CST_NORMAL_MAP[6] = {
