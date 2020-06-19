@@ -116,7 +116,7 @@ void renderGlobalIllum(const ivec2 pixel) {
 
     imageStore(cache_illum_indirect_sampling, pixel, vec4(cIllumIndirect, 1));
 
-    vec3 outColor = (cIllumDirect + cIllumIndirect / (in_uni_iteration_id + 1)) * cAlbedo;
+    vec3 outColor = (cIllumDirect + cIllumIndirect * 2 / (in_uni_iteration_id + 1)) * cAlbedo;
     imageStore(out_uni_frame, pixel, vec4(outColor, 1));
 }
 

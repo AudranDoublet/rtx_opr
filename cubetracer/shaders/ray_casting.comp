@@ -105,11 +105,11 @@ uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
         if (mustComputeIntersection) {\
             t = BBoxRayIntersects(block, block + vec3(1), R, face);\
         }\
-        if (CST_BLOCK_MATERIALS[block_type].type == 4) {BOCK_ON_LIGHT_INTERSECTION}\
         vec3 intersection = R.origin + R.direction * t;\
         if (block_type == BLOCK_TYPE_OUTSIDE) {BOCK_ON_ENVIRONMENT_CHANGE}\
         if (mustComputeUv)\
             uv = bbox_uv(block, intersection, face);\
+        if (CST_BLOCK_MATERIALS[block_type].type == 4) {BOCK_ON_LIGHT_INTERSECTION}\
         {BOCK_ON_UV_COMPUTE}\
         int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];\
         float t_qual = (t + T_ACCUMULATED) / CST_TEXTURE_QUALITY_COEFF;\
