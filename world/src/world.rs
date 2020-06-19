@@ -6,14 +6,15 @@ use crate::{world_to_chunk, Block, Chunk, ChunkListener, ChunkManager, Player};
 
 pub static mut WORLD: Option<Box<World>> = None;
 
-pub fn create_main_world(seed: isize, flat: bool) -> &'static mut Box<World> {
+pub fn create_main_world(world_path: &str, seed: isize, flat: bool) -> &'static mut Box<World> {
     let (tx, rx) = mpsc::channel();
 
     unsafe {
         WORLD = Some(Box::new(World::new(tx, seed)));
     }
 
-    thread::spawn(move || ChunkManager::new(seed, flat, rx));
+    let wp = world_path.to_string();
+    thread::spawn(move || ChunkManager::new(&wp, seed, flat, rx));
 
     main_world()
 }

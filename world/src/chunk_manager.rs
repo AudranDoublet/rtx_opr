@@ -14,10 +14,10 @@ pub struct ChunkManager {
 }
 
 impl ChunkManager {
-    pub fn new(seed: isize, flat: bool, channel: mpsc::Receiver<(bool, i32, i32)>) {
+    pub fn new(world_path: &str, seed: isize, flat: bool, channel: mpsc::Receiver<(bool, i32, i32)>) {
         let mut manager = ChunkManager {
             generator: ChunkGenerator::new(seed),
-            path: Path::new("worldp").to_path_buf(),
+            path: Path::new(world_path).to_path_buf(),
             flat,
         };
 

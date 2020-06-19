@@ -98,6 +98,7 @@ fn get_window_dim(context: &CTX) -> (u32, u32) {
 }
 
 pub fn game(
+    world_path: &str,
     seed: isize,
     flat: bool,
     view_distance: usize,
@@ -111,7 +112,7 @@ pub fn game(
     // --- World SetUp --
     let mut listener = MyChunkListener::new();
 
-    let world = create_main_world(seed, flat);
+    let world = create_main_world(world_path, seed, flat);
     let mut player = world.create_player(&mut listener, view_distance);
 
     // --- debug tools SetUp ---
