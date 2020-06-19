@@ -26,6 +26,8 @@ uniform vec3 in_uni_wind;
 uniform float in_uni_time;
 
 uniform int in_uni_enable_global_illum = 0;
+uniform vec3 in_uni_sun_direction;
+uniform vec3 in_uni_sun_direction_inv;
 
 uniform sampler2DArray in_uni_textures;
 

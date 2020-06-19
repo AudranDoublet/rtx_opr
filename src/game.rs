@@ -99,6 +99,7 @@ fn get_window_dim(context: &CTX) -> (u32, u32) {
 
 pub fn game(
     seed: isize,
+    flat: bool,
     view_distance: usize,
     with_shadows: bool,
     resolution_coeff: f32,
@@ -110,7 +111,7 @@ pub fn game(
     // --- World SetUp --
     let mut listener = MyChunkListener::new();
 
-    let world = create_main_world(seed);
+    let world = create_main_world(seed, flat);
     let mut player = world.create_player(&mut listener, view_distance);
 
     // --- debug tools SetUp ---
@@ -248,6 +249,10 @@ pub fn game(
                     ) || update_rendering;
 
                     camera.origin = player.head_position();
+
+                    if input_handler.is_pressed(KeyCode::K) {
+                        camera.update_sun_pos();
+                    }
                     //player.set_position(world, &mut listener, camera.origin);
 
                     termidrawer.update_var(

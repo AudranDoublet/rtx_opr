@@ -89,9 +89,23 @@ pub enum Block {
     LightBlue,
     LightYellow,
     LightCyan,
+
+    OakPlanks,
+    AcaciaPlanks,
+    BigOakPlanks,
+    BirchPlanks,
+    JunglePlanks,
+    SprucePlanks,
+
+    Brick,
+    StoneBricks,
 }
 
 impl Block {
+    pub fn from_id(i: u32) -> Block {
+        unsafe { std::mem::transmute(i) }
+    }
+
     pub fn get_nb_lights() -> u32 {
         6
     }
