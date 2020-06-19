@@ -252,6 +252,8 @@ pub fn game(
 
                     if input_handler.is_pressed(KeyCode::K) {
                         camera.update_sun_pos();
+                    } else if input_handler.is_pressed(KeyCode::N) {
+                        camera.sun_light_cycle(delta_time);
                     }
                     //player.set_position(world, &mut listener, camera.origin);
 
