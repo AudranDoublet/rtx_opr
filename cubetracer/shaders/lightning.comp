@@ -19,15 +19,23 @@ vec3 sky_color(const Ray r) {
     return color * coeff;
 }
 
+vec3 ambient_light() {
+    if (in_uni_enable_ambient == 0)
+        return vec3(0);
+
+    else
+        return CST_LIGHT_AMBIENT;
+}
+
 vec3 lightingWithoutShadows(vec3 origin, vec3 intersection, vec3 normal) {
-    vec3 light_diffuse = CST_LIGHT_AMBIENT;
+    vec3 light_diffuse = ambient_light();
     light_diffuse = max(light_diffuse, dot(normal, -in_uni_sun_direction));
 
     return light_diffuse;
 }
 
 vec3 lighting(vec3 origin, vec3 intersection, vec3 normal, float dist) {
-    vec3 light_diffuse = CST_LIGHT_AMBIENT;
+    vec3 light_diffuse = ambient_light();
     float lightingIntensity = dot(normal, -in_uni_sun_direction);
 
     if (CST_SHADOW_ACTIVATED) {

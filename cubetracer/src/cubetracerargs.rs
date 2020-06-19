@@ -24,8 +24,9 @@ const VAR_IDX_TIME: usize = 9;
 const VAR_IDX_ENABLE_GLOBAL_ILLUM: usize = 10;
 const VAR_IDX_SUN_DIRECTION: usize = 11;
 const VAR_IDX_SUN_DIRECTION_INV: usize = 12;
+const VAR_IDX_ENABLE_AMBIENT : usize = 13;
 
-const VARS_LEN: usize = 13;
+const VARS_LEN: usize = 14;
 
 pub struct CubeTracerArguments {
     program: u32,
@@ -95,6 +96,9 @@ impl CubeTracerArguments {
         uniform_locations[VAR_IDX_ENABLE_GLOBAL_ILLUM] =
             helper::get_uniform_location(program, "in_uni_enable_global_illum")?;
 
+        uniform_locations[VAR_IDX_ENABLE_AMBIENT] =
+            helper::get_uniform_location(program, "in_uni_enable_ambient")?;
+
         let res = CubeTracerArguments {
             program,
             ssbo_raytracer_cl,
@@ -112,6 +116,10 @@ impl CubeTracerArguments {
 
     pub fn set_global_illum_state(&mut self, state: bool) -> Result<(), GLError> {
         self.set_i(VAR_IDX_ENABLE_GLOBAL_ILLUM, state as i32)
+    }
+
+    pub fn set_ambient_light_state(&mut self, state: bool) -> Result<(), GLError> {
+        self.set_i(VAR_IDX_ENABLE_AMBIENT, state as i32)
     }
 
     pub fn nb_mapped_chunks(&self) -> usize {

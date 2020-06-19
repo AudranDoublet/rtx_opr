@@ -380,6 +380,10 @@ pub fn game(
                             update_rendering = true;
                             cubetracer.toggle_global_illum().unwrap();
                         }
+                        if input_handler.is_pressed_once(KeyCode::L) {
+                            update_rendering = true;
+                            cubetracer.toggle_ambient_light().unwrap();
+                        }
                     }
                     WindowEvent::MouseInput { button, state, .. } => {
                         input_handler.on_mouse_input(button, state)
