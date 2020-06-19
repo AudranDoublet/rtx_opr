@@ -256,7 +256,7 @@ vec3 trace_ray_indirect_illumination(out int64_t seed, vec3 trii_intersection, v
         mat3 rayRefectionHit = trace_ray_reflection(ray, rayHasHittenLight);
 
         if (rayHasHittenLight) {
-            illum += coeffIllumLoss * (rayRefectionHit[0] / (rayRefectionHit[1].r + 0.2));
+            illum += coeffIllumLoss * (rayRefectionHit[0] / (rayRefectionHit[1].z * 0.25 + 1e-2));
             break;
         }
 
