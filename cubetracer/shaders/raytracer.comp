@@ -1,6 +1,8 @@
 #version 430 core
 #extension GL_ARB_gpu_shader_int64 : require
 
+#define GLUS_PI 3.1415926535897932384626433832795
+
 /* ************************************************************
  * > -0- Types
  * ************************************************************/
@@ -44,6 +46,8 @@ uniform sampler2DArray in_uni_textures;
 #include cubetracer/shaders/ray.comp
 // 131
 #include cubetracer/shaders/block_intersection.comp
+
+#include cubetracer/shaders/skybox.comp
 
 /* ************************************************************
  * > -4- Data
