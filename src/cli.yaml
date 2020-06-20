@@ -29,10 +29,10 @@ subcommands:
                         value_name: view-distance
                         help: player's view distance
                         takes_value: true
-                -   resolution:
-                        long: resolution
-                        value_name: resolution
-                        help: resolution modifier
+                -   resolution-coeff:
+                        long: resolution-coeff
+                        value_name: resolution-coeff
+                        help: dividing coefficient of resolution for better quality or performance (default -> 1)
                         takes_value: true
                 -   world:
                         long: world

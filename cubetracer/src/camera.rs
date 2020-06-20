@@ -56,12 +56,12 @@ impl Camera {
     }
 
     pub fn sun_light_cycle(&mut self, dt: f32) {
-        self.light_cycle = (self.light_cycle + dt/2.) % (std::f32::consts::PI * 1.2);
+        self.light_cycle = (self.light_cycle + dt / 4.) % (std::f32::consts::PI * 1.2);
 
         let x = self.light_cycle.cos();
         let y = -self.light_cycle.sin();
 
-        self.sun_direction = Vector3::new(x, y, 0.0).normalize();
+        self.sun_direction = Vector3::new(x, y, x * y).normalize();
     }
 
     pub fn update_sun_pos(&mut self) {

@@ -131,7 +131,7 @@ pub fn game(
     let window_builder = glutin::window::WindowBuilder::new().with_title("GlOPR");
 
     let context = ContextBuilder::new()
-        //        .with_vsync(true)
+        .with_vsync(true)
         .with_double_buffer(Some(true))
         .with_gl(GlRequest::Specific(glutin::Api::OpenGl, (4, 3)))
         .build_windowed(window_builder, &event_loop)
@@ -142,7 +142,6 @@ pub fn game(
     unsafe { gl::Enable(gl::FRAMEBUFFER_SRGB) };
 
     context.window().set_cursor_visible(false);
-    context.window().set_cursor_grab(true)?;
 
     let (width, height) = get_window_dim(&context);
 
@@ -175,6 +174,8 @@ pub fn game(
 
     let mut total_time = 0.0;
     let mut update_rendering = false;
+
+    let mut mouse_is_focused = false;
 
     event_loop.run(
         move |event, _, control_flow: &mut glutin::event_loop::ControlFlow| {
@@ -235,6 +236,14 @@ pub fn game(
                     if input_handler.is_double_pressed(KeyCode::Space) {
                         inputs.push(PlayerInput::FlyToggle);
                     }
+                    if input_handler.is_pressed(KeyCode::K) {
+                        camera.update_sun_pos();
+                        update_rendering = true;
+                    }
+                    if input_handler.is_pressed(KeyCode::N) {
+                        camera.sun_light_cycle(delta_time);
+                        update_rendering = true;
+                    }
 
                     camera.origin.y = camera.origin.y.clamp(0.0, 255.9);
 
@@ -250,13 +259,6 @@ pub fn game(
                     ) || update_rendering;
 
                     camera.origin = player.head_position();
-
-                    if input_handler.is_pressed(KeyCode::K) {
-                        camera.update_sun_pos();
-                    } else if input_handler.is_pressed(KeyCode::N) {
-                        camera.sun_light_cycle(delta_time);
-                    }
-                    //player.set_position(world, &mut listener, camera.origin);
 
                     termidrawer.update_var(
                         "screen_top_left".to_string(),
@@ -391,9 +393,22 @@ pub fn game(
                             update_rendering = true;
                             cubetracer.toggle_sky_atm().unwrap();
                         }
+
+                        if input_handler.is_pressed_once(KeyCode::Escape) {
+                            mouse_is_focused = false;
+                            context.window().set_cursor_grab(false).unwrap();
+                        }
                     }
                     WindowEvent::MouseInput { button, state, .. } => {
-                        input_handler.on_mouse_input(button, state)
+                        if mouse_is_focused {
+                            input_handler.on_mouse_input(button, state)
+                        }
+                    }
+                    WindowEvent::Focused(is_focused) => {
+                        match context.window().set_cursor_grab(is_focused) {
+                            Ok(_) => mouse_is_focused = is_focused,
+                            _ => (),
+                        }
                     }
                     glutin::event::WindowEvent::Resized(physical_size) => {
                         context.resize(physical_size);
