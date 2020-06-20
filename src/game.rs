@@ -128,7 +128,7 @@ pub fn game(
 
     // --- Build Window ---
     let event_loop = glutin::event_loop::EventLoop::new();
-    let window_builder = glutin::window::WindowBuilder::new().with_title("Audran is stupid");
+    let window_builder = glutin::window::WindowBuilder::new().with_title("GlOPR");
 
     let context = ContextBuilder::new()
         //        .with_vsync(true)
