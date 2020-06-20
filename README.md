@@ -7,7 +7,7 @@
 
 # Usage
 
-Warning: the game can take a few minutes to launch the first time. Thanks our >1000-lines shader for that.
+Warning: the game can take a few minutes to launch the first time. Thanks our >1500-lines shader for that.
 
 Example:
 ```
