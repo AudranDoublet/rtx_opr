@@ -29,6 +29,7 @@ uniform float in_uni_time;
 
 uniform int in_uni_enable_global_illum = 0;
 uniform int in_uni_enable_ambient = 1;
+uniform int in_uni_enable_sky_atm = 1;
 uniform vec3 in_uni_sun_direction;
 uniform vec3 in_uni_sun_direction_inv;
 

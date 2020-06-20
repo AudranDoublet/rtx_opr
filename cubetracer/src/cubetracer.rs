@@ -29,6 +29,7 @@ pub struct CubeTracer {
 
     enable_global_illum: bool,
     enable_ambient_light: bool,
+    enable_sky_atm: bool,
 
     pub args: CubeTracerArguments,
 }
@@ -188,6 +189,7 @@ impl CubeTracer {
 
             enable_global_illum,
             enable_ambient_light: true,
+            enable_sky_atm: true,
 
             args: CubeTracerArguments::new(program_raytracer, view_size)?,
         })
@@ -201,6 +203,11 @@ impl CubeTracer {
     pub fn toggle_ambient_light(&mut self) -> Result<(), GLError> {
         self.enable_ambient_light = !self.enable_ambient_light;
         self.args.set_ambient_light_state(self.enable_ambient_light)
+    }
+
+    pub fn toggle_sky_atm(&mut self) -> Result<(), GLError> {
+        self.enable_sky_atm = !self.enable_sky_atm;
+        self.args.set_sky_atm_state(self.enable_sky_atm)
     }
 
     pub fn compute_image(&self, width: u32, height: u32) -> Result<(), GLError> {

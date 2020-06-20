@@ -3,29 +3,29 @@ float sun_illumination(const Ray r) {
 }
 
 vec3 sky_color(const Ray r) {
-    return computeSkyLight(r.direction);
-/*
-    float sun = sun_illumination(r);
+    if (in_uni_enable_sky_atm != 0) {
+        return computeSkyLight(r.direction);
+    } else {
+        float sun = sun_illumination(r);
 
-    const vec3 color = vec3(0.149, 0.6471, 0.7961);
-    const float coeff = abs(dot(r.direction, vec3(0, 1, 0))) * 0.2 + 0.8;
+        const vec3 color = vec3(0.149, 0.6471, 0.7961);
+        const float coeff = abs(dot(r.direction, vec3(0, 1, 0))) * 0.2 + 0.8;
 
-    if (sun >= 0.99) {
-        float sun_intensity = (abs(sun) - 0.99) * 100;
-        sun_intensity = sqrt(sun_intensity);
-        float sky_intensity = 1.0 - sun_intensity;
+        if (sun >= 0.99) {
+            float sun_intensity = (abs(sun) - 0.99) * 100;
+            sun_intensity = sqrt(sun_intensity);
+            float sky_intensity = 1.0 - sun_intensity;
 
-        return vec3(2.0, 2.0, 1.6) * sun_intensity + (color * coeff) * sky_intensity;
+            return vec3(2.0, 2.0, 1.6) * sun_intensity + (color * coeff) * sky_intensity;
+        }
+
+        return color * coeff;
     }
-
-    return color * coeff;
-*/
 }
 
 vec3 ambient_light() {
     if (in_uni_enable_ambient == 0)
         return vec3(0);
-
     else
         return CST_LIGHT_AMBIENT;
 }

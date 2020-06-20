@@ -387,6 +387,10 @@ pub fn game(
                             update_rendering = true;
                             cubetracer.toggle_ambient_light().unwrap();
                         }
+                        if input_handler.is_pressed_once(KeyCode::M) {
+                            update_rendering = true;
+                            cubetracer.toggle_sky_atm().unwrap();
+                        }
                     }
                     WindowEvent::MouseInput { button, state, .. } => {
                         input_handler.on_mouse_input(button, state)
