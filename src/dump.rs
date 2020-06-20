@@ -62,7 +62,7 @@ pub fn dump_map(args: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
 
     std::fs::create_dir_all(&folder)?;
 
-    let world = create_main_world(seed);
+    let world = create_main_world("worldp", seed, false);
     let mut listener = DumpChunkListener::new();
 
     let mut player = world.create_player(&mut listener, view_distance);

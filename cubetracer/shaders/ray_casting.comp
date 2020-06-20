@@ -18,6 +18,37 @@ vec3 water_normal(vec3 pos) {
     return res;
 }
 
+const int CST_RAYMARCHING_MAX_ITER = 32;
+const float CST_RAYMARCHING_EPSILON = 0.0001;
+
+float water_surface_height(vec3 pos) {
+    return (sin(wave_speed * in_uni_time + pos.x * wave_resolution) + cos(wave_speed * in_uni_time + pos.z * wave_resolution)) * wave_height + floor(pos.y) + 0.80;
+}
+
+bool water_intersects_waves(Ray ray, vec3 block, float tin, out float t) {
+    t = tin;
+    float step_size = 0.05;
+
+    for (int i = 0; i < CST_RAYMARCHING_MAX_ITER; i++) {
+        vec3 pos = ray.origin + ray.direction * t;
+        float height = water_surface_height(pos);
+
+        if (abs(height - pos.y) < CST_RAYMARCHING_EPSILON)
+            // return true only if we found an intersection in the same block
+            return int(pos.x) == int(block.x) && int(pos.y) == int(block.y) && int(pos.z) == int(block.z);
+
+        if (step_size > 0 == height > pos.y)
+            step_size = -step_size / 2.0;
+
+        if (ray.direction.y > 0)
+            t -= step_size;
+        else
+            t += step_size;
+    }
+
+    return false;
+}
+
 int estimate_max_iter(const Ray ray)
 {
     float res = 1e20;
@@ -96,8 +127,11 @@ uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
                 mustComputeIntersection = false;\
                 break;\
             } else if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), R, face, t)) {\
-                mustComputeIntersection = false;\
-                break;\
+                if (block_type != 1 || water_intersects_waves(ray, block, t, t))\
+                {\
+                    mustComputeIntersection = false;\
+                    break;\
+                }\
             }\
             DRAW_RAY_ITER(BLOCK_TYPE_INSIDE, true, MAX_BLOCK_ITERATION, BOCK_ON_NON_INTERSECTION);\
         }\
@@ -105,11 +139,11 @@ uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
         if (mustComputeIntersection) {\
             t = BBoxRayIntersects(block, block + vec3(1), R, face);\
         }\
-        if (CST_BLOCK_MATERIALS[block_type].type == 4) {BOCK_ON_LIGHT_INTERSECTION}\
         vec3 intersection = R.origin + R.direction * t;\
         if (block_type == BLOCK_TYPE_OUTSIDE) {BOCK_ON_ENVIRONMENT_CHANGE}\
         if (mustComputeUv)\
             uv = bbox_uv(block, intersection, face);\
+        if (CST_BLOCK_MATERIALS[block_type].type == 4) {BOCK_ON_LIGHT_INTERSECTION}\
         {BOCK_ON_UV_COMPUTE}\
         int tex = CST_BLOCK_MATERIALS[block_type].texture_coords[face];\
         float t_qual = (t + T_ACCUMULATED) / CST_TEXTURE_QUALITY_COEFF;\

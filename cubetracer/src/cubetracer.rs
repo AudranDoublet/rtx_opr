@@ -28,6 +28,7 @@ pub struct CubeTracer {
     cache_normals: u32,
 
     enable_global_illum: bool,
+    enable_ambient_light: bool,
 
     pub args: CubeTracerArguments,
 }
@@ -148,6 +149,22 @@ impl CubeTracer {
                 &std::path::Path::new("data/flower_rose_n.png"),
                 &std::path::Path::new("data/grass_side_overlay.png"),
                 &std::path::Path::new("data/grass_side_overlay_n.png"),
+                &std::path::Path::new("data/planks_oak.png"),
+                &std::path::Path::new("data/planks_oak_n.png"),
+                &std::path::Path::new("data/planks_acacia.png"),
+                &std::path::Path::new("data/planks_acacia_n.png"),
+                &std::path::Path::new("data/planks_big_oak.png"),
+                &std::path::Path::new("data/planks_big_oak_n.png"),
+                &std::path::Path::new("data/planks_birch.png"),
+                &std::path::Path::new("data/planks_birch_n.png"),
+                &std::path::Path::new("data/planks_jungle.png"),
+                &std::path::Path::new("data/planks_jungle_n.png"),
+                &std::path::Path::new("data/planks_spruce.png"),
+                &std::path::Path::new("data/planks_spruce_n.png"),
+                &std::path::Path::new("data/brick.png"),
+                &std::path::Path::new("data/brick_n.png"),
+                &std::path::Path::new("data/stonebrick.png"),
+                &std::path::Path::new("data/stonebrick_n.png"),
             ],
         )?;
 
@@ -170,6 +187,7 @@ impl CubeTracer {
             cache_normals,
 
             enable_global_illum,
+            enable_ambient_light: true,
 
             args: CubeTracerArguments::new(program_raytracer, view_size)?,
         })
@@ -178,6 +196,11 @@ impl CubeTracer {
     pub fn toggle_global_illum(&mut self) -> Result<(), GLError> {
         self.enable_global_illum = !self.enable_global_illum;
         self.args.set_global_illum_state(self.enable_global_illum)
+    }
+
+    pub fn toggle_ambient_light(&mut self) -> Result<(), GLError> {
+        self.enable_ambient_light = !self.enable_ambient_light;
+        self.args.set_ambient_light_state(self.enable_ambient_light)
     }
 
     pub fn compute_image(&self, width: u32, height: u32) -> Result<(), GLError> {

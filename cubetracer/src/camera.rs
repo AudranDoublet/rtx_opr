@@ -14,6 +14,9 @@ pub struct Camera {
     rotation: Vector2<f32>,
 
     aspect_ratio: f32,
+    sun_direction: Vector3<f32>,
+
+    light_cycle: f32,
 }
 
 fn compute_virtual_screen_size(fov: f32, aspect_ratio: f32) -> Vector2<f32> {
@@ -50,6 +53,23 @@ impl Camera {
             .clamp(-std::f32::consts::PI / 2.1, std::f32::consts::PI / 2.1);
 
         self.update_axes();
+    }
+
+    pub fn sun_light_cycle(&mut self, dt: f32) {
+        self.light_cycle = (self.light_cycle + dt/2.) % (std::f32::consts::PI * 1.2);
+
+        let x = self.light_cycle.cos();
+        let y = -self.light_cycle.sin();
+
+        self.sun_direction = Vector3::new(x, y, 0.0).normalize();
+    }
+
+    pub fn update_sun_pos(&mut self) {
+        self.sun_direction = -self.forward();
+    }
+
+    pub fn sun_direction(&self) -> Vector3<f32> {
+        self.sun_direction
     }
 
     fn update_axes(&mut self) {
@@ -104,6 +124,8 @@ impl Camera {
             left: Vector3::zeros(),
             aspect_ratio,
             virtual_screen_size: compute_virtual_screen_size(fov, aspect_ratio),
+            sun_direction: Vector3::new(-0.7, -1.5, -1.1),
+            light_cycle: 0.0,
         };
 
         camera.update_axes();

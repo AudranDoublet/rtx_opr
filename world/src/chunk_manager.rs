@@ -1,11 +1,8 @@
 extern crate serde_json;
 
-use crate::{generator::ChunkGenerator, main_world};
+use crate::{generator::ChunkGenerator, main_world, Chunk};
 
-use std::fs::{File, create_dir_all};
-use std::io::BufReader;
-
-use flate2::read::ZlibDecoder;
+use std::fs::create_dir_all;
 
 use std::{rc::Rc, sync::mpsc};
 use std::path::{Path, PathBuf};
@@ -13,13 +10,15 @@ use std::path::{Path, PathBuf};
 pub struct ChunkManager {
     generator: ChunkGenerator,
     path: PathBuf,
+    flat: bool,
 }
 
 impl ChunkManager {
-    pub fn new(seed: isize, channel: mpsc::Receiver<(bool, i32, i32)>) {
+    pub fn new(world_path: &str, seed: isize, flat: bool, channel: mpsc::Receiver<(bool, i32, i32)>) {
         let mut manager = ChunkManager {
             generator: ChunkGenerator::new(seed),
-            path: Path::new("worldp").to_path_buf(),
+            path: Path::new(world_path).to_path_buf(),
+            flat,
         };
 
         create_dir_all(&manager.path).unwrap();
@@ -51,10 +50,9 @@ impl ChunkManager {
         let path = self.chunk_file(x, z);
 
         let chunk = if path.exists() {
-            let buffer = BufReader::new(File::open(&path)?);
-            let decoder = ZlibDecoder::new(buffer);
-
-            Rc::new(serde_json::from_reader(decoder)?)
+            Chunk::new_from_file(x, z, &path)?
+        } else if self.flat {
+            self.generator.generate_xz_flat(x, z)
         } else {
             self.generator.generate_xz(x, z)
         };

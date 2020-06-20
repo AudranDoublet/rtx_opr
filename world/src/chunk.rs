@@ -50,7 +50,6 @@ serde_array!(biome_arr, (WIDTH * WIDTH) as usize);
 pub struct Chunk {
     coords: Vector2<i32>,
     pub blocks: Vec<Block>,
-    pub lightning: Vec<f32>,
     pub grass_color: Vec<f32>,
     biomes: Vec<BiomeType>,
 
@@ -83,12 +82,32 @@ impl Chunk {
         Rc::new(Chunk {
             coords: Vector2::new(x, z),
             blocks: vec![Block::Air; COUNT as usize],
-            lightning: vec![0.0; COUNT as usize],
             decorated: false,
-            grass_color: vec![0.0; (WIDTH * WIDTH * 3) as usize],
+            grass_color: vec![1.0; (WIDTH * WIDTH * 3) as usize],
             biomes: vec![BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
             modified: true,
         })
+    }
+
+    pub fn new_from_file(x: i32, z: i32, path: &Path) -> Result<Rc<Chunk>, Box<dyn std::error::Error>> {
+        let mut file = File::open(path)?;
+        let mut result = Vec::new();
+        let mut blocks = Vec::new();
+
+        file.read_to_end(&mut result)?;
+
+        for v in result {
+            blocks.push(Block::from_id(v as u32));
+        }
+
+        Ok(Rc::new(Chunk {
+            coords: Vector2::new(x, z),
+            blocks,
+            decorated: true,
+            grass_color: vec![1.0; (WIDTH * WIDTH * 3) as usize],
+            biomes: vec![BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
+            modified: true,
+        }))
     }
 
     pub fn new_example_chunk(x: i32, z: i32) -> Rc<Chunk> {

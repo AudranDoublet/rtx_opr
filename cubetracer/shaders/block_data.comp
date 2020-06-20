@@ -15,6 +15,7 @@ struct Material {
 #define MATERIAL_C(c, v, w, z) Material(1, c, int[6]( TEX_COLUMN(v, w, z) ), vec3(0))
 #define MATERIAL_LOG(i) MATERIAL_C(false, LOGS_TEX + i*2, TOP_LOGS_TEX + i*2, TOP_LOGS_TEX + i*2)
 #define MATERIAL_LEAVES(i) MATERIAL_U_T(LEAVES_TEX + i*2)
+#define MATERIAL_PLANKS(i) MATERIAL_U(PLANKS_TEX + i*2)
 #define MATERIAL_LIGHT(color) Material(4, false, int[6](TEX_UNIQUE(0)), color)
 
 #define STONE_TEX       0
@@ -33,6 +34,9 @@ struct Material {
 #define LEAVES_TEX      46
 #define FLOWER_TEX      58
 #define GRASS_OVER_TEX  78
+#define PLANKS_TEX      80
+#define BRICK_TEX       92
+#define STONEBRICK_TEX  94
 
 const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_EMPTY(),
@@ -73,6 +77,14 @@ const Material CST_BLOCK_MATERIALS[] = {
     MATERIAL_LIGHT(vec3(0,0,1)),
     MATERIAL_LIGHT(vec3(1,1,0)),
     MATERIAL_LIGHT(vec3(0,1,1)),
+    MATERIAL_PLANKS(0),
+    MATERIAL_PLANKS(1),
+    MATERIAL_PLANKS(2),
+    MATERIAL_PLANKS(3),
+    MATERIAL_PLANKS(4),
+    MATERIAL_PLANKS(5),
+    MATERIAL_U(BRICK_TEX),
+    MATERIAL_U(STONEBRICK_TEX),
 };
 
 const mat3 CST_TEXTURE_NORMAL_TRANSFORMS[6] = {

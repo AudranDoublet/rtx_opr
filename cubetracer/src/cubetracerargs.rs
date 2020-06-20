@@ -22,8 +22,11 @@ const VAR_IDX_WIND: usize = 7;
 const VAR_IDX_ITERATION_ID: usize = 8;
 const VAR_IDX_TIME: usize = 9;
 const VAR_IDX_ENABLE_GLOBAL_ILLUM: usize = 10;
+const VAR_IDX_SUN_DIRECTION: usize = 11;
+const VAR_IDX_SUN_DIRECTION_INV: usize = 12;
+const VAR_IDX_ENABLE_AMBIENT : usize = 13;
 
-const VARS_LEN: usize = 11;
+const VARS_LEN: usize = 14;
 
 pub struct CubeTracerArguments {
     program: u32,
@@ -87,9 +90,14 @@ impl CubeTracerArguments {
         uniform_locations[VAR_IDX_TIME] = helper::get_uniform_location(program, "in_uni_time")?;
 
         uniform_locations[VAR_IDX_WIND] = helper::get_uniform_location(program, "in_uni_wind")?;
+        uniform_locations[VAR_IDX_SUN_DIRECTION] = helper::get_uniform_location(program, "in_uni_sun_direction")?;
+        uniform_locations[VAR_IDX_SUN_DIRECTION_INV] = helper::get_uniform_location(program, "in_uni_sun_direction_inv")?;
 
         uniform_locations[VAR_IDX_ENABLE_GLOBAL_ILLUM] =
             helper::get_uniform_location(program, "in_uni_enable_global_illum")?;
+
+        uniform_locations[VAR_IDX_ENABLE_AMBIENT] =
+            helper::get_uniform_location(program, "in_uni_enable_ambient")?;
 
         let res = CubeTracerArguments {
             program,
@@ -108,6 +116,10 @@ impl CubeTracerArguments {
 
     pub fn set_global_illum_state(&mut self, state: bool) -> Result<(), GLError> {
         self.set_i(VAR_IDX_ENABLE_GLOBAL_ILLUM, state as i32)
+    }
+
+    pub fn set_ambient_light_state(&mut self, state: bool) -> Result<(), GLError> {
+        self.set_i(VAR_IDX_ENABLE_AMBIENT, state as i32)
     }
 
     pub fn nb_mapped_chunks(&self) -> usize {
@@ -276,12 +288,16 @@ impl CubeTracerArguments {
 
             highlighted_block -= self.cl_min_coords.component_mul(&Vector3::new(16, 0, 16));
 
+            let sun_dir: Vector3<f32> = value.sun_direction().normalize();
+
             // FIXME: we should try to send the data as an array of 4 Vector3 in one shot
             self.set_vector_3f(VAR_IDX_ORIGIN, origin)?;
             self.set_vector_3f(VAR_IDX_SCREEN_DOT_TOP_LEFT, top_left)?;
             self.set_vector_3f(VAR_IDX_SCREEN_DOT_LEFT, left)?;
             self.set_vector_3f(VAR_IDX_SCREEN_DOT_UP, up)?;
             self.set_vector_3i(VAR_IDX_HIGHTLIGHTED_BLOCK, highlighted_block)?;
+            self.set_vector_3f(VAR_IDX_SUN_DIRECTION, sun_dir)?;
+            self.set_vector_3f(VAR_IDX_SUN_DIRECTION_INV, Vector3::new(1. / sun_dir.x, 1. / sun_dir.y, 1. / sun_dir.z))?;
             self.set_i(VAR_IDX_ITERATION_ID, self.iteration_id)?;
             // FIXME-END
         }
