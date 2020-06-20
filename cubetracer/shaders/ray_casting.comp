@@ -127,7 +127,7 @@ uint bl_value(const ivec3 block, out uint chunk_idx, out uint column_idx) {
                 mustComputeIntersection = false;\
                 break;\
             } else if (BBoxRayIntersectsUncertain(block + computeBlockOffsetBot(block_type), block + computeBlockOffsetTop(block_type), R, face, t)) {\
-                if (block_type != 1 || water_intersects_waves(ray, block, t, t))\
+                if (block_type != 1 || true || water_intersects_waves(ray, block, t, t))\
                 {\
                     mustComputeIntersection = false;\
                     break;\
