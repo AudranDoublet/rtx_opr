@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap_or("2")
             .parse::<usize>()?;
         let resolution_coeff = args
-            .value_of("resolution")
+            .value_of("resolution-coeff")
             .unwrap_or("1")
             .parse::<f32>()?
             .max(0.125)
