@@ -13,14 +13,14 @@ Example:
 ```
 cargo run --release -- game \
           --with-shadows \
-          --resolution 2 \
+          --resolution-coeff 2 \
           --view-distance 10 \
           --layout fr
 ```
 
 Main game parameters:
 * with-shadows: if present, active shadows (will be slower)
-* resolution: if greater than 1, the game is run with a poorer quality
+* resolution-coeff: if greater than 1, the game is run with a poorer quality
 * view-distance: number of chunks seen in each direction
 * layout: fr or us, main keyboard mapping
 * world: world path to load
