@@ -86,7 +86,10 @@ vec3 lightingJunctureReflectionFromWater(const vec3 LWR_intersection, const vec3
     CAST_RAY_INTO_WATER(ray, LWR_acc_dist, CST_MAX_ITER_RAY_WATER, false, {
         return vec3(0.0, 0.01, 0.2);
     }, {}, { return vec3(1, 0, 0); }, { return CST_BLOCK_MATERIALS[block_type].color; }, {
-        return lightingWithoutShadows(ray.origin, intersection, normal) * color.rgb;
+        vec3 outColor = lightingWithoutShadows(ray.origin, intersection, normal) * color.rgb;
+        if (CST_USE_BEER_ATTENUATION)
+            outColor *= exp(-CST_WATER_TRANSMITTANCE * LWR_acc_dist);
+        return outColor;
     });
 }
 
@@ -133,7 +136,7 @@ vec3 lightingJunctureFromWater(const vec3 intersection, const vec3 lwNormal, con
 
     if (coeffReflectivity < 0.99) {
         vec3 colorRefract = lightingJunctureRefractionFromWater(intersection, incident, lwNormal, acc_dist);
-        outColor = coeffReflectivity * outColor + (1.0 - coeffReflectivity) * colorRefract;
+        outColor = mix(colorRefract, outColor, coeffReflectivity);
     }
 
     return outColor;
@@ -146,7 +149,7 @@ vec3 lightingJunctureFromAir(const vec3 intersection, const vec3 lwNormal, const
 
     if (coeffReflectivity < 0.99) {
         vec3 colorRefract = lightingJunctureRefractionFromAir(intersection, incident, lwNormal, acc_dist);
-        outColor = coeffReflectivity * outColor + (1.0 - coeffReflectivity) * colorRefract;
+        outColor = mix(colorRefract, outColor, coeffReflectivity);
     }
 
     return outColor;
@@ -172,7 +175,6 @@ bool trace_ray_direct_illumination(const Ray ray, out vec3 out_hitAlbedo, out ve
             }
         }, {
             vec3 lwNormal = vec3(0, -1, in_uni_time * 1e-15);
-            //vec3 lwNormal = vec3(0, -1, in_uni_time * 1e-15);
             out_hitAlbedo = lightingJunctureFromWater(intersection, lwNormal, ray.direction, t);
             return false;
         }, {
