@@ -267,8 +267,6 @@ vec3 trace_ray_indirect_illumination(out int64_t seed, vec3 trii_intersection, v
     for (uint i = 0; i < CST_GI_MAX_BOUNCE && i < maxNbReflection; i ++) {
         Ray ray = ray_make(trii_intersection, random_ray(seed, trii_normal));
         float cos_theta = dot(trii_normal, ray.direction);
-        if (cos_theta < 0.)
-            return vec3(10.0, 0, 0); // FIXME: remove me, i'm only here to debug rand directions
 
         bool rayHasHittenLight = false;
         mat3 rayRefectionHit = trace_ray_reflection(ray, rayHasHittenLight);
