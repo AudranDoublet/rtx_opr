@@ -30,13 +30,22 @@ Main game parameters:
 # In game options
 
 **Move** Z,Q,S,D (fr) or W,A,S,D (us)
+
 **Break a block** Left click
+
 **Place a block** Right click
+
 **Toggle pathtracing** P
+
 **Toggle ambient light** L
+
 **Set sun position** K
+
 **Do daylight cycle** N
+
 **Sneak** Left-shift (the player will be slower but won't fall)
+
 **Toggle sprint** Left-control (the player will be faster)
+
 **Toggle fly mode** Double click on space
 
