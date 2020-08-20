@@ -1,3 +1,28 @@
+# Functionalities
+
+GlOPR is a simple Minecraft-like game, which use ray tracing and path tracing algorithms for rendering.
+
+We implemented a map generator:
+* generation of different biomes with a global coherence (big oceans, warm / cold / temperate zones, beaches ...)
+* generation of columns with coherent size (using perlin noise) and smooth transition between biomes (ex: between plains and moutains)
+* generation of decoration: flowers, cactus, various trees, grass, ...
+
+We implemented a minimalistic game engine using AABB collisions.
+
+We also implemented a raytracer:
+* render blocks with high quality textures and normal deformation textures
+* render total transparency (ex: for leaves and flowers)
+* render shadows and reflection
+* render refraction for water
+* directed light for sun and ambient light for caves
+* render flowers and grass with a wind animation
+
+Also, we implemented a pathtracer as an alternative renderer for the game:
+* same functionalities as the raytracer (except animations and water refraction)
+* better handling of reflection and other light sources
+
+Finally, we added a realistic skybox using Rayleigh diffusion.
+
 # Compile me
 
 1. Install rustup: https://rustup.rs/
@@ -48,4 +73,3 @@ Main game parameters:
 **Toggle sprint** Left-control (the player will be faster)
 
 **Toggle fly mode** Double click on space
-
