@@ -4,13 +4,13 @@ GlOPR is a simple Minecraft-like game, which use ray tracing and path tracing al
 
 We implemented a map generator:
 * generation of different biomes with a global coherence (big oceans, warm / cold / temperate zones, beaches ...)
-* generation of columns with coherent size (using perlin noise) and smooth transition between biomes (ex: between plains and moutains)
-* generation of decoration: flowers, cactus, various trees, grass, ...
+* generation of columns with coherent size (using perlin noise) and smooth transition between biomes (ex: between plains and mountains)
+* generation of decorations: flowers, cactus, various trees, grass, ...
 
 We implemented a minimalistic game engine using AABB collisions.
 
 We also implemented a raytracer:
-* render blocks with high quality textures and normal deformation textures
+* render blocks with high quality textures and normal mapping
 * render total transparency (ex: for leaves and flowers)
 * render shadows and reflection
 * render refraction for water
@@ -37,14 +37,12 @@ Warning: the game can take a few minutes to launch the first time. Thanks our >1
 Example:
 ```
 cargo run --release -- game \
-          --with-shadows \
           --resolution-coeff 2 \
           --view-distance 10 \
           --layout fr
 ```
 
 Main game parameters:
-* with-shadows: if present, active shadows (will be slower)
 * resolution-coeff: if greater than 1, the game is run with a poorer quality
 * view-distance: number of chunks seen in each direction
 * layout: fr or us, main keyboard mapping
