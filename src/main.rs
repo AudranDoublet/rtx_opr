@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let seed = args.value_of("seed").unwrap_or("0").parse::<isize>()?;
         let view_distance = args
             .value_of("view-distance")
-            .unwrap_or("2")
+            .unwrap_or("10")
             .parse::<usize>()?;
         let resolution_coeff = args
             .value_of("resolution-coeff")
@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .min(10.0);
         let world_path = args.value_of("world").unwrap_or("worldp");
         let layout = game::Layout::parse(args.value_of("layout").unwrap_or("fr"));
-        let with_shadows = args.is_present("with-shadows");
+        let with_shadows = true; //args.is_present("with-shadows");
         let flat = args.is_present("flat");
 
         if seed == 0 {

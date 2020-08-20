@@ -39,10 +39,6 @@ subcommands:
                         value_name: world
                         help: world path
                         takes_value: true
-                -   with-shadows:
-                        short: -s
-                        long: with-shadows
-                        help: activate shadowing (may slow down the game)
                 -   flat:
                         short: -f
                         long: flat
