@@ -1,4 +1,4 @@
-use glutin::event::{
+use winit::event::{
     DeviceEvent, ElementState, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode,
 };
 use nalgebra::Vector2;
@@ -68,7 +68,7 @@ impl WinInput {
         match input {
             MouseScrollDelta::LineDelta(dx, dy) => {
                 self.mouse_scroll += self.mouse_scroll_sensitivity * (dx + dy);
-                self.mouse_scroll = self.mouse_scroll.clamp(0., 1.);
+                self.mouse_scroll = self.mouse_scroll.max(0.).min(1.);
 
                 // FIXME: should update state only if scroll change from previous
                 self.set_state_updated(StateChange::MouseScroll);

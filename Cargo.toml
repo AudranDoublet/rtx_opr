@@ -19,11 +19,13 @@ nalgebra = "0.21.0"
 image = "0.23.2"
 
 # Rendering
-gl = "*"
-glutin = "0.24.0"
+winit = "0.24.0"
 
 # CLI
 clap = {version = "~2.33.0", features = ["yaml"]}
 indicatif = "0.14.0"
 tui = "0.9"
 termion = "1.5"
+
+log = "0.4"
+ash = "0.29.0"

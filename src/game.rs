@@ -1,63 +1,24 @@
-use crate::termidraw::TermiDrawer;
-use gl;
-use glutin::event;
-use glutin::event::WindowEvent;
-use glutin::event::{MouseButton, VirtualKeyCode as KeyCode};
-use glutin::{ContextBuilder, ContextWrapper, GlRequest, PossiblyCurrent};
-use nalgebra::{Vector2, Vector3};
+use winit::event::WindowEvent;
+use winit::event::{MouseButton, VirtualKeyCode as KeyCode};
+use winit::event_loop::EventLoop;
+
 use utils::framecounter::FrameCounter;
 use utils::wininput;
 
 use std::rc::Rc;
 
-use termion::{raw::IntoRawMode, screen::AlternateScreen};
-use tui::{backend::TermionBackend, Terminal};
+use world::{create_main_world, main_world, Chunk, ChunkListener, PlayerInput};
 
-use world::{create_main_world, Chunk, ChunkListener, PlayerInput};
-type CTX = ContextWrapper<PossiblyCurrent, glutin::window::Window>;
+use crate::config::*;
 
-pub enum Layout {
-    Azerty,
-    Qwerty,
-}
+use std::sync::Arc;
 
-impl Layout {
-    pub fn parse(name: &str) -> Layout {
-        match name {
-            "azerty" | "fr" => Layout::Azerty,
-            "qwerty" | "us" | "uk" | "en" => Layout::Qwerty,
-            _ => panic!("unknown layout"),
-        }
-    }
+use cubetracer::context::Context;
+use cubetracer::window::*;
 
-    pub fn forward(&self) -> KeyCode {
-        match self {
-            Layout::Azerty => KeyCode::Z,
-            Layout::Qwerty => KeyCode::W,
-        }
-    }
+use ash::{version::DeviceV1_0, vk, Device};
 
-    pub fn backward(&self) -> KeyCode {
-        match self {
-            Layout::Azerty => KeyCode::S,
-            Layout::Qwerty => KeyCode::S,
-        }
-    }
-
-    pub fn right(&self) -> KeyCode {
-        match self {
-            Layout::Azerty => KeyCode::Q,
-            Layout::Qwerty => KeyCode::A,
-        }
-    }
-
-    pub fn left(&self) -> KeyCode {
-        match self {
-            Layout::Azerty => KeyCode::D,
-            Layout::Qwerty => KeyCode::D,
-        }
-    }
-}
+const MAX_FRAMES_IN_FLIGHT: usize = 2;
 
 pub struct MyChunkListener {
     pub loaded_chunks: Vec<(i32, i32)>,
@@ -92,343 +53,509 @@ impl ChunkListener for MyChunkListener {
     }
 }
 
-fn get_window_dim(context: &CTX) -> (u32, u32) {
-    let dim = context.window().inner_size();
-    (dim.width, dim.height)
+const FOV_RANGE: std::ops::Range<f32> = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
+
+pub struct BaseApp {
+    config: Config,
+
+    window: winit::window::Window,
+
+    context: Arc<Context>,
+    swapchain_properties: SwapchainProperties,
+    depth_format: vk::Format,
+    msaa_samples: vk::SampleCountFlags,
+    render_pass: RenderPass,
+    swapchain: Swapchain,
+
+    input_handler: wininput::WinInput,
+
+    in_flight_frames: InFlightFrames,
+
+    layout: Layout,
+
+    mouse_is_focused: bool,
+    tracer: cubetracer::Cubetracer,
+
+    player: world::Player,
 }
 
-pub fn game(
-    world_path: &str,
-    seed: isize,
-    flat: bool,
-    view_distance: usize,
-    with_shadows: bool,
-    resolution_coeff: f32,
-    layout: Layout,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // --- Configuration ---
-    let fov_range = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
+impl BaseApp {
+    pub fn run(
+        world_path: &str,
+        seed: isize,
+        flat: bool,
+        view_distance: usize,
+        config: Config, layout: Layout) {
 
-    // --- World SetUp --
-    let mut listener = MyChunkListener::new();
+        // --- World SetUp --
+        let mut listener = MyChunkListener::new();
 
-    let world = create_main_world(world_path, seed, flat);
-    let mut player = world.create_player(&mut listener, view_distance);
+        let world = create_main_world(world_path, seed, flat);
+        let player = world.create_player(&mut listener, view_distance);
 
-    // --- debug tools SetUp ---
-    let stdout = std::io::stdout().into_raw_mode()?;
-    let stdout = AlternateScreen::from(stdout);
-    let backend = TermionBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    terminal.hide_cursor()?;
-    let mut termidrawer = TermiDrawer::new(30, false);
+        let event_loop = winit::event_loop::EventLoop::new();
 
-    // --- Window Helper ---
-    let mut input_handler = wininput::WinInput::default();
+        let window = winit::window::WindowBuilder::new()
+            .with_title("RTX")
+            .build(&event_loop)
+            .unwrap();
+        window.set_cursor_visible(false);
 
-    // --- Build Window ---
-    let event_loop = glutin::event_loop::EventLoop::new();
-    let window_builder = glutin::window::WindowBuilder::new().with_title("GlOPR");
+        let context = Arc::new(Context::new(&window));
 
-    let context = ContextBuilder::new()
-        .with_vsync(true)
-        .with_double_buffer(Some(true))
-        .with_gl(GlRequest::Specific(glutin::Api::OpenGl, (4, 3)))
-        .build_windowed(window_builder, &event_loop)
-        .unwrap();
+        let swapchain_support_details = SwapchainSupportDetails::new(
+            context.physical_device(),
+            context.surface(),
+            context.surface_khr(),
+        );
 
-    let context = unsafe { context.make_current().unwrap() };
-    gl::load_with(|symbol| context.get_proc_address(symbol) as *const _);
-    unsafe { gl::Enable(gl::FRAMEBUFFER_SRGB) };
+        let swapchain_properties = swapchain_support_details
+            .get_ideal_swapchain_properties(config.resolution, config.vsync);
+        let depth_format = Self::find_depth_format(&context);
+        let msaa_samples = context.get_max_usable_sample_count(config.msaa);
 
-    context.window().set_cursor_visible(false);
+        let render_pass = RenderPass::create(
+            Arc::clone(&context),
+            swapchain_properties.extent,
+            swapchain_properties.format.format,
+            depth_format,
+            msaa_samples,
+        );
 
-    let (width, height) = get_window_dim(&context);
+        let swapchain = Swapchain::create(
+            Arc::clone(&context),
+            swapchain_support_details,
+            config.resolution,
+            config.vsync,
+            &render_pass,
+        );
 
-    let mut camera = cubetracer::Camera::new(
-        width as f32,
-        height as f32,
-        Vector3::new(0., 80., 0.),
-        Vector2::new(std::f32::consts::PI / 2.0, 0.0),
-        fov_range.start + (fov_range.end - fov_range.start) / 2.,
-        16. / 9.,
-    );
+        let in_flight_frames = Self::create_sync_objects(context.device());
 
-    // --- Cube Tracer ---
-    let mut cubetracer = cubetracer::CubeTracer::new(
-        width,
-        height,
-        view_distance,
-        resolution_coeff,
-        with_shadows,
-        false,
-    )
-    .unwrap();
+        let tracer = cubetracer::Cubetracer::new(
+            &context,
+            &swapchain,
+            16. / 9.,
+            FOV_RANGE.start + (FOV_RANGE.end - FOV_RANGE.start) / 2.,
+        );
 
-    // --- Main loop ---
-    let mut frame_counter = FrameCounter::new(60);
-    let mut fps_mean = 0.0;
-    let mut fps_nb_ticks = 0.0;
+        let game = Self {
+            config,
+            window,
 
-    let mut __debug_min_coords: Vector2<i32> = Vector2::zeros();
+            context,
+            swapchain_properties,
+            render_pass,
+            swapchain,
+            depth_format,
+            msaa_samples,
+            in_flight_frames,
+            input_handler: wininput::WinInput::default(),
+            layout,
+            mouse_is_focused: false,
 
-    let mut total_time = 0.0;
-    let mut update_rendering = false;
+            tracer,
 
-    let mut mouse_is_focused = false;
+            player,
+        };
+        game.process_event(event_loop);
+    }
 
-    event_loop.run(
-        move |event, _, control_flow: &mut glutin::event_loop::ControlFlow| {
-            *control_flow = glutin::event_loop::ControlFlow::Poll;
-            let delta_time = frame_counter.delta_time();
+    fn find_depth_format(context: &Context) -> vk::Format {
+        let candidates = vec![
+            vk::Format::D32_SFLOAT,
+            vk::Format::D32_SFLOAT_S8_UINT,
+            vk::Format::D24_UNORM_S8_UINT,
+        ];
+        context
+            .find_supported_format(
+                &candidates,
+                vk::ImageTiling::OPTIMAL,
+                vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
+            )
+            .expect("Failed to find a supported depth format")
+    }
 
-            match event {
-                glutin::event::Event::LoopDestroyed => return,
-                glutin::event::Event::MainEventsCleared => {
-                    input_handler.update_time(delta_time);
-                    total_time += delta_time;
-
-                    // --- Process inputs ---
-                    if input_handler.updated(wininput::StateChange::MouseScroll) {
-                        let fov = fov_range.start
-                            + input_handler.get_scroll() * (fov_range.end - fov_range.start);
-                        update_rendering = true;
-                        camera.set_fov(fov)
-                    }
-
-                    if input_handler.updated(wininput::StateChange::MouseMotion) {
-                        let offset = input_handler.get_mouse_offset() * delta_time;
-                        update_rendering = true;
-                        camera.reorient(offset);
-                    }
-
-                    let mut inputs = vec![];
-
-                    if input_handler.is_button_pressed(MouseButton::Left) {
-                        inputs.push(PlayerInput::LeftInteract);
-                    }
-
-                    if input_handler.is_button_pressed(MouseButton::Right) {
-                        inputs.push(PlayerInput::RightInteract);
-                    }
-
-                    if input_handler.is_pressed(KeyCode::LShift) {
-                        inputs.push(PlayerInput::Sneaking);
-                    }
-                    if input_handler.is_pressed(layout.forward()) {
-                        inputs.push(PlayerInput::MoveFoward);
-                    }
-                    if input_handler.is_pressed(layout.right()) {
-                        inputs.push(PlayerInput::MoveRight);
-                    }
-                    if input_handler.is_pressed(layout.backward()) {
-                        inputs.push(PlayerInput::MoveBackward);
-                    }
-                    if input_handler.is_pressed(layout.left()) {
-                        inputs.push(PlayerInput::MoveLeft);
-                    }
-                    if input_handler.is_pressed(KeyCode::Space) {
-                        inputs.push(PlayerInput::Jump);
-                    }
-                    if input_handler.is_pressed(KeyCode::LControl) {
-                        inputs.push(PlayerInput::SprintToggle);
-                    }
-                    if input_handler.is_double_pressed(KeyCode::Space) {
-                        inputs.push(PlayerInput::FlyToggle);
-                    }
-                    if input_handler.is_pressed(KeyCode::K) {
-                        camera.update_sun_pos();
-                        update_rendering = true;
-                    }
-                    if input_handler.is_pressed(KeyCode::N) {
-                        camera.sun_light_cycle(delta_time);
-                        update_rendering = true;
-                    }
-
-                    camera.origin.y = camera.origin.y.clamp(0.0, 255.9);
-
-                    // --- Update States ---
-
-                    update_rendering = player.update(
-                        world,
-                        &mut listener,
-                        camera.forward(),
-                        camera.left(),
-                        inputs,
-                        delta_time,
-                    ) || update_rendering;
-
-                    camera.origin = player.head_position();
-
-                    termidrawer.update_var(
-                        "screen_top_left".to_string(),
-                        format!("{:?}", camera.get_virtual_screen_top_left().data),
-                    );
-                    termidrawer.update_var(
-                        "player_position".to_string(),
-                        format!("{:?}", camera.origin.data),
-                    );
-                    termidrawer.update_var(
-                        "v_forward".to_string(),
-                        format!("{:?}", camera.forward().data),
-                    );
-
-                    termidrawer
-                        .update_var("v_left".to_string(), format!("{:?}", camera.left().data));
-                    termidrawer.update_var("v_up".to_string(), format!("{:?}", camera.up().data));
-
-                    let __debug_curr_chunk = Vector2::new(
-                        (camera.origin.x / 16.0).floor() as i32,
-                        (camera.origin.z / 16.0).floor() as i32,
-                    );
-
-                    termidrawer.update_var(
-                        "__debug_curr_chunk_world".to_string(),
-                        format!("{:?}", __debug_curr_chunk.data),
-                    );
-
-                    if let Some(chunk) = world.chunk(__debug_curr_chunk.x, __debug_curr_chunk.y) {
-                        termidrawer.update_var(
-                            "__debug_chunk_empty".to_string(),
-                            format!(
-                                "{:?}",
-                                chunk.chunk_filled_metadata()
-                                    [(camera.origin.y / 16.0).floor() as usize]
-                            ),
-                        );
-                    }
-
-                    if listener.has_been_updated() {
-                        let chunks_to_add: Vec<Rc<Chunk>> = listener
-                            .loaded_chunks
-                            .iter()
-                            .map(|c| world.chunk(c.0, c.1).unwrap().clone())
-                            .collect();
-
-                        let chunks_to_rm: Vec<(i32, i32)> = listener.unloaded_chunks.clone();
-
-                        __debug_min_coords = cubetracer
-                            .args
-                            .update_chunks(chunks_to_rm, chunks_to_add)
-                            .unwrap();
-
-                        termidrawer.update_var(
-                            "__debug_min_coords".to_string(),
-                            format!("{:?}", __debug_min_coords.data),
-                        );
-                        termidrawer.update_var(
-                            "nb_chunks_listener".to_string(),
-                            format!("{:?}", cubetracer.args.nb_mapped_chunks()),
-                        );
-
-                        termidrawer.log(format!("> chunks loaded  : {:?}", listener.loaded_chunks));
-                        termidrawer
-                            .log(format!("> chunks unloaded: {:?}", listener.unloaded_chunks));
-
-                        listener.clear();
-                    }
-                    termidrawer.update_var(
-                        "__debug_curr_chunk_local".to_string(),
-                        format!("{:?}", (__debug_curr_chunk - __debug_min_coords).data),
-                    );
-
-                    // - Cube Tracer -
-
-                    let highlighted_block = match player.looked_block(&world, camera.forward()) {
-                        Some((b, _)) => b,
-                        _ => Vector3::new(0, -100, 0),
-                    };
-
-                    //FIXME improve wind
-                    let wind =
-                        Vector3::new((total_time + 0.8).cos() / 4., 1.0, total_time.sin() / 4.)
-                            .normalize();
-
-                    cubetracer
-                        .args
-                        .set_camera(
-                            total_time,
-                            update_rendering,
-                            &camera,
-                            wind,
-                            highlighted_block,
-                        )
-                        .unwrap();
-
-                    context.window().request_redraw();
-                    update_rendering = false;
-                }
-                event::Event::RedrawRequested(_) => {
-                    let (width, height) = get_window_dim(&context);
-
-                    cubetracer.compute_image(width, height).unwrap();
-                    cubetracer.draw().unwrap();
-
-                    context.swap_buffers().unwrap();
-
-                    if let Some(fps) = frame_counter.tick() {
-                        termidrawer.update_var("fps".to_string(), format!("{}", fps));
-                        termidrawer.update_fps(fps as f64);
-                        fps_mean = fps_mean * fps_nb_ticks + fps;
-                        fps_nb_ticks += 1.0;
-                        fps_mean /= fps_nb_ticks;
-                        termidrawer.update_var("fps_mean".to_string(), format!("{}", fps_mean));
-                    }
-
-                    termidrawer.draw(&mut terminal).unwrap();
-                }
-                event::Event::DeviceEvent { event, .. } => input_handler.on_device_event(event),
-                event::Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::KeyboardInput { input, .. } => {
-                        input_handler.on_keyboard_input(input);
-                        if input_handler.is_pressed_once(KeyCode::P) {
-                            update_rendering = true;
-                            cubetracer.toggle_global_illum().unwrap();
-                        }
-                        if input_handler.is_pressed_once(KeyCode::L) {
-                            update_rendering = true;
-                            cubetracer.toggle_ambient_light().unwrap();
-                        }
-                        if input_handler.is_pressed_once(KeyCode::M) {
-                            update_rendering = true;
-                            cubetracer.toggle_sky_atm().unwrap();
-                        }
-
-                        if input_handler.is_pressed_once(KeyCode::Escape) {
-                            mouse_is_focused = false;
-                            context.window().set_cursor_grab(false).unwrap();
-                        }
-                    }
-                    WindowEvent::MouseInput { button, state, .. } => {
-                        if mouse_is_focused {
-                            input_handler.on_mouse_input(button, state)
-                        }
-                    }
-                    WindowEvent::Focused(is_focused) => {
-                        match context.window().set_cursor_grab(is_focused) {
-                            Ok(_) => mouse_is_focused = is_focused,
-                            _ => (),
-                        }
-                    }
-                    glutin::event::WindowEvent::Resized(physical_size) => {
-                        context.resize(physical_size);
-
-                        camera.set_image_size(
-                            physical_size.width as f32 / resolution_coeff,
-                            physical_size.height as f32 / resolution_coeff,
-                        );
-
-                        cubetracer
-                            .resize(physical_size.width, physical_size.height)
-                            .unwrap();
-                    }
-                    glutin::event::WindowEvent::CloseRequested => {
-                        *control_flow = glutin::event_loop::ControlFlow::Exit
-                    }
-                    _ => (),
-                },
-                _ => (),
+    fn create_sync_objects(device: &Device) -> InFlightFrames {
+        let mut sync_objects_vec = Vec::new();
+        for _ in 0..MAX_FRAMES_IN_FLIGHT {
+            let image_available_semaphore = {
+                let semaphore_info = vk::SemaphoreCreateInfo::builder();
+                unsafe { device.create_semaphore(&semaphore_info, None).unwrap() }
             };
-        },
-    )
+
+            let render_finished_semaphore = {
+                let semaphore_info = vk::SemaphoreCreateInfo::builder();
+                unsafe { device.create_semaphore(&semaphore_info, None).unwrap() }
+            };
+
+            let in_flight_fence = {
+                let fence_info =
+                    vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::SIGNALED);
+                unsafe { device.create_fence(&fence_info, None).unwrap() }
+            };
+
+            let sync_objects = SyncObjects {
+                image_available_semaphore,
+                render_finished_semaphore,
+                fence: in_flight_fence,
+            };
+            sync_objects_vec.push(sync_objects)
+        }
+
+        InFlightFrames::new(sync_objects_vec)
+    }
+
+    pub fn process_event(mut self, event_loop: EventLoop<()>) {
+        let mut total_time = 0.0;
+
+        let mut frame_counter = FrameCounter::new(60);
+        let mut listener = MyChunkListener::new();
+
+        event_loop.run(
+            move |event, _, control_flow: &mut winit::event_loop::ControlFlow| {
+                *control_flow = winit::event_loop::ControlFlow::Poll;
+
+                let delta_time = frame_counter.delta_time();
+
+                match event {
+                    winit::event::Event::LoopDestroyed => return,
+                    winit::event::Event::MainEventsCleared => {
+                        self.input_handler.update_time(delta_time);
+                        total_time += delta_time;
+
+                        // --- Process inputs ---
+                        if self.input_handler.updated(wininput::StateChange::MouseScroll) {
+                            let fov = FOV_RANGE.start
+                                + self.input_handler.get_scroll() * (FOV_RANGE.end - FOV_RANGE.start);
+                            self.tracer.camera().set_fov(fov)
+                        }
+
+                        if self.input_handler.updated(wininput::StateChange::MouseMotion) {
+                            let offset = self.input_handler.get_mouse_offset() * delta_time;
+                            self.tracer.camera().reorient(offset.x, offset.y);
+                        }
+
+                        let mut inputs = vec![];
+
+                        if self.input_handler.is_button_pressed(MouseButton::Left) {
+                            inputs.push(PlayerInput::LeftInteract);
+                        }
+
+                        if self.input_handler.is_button_pressed(MouseButton::Right) {
+                            inputs.push(PlayerInput::RightInteract);
+                        }
+
+                        if self.input_handler.is_pressed(KeyCode::LShift) {
+                            inputs.push(PlayerInput::Sneaking);
+                        }
+                        if self.input_handler.is_pressed(self.layout.forward()) {
+                            inputs.push(PlayerInput::MoveFoward);
+                        }
+                        if self.input_handler.is_pressed(self.layout.right()) {
+                            inputs.push(PlayerInput::MoveRight);
+                        }
+                        if self.input_handler.is_pressed(self.layout.backward()) {
+                            inputs.push(PlayerInput::MoveBackward);
+                        }
+                        if self.input_handler.is_pressed(self.layout.left()) {
+                            inputs.push(PlayerInput::MoveLeft);
+                        }
+                        if self.input_handler.is_pressed(KeyCode::Space) {
+                            inputs.push(PlayerInput::Jump);
+                        }
+                        if self.input_handler.is_pressed(KeyCode::LControl) {
+                            inputs.push(PlayerInput::SprintToggle);
+                        }
+                        if self.input_handler.is_double_pressed(KeyCode::Space) {
+                            inputs.push(PlayerInput::FlyToggle);
+                        }
+                        if self.input_handler.is_pressed(KeyCode::K) {
+                            self.tracer.camera().update_sun_pos();
+                        }
+                        if self.input_handler.is_pressed(KeyCode::N) {
+                            self.tracer.camera().sun_light_cycle(delta_time);
+                        }
+
+                        // --- Update States ---
+                        self.player.update(
+                            main_world(),
+                            &mut listener,
+                            self.tracer.camera().forward(),
+                            self.tracer.camera().left(),
+                            inputs,
+                            delta_time,
+                        );
+
+                        self.tracer.camera().origin = self.player.head_position();
+
+                        if listener.has_been_updated() {
+                            let chunks_to_add: Vec<Rc<Chunk>> = listener
+                                .loaded_chunks
+                                .iter()
+                                .map(|c| main_world().chunk(c.0, c.1).unwrap().clone())
+                                .collect();
+
+                            let chunks_to_rm: Vec<(i32, i32)> = listener.unloaded_chunks.clone();
+
+                            listener.clear();
+                        }
+
+                        // - Cube Tracer -
+
+                        /* FIXME send it to RTX
+                        let highlighted_block = match self.player.looked_block(&main_world(), self.tracer.camera().forward()) {
+                            Some((b, _)) => b,
+                            _ => Vector3::new(0, -100, 0),
+                        };
+                        */
+
+                        //FIXME improve wind (and use it with RTX)
+                        /*let wind =
+                            Vector3::new((total_time + 0.8).cos() / 4., 1.0, total_time.sin() / 4.)
+                                .normalize();*/
+
+                        //FIXME send wind & highlighted_block & total time
+                        self.window.request_redraw();
+                    }
+                    winit::event::Event::RedrawRequested(_) => {
+                        self.tracer.draw_frame(&self.context);
+                        if let Some(_) = self.draw_frame() {
+                            self.tracer.resize(&self.context, &self.swapchain);
+                        }
+                        frame_counter.tick();
+                    }
+                    winit::event::Event::DeviceEvent { event, .. } => self.input_handler.on_device_event(event),
+                    winit::event::Event::WindowEvent { event, .. } => match event {
+                        WindowEvent::KeyboardInput { input, .. } => {
+                            self.input_handler.on_keyboard_input(input);
+                            if self.input_handler.is_pressed_once(KeyCode::P) {
+                                //cubetracer.toggle_global_illum().unwrap();
+                            }
+                            if self.input_handler.is_pressed_once(KeyCode::L) {
+                                //cubetracer.toggle_ambient_light().unwrap();
+                            }
+                            if self.input_handler.is_pressed_once(KeyCode::M) {
+                                //cubetracer.toggle_sky_atm().unwrap();
+                            }
+
+                            if self.input_handler.is_pressed_once(KeyCode::Escape) {
+                                self.mouse_is_focused = false;
+                                self.window.set_cursor_grab(false).unwrap();
+                            }
+                        }
+                        WindowEvent::MouseInput { button, state, .. } => {
+                            if self.mouse_is_focused {
+                                self.input_handler.on_mouse_input(button, state)
+                            }
+                        }
+                        WindowEvent::Focused(is_focused) => {
+                            match self.window.set_cursor_grab(is_focused) {
+                                Ok(_) => self.mouse_is_focused = is_focused,
+                                _ => (),
+                            }
+                        }
+                        winit::event::WindowEvent::CloseRequested => {
+                            *control_flow = winit::event_loop::ControlFlow::Exit
+                        }
+                        _ => (),
+                    },
+                    _ => (),
+                };
+            },
+        );
+    }
+
+    pub fn draw_frame(
+        &mut self,
+    ) -> Option<SwapchainProperties> {
+        let command_buffers = self.tracer.commands();
+
+        log::trace!("Drawing frame.");
+        let sync_objects = self.in_flight_frames.next().unwrap();
+        let image_available_semaphore = sync_objects.image_available_semaphore;
+        let render_finished_semaphore = sync_objects.render_finished_semaphore;
+        let in_flight_fence = sync_objects.fence;
+        let wait_fences = [in_flight_fence];
+
+        unsafe {
+            self.context
+                .device()
+                .wait_for_fences(&wait_fences, true, std::u64::MAX)
+                .unwrap()
+        };
+
+        let result = self
+            .swapchain
+            .acquire_next_image(None, Some(image_available_semaphore), None);
+        let image_index = match result {
+            Ok((image_index, _)) => image_index,
+            Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
+                self.recreate_swapchain();
+                return Some(self.swapchain_properties);
+            }
+            Err(error) => panic!("Error while acquiring next image. Cause: {}", error),
+        };
+
+        unsafe { self.context.device().reset_fences(&wait_fences).unwrap() };
+
+        let device = self.context.device();
+        let wait_semaphores = [image_available_semaphore];
+        let signal_semaphores = [render_finished_semaphore];
+
+        // Submit command buffer
+        {
+            let wait_stages = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
+            let command_buffers = [command_buffers[image_index as usize]];
+            let submit_info = vk::SubmitInfo::builder()
+                .wait_semaphores(&wait_semaphores)
+                .wait_dst_stage_mask(&wait_stages)
+                .command_buffers(&command_buffers)
+                .signal_semaphores(&signal_semaphores)
+                .build();
+            let submit_infos = [submit_info];
+            unsafe {
+                device
+                    .queue_submit(
+                        self.context.graphics_queue(),
+                        &submit_infos,
+                        in_flight_fence,
+                    )
+                    .unwrap()
+            };
+        }
+
+        let swapchains = [self.swapchain.swapchain_khr()];
+        let images_indices = [image_index];
+
+        {
+            let present_info = vk::PresentInfoKHR::builder()
+                .wait_semaphores(&signal_semaphores)
+                .swapchains(&swapchains)
+                .image_indices(&images_indices);
+            let result = self.swapchain.present(&present_info);
+            match result {
+                Ok(is_suboptimal) if is_suboptimal => {
+                    self.recreate_swapchain();
+                }
+                Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
+                    self.recreate_swapchain();
+                }
+                Err(error) => panic!("Failed to present queue. Cause: {}", error),
+                _ => {}
+            }
+
+            None
+        }
+    }
+
+    /// Recreates the swapchain.
+    ///
+    /// If the window has been resized, then the new size is used
+    /// otherwise, the size of the current swapchain is used.
+    ///
+    /// If the window has been minimized, then the functions block until
+    /// the window is maximized. This is because a width or height of 0
+    /// is not legal.
+    fn recreate_swapchain(&mut self) {
+        log::debug!("Recreating swapchain.");
+
+        unsafe { self.context.device().device_wait_idle().unwrap() };
+
+        self.cleanup_swapchain();
+
+        let dimensions = [
+            self.swapchain.properties().extent.width,
+            self.swapchain.properties().extent.height,
+        ];
+
+        let swapchain_support_details = SwapchainSupportDetails::new(
+            self.context.physical_device(),
+            self.context.surface(),
+            self.context.surface_khr(),
+        );
+        let swapchain_properties =
+            swapchain_support_details.get_ideal_swapchain_properties(dimensions, self.config.vsync);
+
+        let render_pass = RenderPass::create(
+            Arc::clone(&self.context),
+            swapchain_properties.extent,
+            swapchain_properties.format.format,
+            self.depth_format,
+            self.msaa_samples,
+        );
+
+        let swapchain = Swapchain::create(
+            Arc::clone(&self.context),
+            swapchain_support_details,
+            dimensions,
+            self.config.vsync,
+            &render_pass,
+        );
+
+        self.swapchain = swapchain;
+        self.swapchain_properties = swapchain_properties;
+        self.render_pass = render_pass;
+    }
+
+    /// Clean up the swapchain and all resources that depends on it.
+    fn cleanup_swapchain(&mut self) {
+        self.swapchain.destroy();
+    }
+}
+
+impl Drop for BaseApp {
+    fn drop(&mut self) {
+        log::debug!("Dropping application.");
+        self.cleanup_swapchain();
+        let device = self.context.device();
+        self.in_flight_frames.destroy(device);
+    }
+}
+
+#[derive(Clone, Copy)]
+struct SyncObjects {
+    image_available_semaphore: vk::Semaphore,
+    render_finished_semaphore: vk::Semaphore,
+    fence: vk::Fence,
+}
+
+impl SyncObjects {
+    fn destroy(&self, device: &Device) {
+        unsafe {
+            device.destroy_semaphore(self.image_available_semaphore, None);
+            device.destroy_semaphore(self.render_finished_semaphore, None);
+            device.destroy_fence(self.fence, None);
+        }
+    }
+}
+
+struct InFlightFrames {
+    sync_objects: Vec<SyncObjects>,
+    current_frame: usize,
+}
+
+impl InFlightFrames {
+    fn new(sync_objects: Vec<SyncObjects>) -> Self {
+        Self {
+            sync_objects,
+            current_frame: 0,
+        }
+    }
+
+    fn destroy(&self, device: &Device) {
+        self.sync_objects.iter().for_each(|o| o.destroy(&device));
+    }
+}
+
+impl Iterator for InFlightFrames {
+    type Item = SyncObjects;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.sync_objects[self.current_frame];
+
+        self.current_frame = (self.current_frame + 1) % self.sync_objects.len();
+
+        Some(next)
+    }
 }

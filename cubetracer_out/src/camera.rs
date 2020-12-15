@@ -1,27 +1,8 @@
-use crate::datatypes::UniformCamera;
-
-use nalgebra::{Vector2, Vector3, Vector4};
-
-fn vec3to4(v: Vector3<f32>) -> Vector4<f32> {
-    Vector4::new(v.x, v.y, v.z, 0.0)
-}
-
-impl Camera {
-    pub fn uniform(&self) -> UniformCamera {
-        let origin = self.origin;
-        let top_left = self.get_virtual_screen_top_left();
-        let (left, up) = self.get_virtual_screen_axes_scaled();
-
-        UniformCamera {
-            top_left: vec3to4(top_left),
-            left: vec3to4(left),
-            up: vec3to4(up),
-            origin: vec3to4(origin),
-        }
-    }
-}
+use nalgebra::{Vector2, Vector3};
 
 pub struct Camera {
+    image_size: Vector2<f32>,
+
     virtual_screen_size: Vector2<f32>,
 
     pub origin: Vector3<f32>,
@@ -47,7 +28,7 @@ fn compute_virtual_screen_size(fov: f32, aspect_ratio: f32) -> Vector2<f32> {
 
 impl Camera {
     pub fn get_virtual_screen_axes_scaled(&self) -> (Vector3<f32>, Vector3<f32>) {
-        let scales = self.virtual_screen_size;
+        let scales = self.virtual_screen_size.component_div(&self.image_size);
 
         (self.left * scales.x, self.up * scales.y)
     }
@@ -64,12 +45,12 @@ impl Camera {
         self.left
     }
 
-    pub fn reorient(&mut self, x: f32, y: f32) {
-        self.rotation += Vector2::new(x, y);
+    pub fn reorient(&mut self, offset: Vector2<f32>) {
+        self.rotation += offset;
         self.rotation.y = self
             .rotation
             .y
-            .max(-std::f32::consts::PI / 2.).min(std::f32::consts::PI / 2.);
+            .clamp(-std::f32::consts::PI / 2.1, std::f32::consts::PI / 2.1);
 
         self.update_axes();
     }
@@ -99,7 +80,7 @@ impl Camera {
 
         self.forward =
             Vector3::new(cos_rot_x * cos_rot_y, sin_rot_y, sin_rot_x * cos_rot_y).normalize();
-        self.left = -self.forward.cross(&Vector3::y()).normalize();
+        self.left = -self.forward.cross(&Vector3::new(0., 1., 0.)).normalize();
         self.up = self.left.cross(&self.forward).normalize();
     }
 
@@ -107,6 +88,10 @@ impl Camera {
         self.forward
             + 0.5 * self.left * self.virtual_screen_size.x
             + 0.5 * self.up * self.virtual_screen_size.y
+    }
+
+    pub fn set_image_size(&mut self, width: f32, height: f32) {
+        self.image_size = Vector2::new(width, height);
     }
 
     fn assert_fov_valid(fov: f32) {
@@ -122,22 +107,21 @@ impl Camera {
         self.virtual_screen_size = compute_virtual_screen_size(fov, self.aspect_ratio);
     }
 
-    pub fn set_origin(&mut self, x: f32, y: f32, z: f32) {
-        self.origin = Vector3::new(x, y, z)
-    }
-
     pub fn new(
+        width: f32,
+        height: f32,
         origin: Vector3<f32>,
         rotation: Vector2<f32>,
         fov: f32,
         aspect_ratio: f32,
     ) -> Camera {
         let mut camera = Camera {
+            image_size: Vector2::new(width, height),
             origin,
             rotation,
-            up: Vector3::new(0.0, 0.0, 0.0),
-            forward: Vector3::new(0.0, 0.0, 0.0),
-            left: Vector3::new(0.0, 0.0, 0.0),
+            up: Vector3::zeros(),
+            forward: Vector3::zeros(),
+            left: Vector3::zeros(),
             aspect_ratio,
             virtual_screen_size: compute_virtual_screen_size(fov, aspect_ratio),
             sun_direction: Vector3::new(-0.7, -1.5, -1.1),

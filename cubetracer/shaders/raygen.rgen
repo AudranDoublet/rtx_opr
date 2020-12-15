@@ -1,0 +1,32 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+
+layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
+layout(binding = 1, set = 0, rgba8) uniform image2D image;
+layout(binding = 2, set = 0) uniform Uniforms {
+    vec3 topLeft;
+    vec3 left;
+    vec3 up;
+    vec3 origin;
+} camera;
+
+layout(location = 0) rayPayloadNV vec3 hitValue;
+
+void main() {
+    vec2 pos = vec2(gl_LaunchIDNV.xy) / vec2(gl_LaunchSizeNV.xy);
+
+    const vec3 origin = camera.origin;
+    const vec3 direction = normalize(
+        camera.topLeft
+        - pos.x * camera.left
+        + pos.y * camera.up
+    );
+
+    const uint cullMask = 0xff;
+    const float tmin = 0.1;
+    const float tmax = 200.0;
+
+    traceNV(topLevelAS, gl_RayFlagsOpaqueNV, cullMask, 0, 0, 0, origin, tmin, direction, tmax, 0);
+
+    imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(hitValue, 0.0));
+}

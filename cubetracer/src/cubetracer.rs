@@ -1,285 +1,338 @@
-extern crate gl;
-extern crate glutin;
+use crate::camera::*;
+use crate::context::Context;
+use crate::datatypes::*;
+use crate::mesh::Mesh;
+use crate::pipeline::*;
+use crate::window::*;
 
-use crate::errors::*;
-use crate::glchk_stmt;
-use crate::helper;
-use crate::CubeTracerArguments;
+use nalgebra::{Vector2, Vector3};
 
-#[inline]
-fn coeff(i: u32, coeff: f32) -> u32 {
-    (i as f32 / coeff) as u32
+use ash::version::DeviceV1_0;
+use ash::vk;
+use std::sync::Arc;
+
+const SHADER_FOLDER: &str = "cubetracer/shaders";
+
+pub struct Cubetracer {
+    rtx_data: RTXData,
+    camera: Camera,
 }
 
-pub struct CubeTracer {
-    program_raytracer: u32,
-    program_quad_screen: u32,
-    vao_quad_screen: u32,
-    vao_quad_cursor: u32,
-    texture_raytracer: u32,
-    texture_random: u32,
-    texture_cursor: u32,
-    resolution_coeff: f32,
+impl Cubetracer {
+    pub fn new(context: &Arc<Context>, swapchain: &Swapchain, ratio: f32, fov: f32) -> Self {
+        let camera = Camera::new(
+            Vector3::x(),
+            Vector2::new(std::f32::consts::PI / 2.0, 0.0),
+            fov,
+            ratio,
+        );
 
-    cache_albedos: u32,
-    cache_illum_direct: u32,
-    cache_illum_indirect_sampling: u32,
-    cache_intersections: u32,
-    cache_normals: u32,
+        let rtx_data = RTXData::new(context, swapchain, &camera);
 
-    enable_global_illum: bool,
-    enable_ambient_light: bool,
-    enable_sky_atm: bool,
+        Cubetracer {
+            rtx_data,
+            camera,
+        }
+    }
 
-    pub args: CubeTracerArguments,
+    pub fn camera(&mut self) -> &mut Camera {
+        &mut self.camera
+    }
+
+    pub fn draw_frame(&mut self, context: &Arc<Context>) {
+        self.rtx_data.uniform_scene.set(
+            context,
+            &UniformScene {
+                sun_direction: self.camera.sun_direction(),
+            },
+        );
+        self.rtx_data.uniform_camera.set(
+            context, &self.camera.uniform(),
+        );
+    }
+
+    pub fn commands(&self) -> &[vk::CommandBuffer] {
+        self.rtx_data.get_command_buffers()
+    }
+
+    pub fn resize(&mut self, context: &Arc<Context>, swapchain: &Swapchain) {
+        self.rtx_data = RTXData::new(context, swapchain, &self.camera);
+    }
 }
 
-impl CubeTracer {
-    pub fn new(
-        width: u32,
-        height: u32,
-        view_size: usize,
-        resolution_coeff: f32,
-        shadow_activated: bool,
-        enable_global_illum: bool,
-    ) -> Result<Self, GLError> {
-        let prog_raytracer_id = helper::build_program_raytracer(
-            view_size,
-            shadow_activated,
-            coeff(10, resolution_coeff),
-        )?;
-        let prog_quad_screen_id = helper::build_program_quad()?;
+#[allow(dead_code)]
+pub struct RTXData {
+    context: Arc<Context>,
 
-        let program_raytracer = prog_raytracer_id;
-        let program_quad_screen = prog_quad_screen_id;
+    output_texture: TextureVariable,
+    uniform_camera: UniformVariable,
+    uniform_scene: UniformVariable,
+    vertices: BufferVariable,
+    indices: BufferVariable,
+    acceleration_structure: ASVariable,
 
-        let vao_quad_screen = helper::make_quad_vao(prog_quad_screen_id, 1.0, 1.0)?;
-        let vao_quad_cursor = helper::make_quad_vao(prog_quad_screen_id, 0.01125, 0.02)?;
+    command_buffers: Vec<vk::CommandBuffer>,
+    pipeline: RaytracerPipeline,
+}
 
-        let width = coeff(width, resolution_coeff);
-        let height = coeff(height, resolution_coeff);
-
-        let texture_raytracer = helper::generate_texture(width, height)?;
-        let texture_random = helper::generate_texture_random(1, width, height)?;
-        let cache_albedos = helper::generate_image_cache(2, width, height)?;
-        let cache_illum_direct = helper::generate_image_cache(3, width, height)?;
-        let cache_illum_indirect_sampling = helper::generate_image_cache(4, width, height)?;
-        let cache_intersections = helper::generate_image_cache(5, width, height)?;
-        let cache_normals = helper::generate_image_cache(6, width, height)?;
-
-        helper::texture_3d(
-            1,
-            vec![
-                &std::path::Path::new("data/stone.png"),
-                &std::path::Path::new("data/stone_n.png"),
-                &std::path::Path::new("data/dirt.png"),
-                &std::path::Path::new("data/dirt_n.png"),
-                &std::path::Path::new("data/grass_top.png"),
-                &std::path::Path::new("data/grass_top_n.png"),
-                &std::path::Path::new("data/grass_side.png"),
-                &std::path::Path::new("data/grass_side_n.png"),
-                &std::path::Path::new("data/sand.png"),
-                &std::path::Path::new("data/sand_n.png"),
-                &std::path::Path::new("data/snow.png"),
-                &std::path::Path::new("data/snow_n.png"),
-                &std::path::Path::new("data/tallgrass.png"),
-                &std::path::Path::new("data/tallgrass_n.png"),
-                &std::path::Path::new("data/gravel.png"),
-                &std::path::Path::new("data/gravel_n.png"),
-                &std::path::Path::new("data/cactus_top.png"),
-                &std::path::Path::new("data/cactus_top_n.png"),
-                &std::path::Path::new("data/cactus_side.png"),
-                &std::path::Path::new("data/cactus_side_n.png"),
-                &std::path::Path::new("data/cactus_bottom.png"),
-                &std::path::Path::new("data/cactus_bottom_n.png"),
-                &std::path::Path::new("data/log_oak.png"),
-                &std::path::Path::new("data/log_oak_n.png"),
-                &std::path::Path::new("data/log_acacia.png"),
-                &std::path::Path::new("data/log_acacia_n.png"),
-                &std::path::Path::new("data/log_big_oak.png"),
-                &std::path::Path::new("data/log_big_oak_n.png"),
-                &std::path::Path::new("data/log_birch.png"),
-                &std::path::Path::new("data/log_birch_n.png"),
-                &std::path::Path::new("data/log_jungle.png"),
-                &std::path::Path::new("data/log_jungle_n.png"),
-                &std::path::Path::new("data/log_spruce.png"),
-                &std::path::Path::new("data/log_spruce_n.png"),
-                &std::path::Path::new("data/log_oak_top.png"),
-                &std::path::Path::new("data/log_oak_top_n.png"),
-                &std::path::Path::new("data/log_acacia_top.png"),
-                &std::path::Path::new("data/log_acacia_top_n.png"),
-                &std::path::Path::new("data/log_big_oak_top.png"),
-                &std::path::Path::new("data/log_big_oak_top_n.png"),
-                &std::path::Path::new("data/log_birch_top.png"),
-                &std::path::Path::new("data/log_birch_top_n.png"),
-                &std::path::Path::new("data/log_jungle_top.png"),
-                &std::path::Path::new("data/log_jungle_top_n.png"),
-                &std::path::Path::new("data/log_spruce_top.png"),
-                &std::path::Path::new("data/log_spruce_top_n.png"),
-                &std::path::Path::new("data/leaves_oak.png"),
-                &std::path::Path::new("data/leaves_oak_n.png"),
-                &std::path::Path::new("data/leaves_acacia.png"),
-                &std::path::Path::new("data/leaves_acacia_n.png"),
-                &std::path::Path::new("data/leaves_big_oak.png"),
-                &std::path::Path::new("data/leaves_big_oak_n.png"),
-                &std::path::Path::new("data/leaves_birch.png"),
-                &std::path::Path::new("data/leaves_birch_n.png"),
-                &std::path::Path::new("data/leaves_jungle.png"),
-                &std::path::Path::new("data/leaves_jungle_n.png"),
-                &std::path::Path::new("data/leaves_spruce.png"),
-                &std::path::Path::new("data/leaves_spruce_n.png"),
-                &std::path::Path::new("data/flower_tulip_orange.png"),
-                &std::path::Path::new("data/flower_tulip_orange_n.png"),
-                &std::path::Path::new("data/flower_tulip_pink.png"),
-                &std::path::Path::new("data/flower_tulip_pink_n.png"),
-                &std::path::Path::new("data/flower_tulip_red.png"),
-                &std::path::Path::new("data/flower_tulip_red_n.png"),
-                &std::path::Path::new("data/flower_tulip_white.png"),
-                &std::path::Path::new("data/flower_tulip_white_n.png"),
-                &std::path::Path::new("data/flower_dandelion.png"),
-                &std::path::Path::new("data/flower_dandelion_n.png"),
-                &std::path::Path::new("data/flower_houstonia.png"),
-                &std::path::Path::new("data/flower_houstonia_n.png"),
-                &std::path::Path::new("data/flower_oxeye_daisy.png"),
-                &std::path::Path::new("data/flower_oxeye_daisy_n.png"),
-                &std::path::Path::new("data/flower_blue_orchid.png"),
-                &std::path::Path::new("data/flower_blue_orchid_n.png"),
-                &std::path::Path::new("data/flower_allium.png"),
-                &std::path::Path::new("data/flower_allium_n.png"),
-                &std::path::Path::new("data/flower_rose.png"),
-                &std::path::Path::new("data/flower_rose_n.png"),
-                &std::path::Path::new("data/grass_side_overlay.png"),
-                &std::path::Path::new("data/grass_side_overlay_n.png"),
-                &std::path::Path::new("data/planks_oak.png"),
-                &std::path::Path::new("data/planks_oak_n.png"),
-                &std::path::Path::new("data/planks_acacia.png"),
-                &std::path::Path::new("data/planks_acacia_n.png"),
-                &std::path::Path::new("data/planks_big_oak.png"),
-                &std::path::Path::new("data/planks_big_oak_n.png"),
-                &std::path::Path::new("data/planks_birch.png"),
-                &std::path::Path::new("data/planks_birch_n.png"),
-                &std::path::Path::new("data/planks_jungle.png"),
-                &std::path::Path::new("data/planks_jungle_n.png"),
-                &std::path::Path::new("data/planks_spruce.png"),
-                &std::path::Path::new("data/planks_spruce_n.png"),
-                &std::path::Path::new("data/brick.png"),
-                &std::path::Path::new("data/brick_n.png"),
-                &std::path::Path::new("data/stonebrick.png"),
-                &std::path::Path::new("data/stonebrick_n.png"),
-            ],
-        )?;
-
-        let texture_cursor = helper::load_texture(2, &std::path::Path::new("data/cursor.png"))?;
-
-        Ok(CubeTracer {
-            program_raytracer,
-            program_quad_screen,
-            vao_quad_screen,
-            vao_quad_cursor,
-            texture_raytracer,
-            texture_random,
-            texture_cursor,
-            resolution_coeff,
-
-            cache_albedos,
-            cache_illum_direct,
-            cache_illum_indirect_sampling,
-            cache_intersections,
-            cache_normals,
-
-            enable_global_illum,
-            enable_ambient_light: true,
-            enable_sky_atm: true,
-
-            args: CubeTracerArguments::new(program_raytracer, view_size)?,
-        })
+impl RTXData {
+    pub fn get_command_buffers(&self) -> &[vk::CommandBuffer] {
+        &self.command_buffers
     }
+}
 
-    pub fn toggle_global_illum(&mut self) -> Result<(), GLError> {
-        self.enable_global_illum = !self.enable_global_illum;
-        self.args.set_global_illum_state(self.enable_global_illum)
-    }
-
-    pub fn toggle_ambient_light(&mut self) -> Result<(), GLError> {
-        self.enable_ambient_light = !self.enable_ambient_light;
-        self.args.set_ambient_light_state(self.enable_ambient_light)
-    }
-
-    pub fn toggle_sky_atm(&mut self) -> Result<(), GLError> {
-        self.enable_sky_atm = !self.enable_sky_atm;
-        self.args.set_sky_atm_state(self.enable_sky_atm)
-    }
-
-    pub fn compute_image(&self, width: u32, height: u32) -> Result<(), GLError> {
-        let width = coeff(width, self.resolution_coeff);
-        let height = coeff(height, self.resolution_coeff);
-
-        glchk_stmt!(
-            gl::UseProgram(self.program_raytracer);
-
-            gl::DispatchCompute((width + 7) / 8, (height + 7) / 8, 1);
-            gl::MemoryBarrier(gl::SHADER_IMAGE_ACCESS_BARRIER_BIT);
+impl RTXData {
+    pub fn new(context: &Arc<Context>, swapchain: &Swapchain, camera: &Camera) -> Self {
+        let mut output_texture = TextureVariable::from_swapchain(context, swapchain);
+        let mut uniform_camera = UniformVariable::new(&context, &camera.uniform());
+        let mut uniform_scene = UniformVariable::new(
+            &context,
+            &UniformScene {
+                sun_direction: Vector3::new(0.5, 1.0, -0.5).normalize(),
+            },
         );
 
-        Ok(())
+        let (mut as_var, mut vertices, mut indices) = build_acceleration_structures(context);
+
+        let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
+            .binding(
+                vk::DescriptorType::ACCELERATION_STRUCTURE_NV,
+                &mut as_var,
+                &[ShaderType::Raygen, ShaderType::ClosestHit],
+            )
+            .binding(
+                vk::DescriptorType::STORAGE_IMAGE,
+                &mut output_texture,
+                &[ShaderType::Raygen],
+            )
+            .binding(
+                vk::DescriptorType::UNIFORM_BUFFER,
+                &mut uniform_camera,
+                &[ShaderType::Raygen],
+            )
+            .binding(
+                vk::DescriptorType::STORAGE_BUFFER,
+                &mut vertices,
+                &[ShaderType::ClosestHit],
+            )
+            .binding(
+                vk::DescriptorType::STORAGE_BUFFER,
+                &mut indices,
+                &[ShaderType::ClosestHit],
+            )
+            .binding(
+                vk::DescriptorType::UNIFORM_BUFFER,
+                &mut uniform_scene,
+                &[ShaderType::ClosestHit, ShaderType::Miss],
+            )
+            .real_shader(ShaderType::Raygen, "raygen.rgen.spv")
+            .real_shader(ShaderType::Miss, "miss.rmiss.spv")
+            .real_shader(ShaderType::Miss, "shadowmiss.rmiss.spv")
+            .real_shader(ShaderType::ClosestHit, "closesthit.rchit.spv")
+            .fake_shader(ShaderType::ClosestHit)
+            .build(2);
+
+        let mut rtx = Self {
+            context: Arc::clone(context),
+
+            // variables
+            output_texture,
+            uniform_camera,
+            uniform_scene,
+            vertices,
+            indices,
+            acceleration_structure: as_var,
+
+            // pipeline
+            pipeline,
+
+            command_buffers: Vec::new(),
+        };
+        rtx.create_and_record_command_buffers(swapchain);
+
+        rtx
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) -> Result<(), GLError> {
-        let textures_ids = [
-            self.texture_raytracer,
-            self.texture_random,
-            self.cache_albedos,
-            self.cache_illum_direct,
-            self.cache_illum_indirect_sampling,
-            self.cache_intersections,
-            self.cache_normals,
-        ];
-        glchk_stmt!(
-            gl::DeleteTextures(textures_ids.len() as i32, textures_ids.as_ptr());
-            gl::Viewport(
-                0,
-                0,
-                width as i32,
-                height as i32,
-            );
-        );
+    fn create_and_record_command_buffers(&mut self, swapchain: &Swapchain) {
+        let device = self.context.device();
+        let image_count = swapchain.image_count();
 
-        let (w, h) = (
-            coeff(width, self.resolution_coeff),
-            coeff(height, self.resolution_coeff),
-        );
-        self.texture_raytracer = helper::generate_texture(w, h)?;
-        self.texture_random = helper::generate_texture_random(1, w, h)?;
-        self.cache_albedos = helper::generate_image_cache(2, w, h)?;
-        self.cache_illum_direct = helper::generate_image_cache(3, w, h)?;
-        self.cache_illum_indirect_sampling = helper::generate_image_cache(4, w, h)?;
-        self.cache_intersections = helper::generate_image_cache(5, w, h)?;
-        self.cache_normals = helper::generate_image_cache(6, w, h)?;
+        {
+            let allocate_info = vk::CommandBufferAllocateInfo::builder()
+                .command_pool(self.context.general_command_pool())
+                .level(vk::CommandBufferLevel::PRIMARY)
+                .command_buffer_count(image_count as _);
 
-        Ok(())
+            let buffers = unsafe {
+                device
+                    .allocate_command_buffers(&allocate_info)
+                    .expect("Failed to allocate command buffers")
+            };
+            self.command_buffers.extend_from_slice(&buffers);
+        };
+
+        let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
+            .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE);
+
+        self.command_buffers
+            .iter()
+            .enumerate()
+            .for_each(|(index, buffer)| {
+                let buffer = *buffer;
+                let swapchain_image = &swapchain.images()[index];
+
+                // begin command buffer
+                unsafe {
+                    device
+                        .begin_command_buffer(buffer, &command_buffer_begin_info)
+                        .expect("Failed to begin command buffer")
+                };
+
+                // Bind pipeline
+                unsafe {
+                    device.cmd_bind_pipeline(
+                        buffer,
+                        vk::PipelineBindPoint::RAY_TRACING_NV,
+                        self.pipeline.pipeline,
+                    )
+                };
+
+                // Bind descriptor set
+                unsafe {
+                    device.cmd_bind_descriptor_sets(
+                        buffer,
+                        vk::PipelineBindPoint::RAY_TRACING_NV,
+                        self.pipeline.pipeline_layout,
+                        0,
+                        &self.pipeline.descriptor_sets,
+                        &[],
+                    );
+                };
+
+                let swapchain_props = swapchain.properties();
+
+                // Trace rays
+                let shader_group_handle_size = self.pipeline.rt_properties.shader_group_handle_size;
+                let raygen_offset = 0;
+                let miss_offset = shader_group_handle_size;
+                let hit_offset = 3 * shader_group_handle_size;
+
+                unsafe {
+                    let sbt_buffer = *self.pipeline.shader_binding_table_buffer.buffer();
+                    self.context.ray_tracing().cmd_trace_rays(
+                        buffer,
+                        sbt_buffer,
+                        raygen_offset,
+                        sbt_buffer,
+                        miss_offset.into(),
+                        shader_group_handle_size.into(),
+                        sbt_buffer,
+                        hit_offset.into(),
+                        shader_group_handle_size.into(),
+                        vk::Buffer::null(),
+                        0,
+                        0,
+                        swapchain_props.extent.width,
+                        swapchain_props.extent.height,
+                        1,
+                    );
+                };
+
+                // Copy output image to swapchain
+                {
+                    // transition layouts
+                    swapchain_image.cmd_transition_image_layout(
+                        buffer,
+                        vk::ImageLayout::UNDEFINED,
+                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    );
+                    self.output_texture.image.cmd_transition_image_layout(
+                        buffer,
+                        vk::ImageLayout::GENERAL,
+                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                    );
+
+                    // Copy image
+                    let image_copy_info = [vk::ImageCopy::builder()
+                        .src_subresource(vk::ImageSubresourceLayers {
+                            aspect_mask: vk::ImageAspectFlags::COLOR,
+                            mip_level: 0,
+                            base_array_layer: 0,
+                            layer_count: 1,
+                        })
+                        .src_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
+                        .dst_subresource(vk::ImageSubresourceLayers {
+                            aspect_mask: vk::ImageAspectFlags::COLOR,
+                            mip_level: 0,
+                            base_array_layer: 0,
+                            layer_count: 1,
+                        })
+                        .dst_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
+                        .extent(vk::Extent3D {
+                            width: swapchain_props.extent.width,
+                            height: swapchain_props.extent.height,
+                            depth: 1,
+                        })
+                        .build()];
+
+                    unsafe {
+                        device.cmd_copy_image(
+                            buffer,
+                            self.output_texture.image.image,
+                            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                            swapchain_image.image,
+                            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                            &image_copy_info,
+                        );
+                    };
+
+                    // Transition layout
+                    swapchain_image.cmd_transition_image_layout(
+                        buffer,
+                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                        vk::ImageLayout::PRESENT_SRC_KHR,
+                    );
+                    self.output_texture.image.cmd_transition_image_layout(
+                        buffer,
+                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                        vk::ImageLayout::GENERAL,
+                    );
+                }
+
+                // End command buffer
+                unsafe {
+                    device
+                        .end_command_buffer(buffer)
+                        .expect("Failed to end command buffer")
+                };
+            });
     }
+}
 
-    pub fn draw(&self) -> Result<(), GLError> {
-        glchk_stmt!(
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+fn build_acceleration_structures(
+    context: &Arc<Context>,
+) -> (ASVariable, BufferVariable, BufferVariable) {
+    let mesh = Mesh::from_file("assets/models/dog/dog.obj");
 
-            gl::UseProgram(self.program_quad_screen);
-            gl::BindVertexArray(self.vao_quad_screen);
-            gl::ActiveTexture(gl::TEXTURE0);
-            gl::BindTexture(gl::TEXTURE_2D, self.texture_raytracer);
-            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+    let vertices = mesh.device_vertices(context);
+    let indices = mesh.device_indices(context);
 
-            gl::Enable(gl::BLEND);
-            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+    (
+        ASVariable::new(&context, &vertices, &indices),
+        vertices,
+        indices,
+    )
+}
 
-            gl::BindVertexArray(self.vao_quad_cursor);
-            gl::ActiveTexture(gl::TEXTURE0);
-            gl::BindTexture(gl::TEXTURE_2D, self.texture_cursor);
-            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
-
-            gl::Disable(gl::BLEND);
-        );
-
-        Ok(())
+impl Drop for RTXData {
+    fn drop(&mut self) {
+        let device = self.context.device();
+        unsafe {
+            device.free_command_buffers(self.context.general_command_pool(), &self.command_buffers);
+            device.destroy_pipeline(self.pipeline.pipeline, None);
+            device.destroy_pipeline_layout(self.pipeline.pipeline_layout, None);
+            device.destroy_descriptor_pool(self.pipeline.descriptor_pool, None);
+            device.destroy_descriptor_set_layout(self.pipeline.descriptor_set_layout, None);
+        }
     }
 }

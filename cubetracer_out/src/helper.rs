@@ -210,7 +210,7 @@ pub fn build_program_raytracer(
     resolution_coeff: u32,
 ) -> Result<u32, GLError> {
     let mut shader_compute =
-        ConfigurableShader::new(read_shader!("cubetracer/shaders/raytracer.comp"));
+        ConfigurableShader::new("a");
 
     shader_compute.var("CST_VIEW_DISTANCE", view_size);
     shader_compute.var("CST_SHADOW_ACTIVATED", shadow_activated);
@@ -321,13 +321,13 @@ pub fn build_program_quad() -> Result<u32, GLError> {
     let program = glchk_expr!(gl::CreateProgram());
 
     let shader_vertex =
-        ConfigurableShader::new(include_str!("../shaders/vertex.glsl")).build(gl::VERTEX_SHADER)?;
+        ConfigurableShader::new("a").build(gl::VERTEX_SHADER)?;
 
     glchk_stmt!(
         gl::AttachShader(program, shader_vertex);
     );
 
-    let shader_fragment = ConfigurableShader::new(include_str!("../shaders/fragment.glsl"))
+    let shader_fragment = ConfigurableShader::new("a")
         .build(gl::FRAGMENT_SHADER)?;
 
     glchk_stmt!(

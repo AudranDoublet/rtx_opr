@@ -1,5 +1,5 @@
 [package]
-name = "utils"
+name = "cubetracer"
 version = "0.1.0"
 authors = ["Issaadi Sami <samiisd@hotmail.fr>"]
 edition = "2018"
@@ -7,6 +7,16 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+world = { path = "../world" }
 
-winit = "0.24.0"
-nalgebra = "0.21.0"
+# Rendering
+gl = "*"
+glutin = "0.24.0"
+
+# Math
+nalgebra = "*"
+
+image = ""
+rand = ""
+
+shader_preprocesser = { path = "../shader_preprocesser" }

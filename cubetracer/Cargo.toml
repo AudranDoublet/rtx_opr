@@ -1,22 +1,16 @@
 [package]
 name = "cubetracer"
 version = "0.1.0"
-authors = ["Issaadi Sami <samiisd@hotmail.fr>"]
+authors = ["Audran Doublet <audran.doublet@epita.fr"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-world = { path = "../world" }
+log = "0.4"
+env_logger = "0.6"
+ash = "0.29.0"
+winit = "0.24.0"
+tobj = "0.1.10"
 
-# Rendering
-gl = "*"
-glutin = "0.24.0"
-
-# Math
-nalgebra = "*"
-
-image = ""
-rand = ""
-
-shader_preprocesser = { path = "../shader_preprocesser" }
+nalgebra = "0.21.0"
