@@ -58,7 +58,7 @@ impl AccelerationStructure {
         Self::new(context, acceleration_structure_info)
     }
 
-    fn new(
+    pub fn new(
         context: Arc<Context>,
         acceleration_structure_info: vk::AccelerationStructureInfoNV,
     ) -> Self {

@@ -5,9 +5,7 @@ use winit::event_loop::EventLoop;
 use utils::framecounter::FrameCounter;
 use utils::wininput;
 
-use std::rc::Rc;
-
-use world::{create_main_world, main_world, Chunk, ChunkListener, PlayerInput};
+use world::{create_main_world, main_world, ChunkMesh, ChunkListener, PlayerInput};
 
 use crate::config::*;
 
@@ -290,11 +288,15 @@ impl BaseApp {
                         self.tracer.camera().origin = self.player.head_position();
 
                         if listener.has_been_updated() {
-                            let chunks_to_add: Vec<Rc<Chunk>> = listener
+                            let world = main_world();
+
+                            /*
+                            let chunks_to_add: Vec<ChunkMesh> = listener
                                 .loaded_chunks
                                 .iter()
-                                .map(|c| main_world().chunk(c.0, c.1).unwrap().clone())
+                                .map(|c| world.chunk(c.0, c.1).unwrap().mesh(world))
                                 .collect();
+                            */
 
                             let chunks_to_rm: Vec<(i32, i32)> = listener.unloaded_chunks.clone();
 

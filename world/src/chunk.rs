@@ -6,7 +6,7 @@ use nalgebra::{Vector2, Vector3};
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::generator::decorators::decorator_random;
-use crate::{main_world, BiomeType, Block, MAX_HEIGHT, SEA_LEVEL};
+use crate::{main_world, BiomeType, Block, World, ChunkMesh, MAX_HEIGHT, SEA_LEVEL};
 
 const WIDTH: i32 = 16;
 const HEIGHT: i32 = MAX_HEIGHT;
@@ -263,6 +263,10 @@ impl Chunk {
         file.write_all(&blocks)?;
 
         Ok(())
+    }
+
+    pub fn mesh(&self, world: &World) -> ChunkMesh {
+        ChunkMesh::from_chunk(world, self)
     }
 }
 

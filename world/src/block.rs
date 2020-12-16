@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::AABB;
 use nalgebra::Vector3;
 
+#[repr(u32)]
 pub enum BlockFace {
     Up,
     Down,
@@ -13,6 +14,13 @@ pub enum BlockFace {
 }
 
 impl BlockFace {
+    pub fn faces() -> Box<dyn Iterator<Item=BlockFace>> {
+        Box::new(
+            (0..6).into_iter()
+              .map(|i| unsafe { std::mem::transmute(i) })
+        )
+    }
+
     pub fn opposite(&self) -> BlockFace {
         match self {
             BlockFace::Up => BlockFace::Down,
@@ -176,13 +184,13 @@ impl Block {
         }
     }
 
-    pub fn transparency(&self) -> f32 {
+    pub fn is_opaque(&self) -> bool {
         match self {
-            Block::Air => 1.0,
-            b if b.is_leaves() => 0.2,
-            Block::TallGrass => 0.9,
-            b if b.is_flower() => 0.8,
-            _ => 0.0,
+            Block::Air => false,
+            Block::Water => false,
+            b if b.is_leaves() => false,
+            b if b.is_flower() => false,
+            _ => true,
         }
     }
 
