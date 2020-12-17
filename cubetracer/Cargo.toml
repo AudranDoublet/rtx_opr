@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 log = "0.4"
 env_logger = "0.6"
-ash = "0.29.0"
+ash = "0.31.0"
 winit = "0.24.0"
 tobj = "0.1.10"
 

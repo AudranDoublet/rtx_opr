@@ -77,10 +77,10 @@ fn create_instance(entry: &Entry) -> Instance {
     let engine_name = CString::new("No Engine").unwrap();
     let app_info = vk::ApplicationInfo::builder()
         .application_name(app_name.as_c_str())
-        .application_version(ash::vk_make_version!(0, 1, 0))
+        .application_version(vk::make_version(0, 1, 0))
         .engine_name(engine_name.as_c_str())
-        .engine_version(ash::vk_make_version!(0, 1, 0))
-        .api_version(ash::vk_make_version!(1, 1, 0));
+        .engine_version(vk::make_version(0, 1, 0))
+        .api_version(vk::make_version(1, 1, 0));
 
     let mut extension_names = surface::required_extension_names();
     if ENABLE_VALIDATION_LAYERS {
@@ -218,7 +218,10 @@ fn find_queue_families(
         }
 
         let present_support =
-            unsafe { surface.get_physical_device_surface_support(device, index, surface_khr) };
+            unsafe {
+                surface.get_physical_device_surface_support(device, index, surface_khr)
+                       .unwrap()
+            };
         if present_support && present.is_none() {
             present = Some(index);
         }

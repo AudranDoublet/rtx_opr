@@ -239,7 +239,7 @@ impl ASVariable {
                 instance_custom_index: 0,
                 mask: 0xff,
                 instance_offset: 0,
-                flags: vk::GeometryInstanceFlagsNV::TRIANGLE_CULL_DISABLE,
+                flags: vk::GeometryInstanceFlagsNV::TRIANGLE_CULL_DISABLE_NV,
                 acceleration_structure_handle: bottom_as.handle,
             };
             let geometry_instance = geometry_instance.get_data();
