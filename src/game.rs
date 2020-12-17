@@ -293,11 +293,14 @@ impl BaseApp {
                             let chunks = listener
                                 .loaded_chunks
                                 .par_iter()
-                                .map(|c| main_world().chunk(c.0, c.1).unwrap().mesh(main_world()))
+                                .map(|c| (c.0, c.1, main_world().chunk(c.0, c.1).unwrap().mesh(main_world())))
                                 .collect::<Vec<_>>();
 
-                            for chunk in chunks {
-                                self.tracer.register_or_update_chunk(chunk);
+                            for (x, z, chunk) in chunks {
+                                chunk.dump();
+                                self.tracer.register_or_update_chunk(
+                                    &self.context, x, z, chunk
+                                );
                             }
 
                             listener

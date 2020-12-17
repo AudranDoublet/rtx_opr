@@ -12,12 +12,18 @@ use nalgebra::{Vector2, Vector3};
 use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::Arc;
+use std::collections::HashMap;
 
 const SHADER_FOLDER: &str = "cubetracer/shaders";
 
 pub struct Cubetracer {
+    chunks: HashMap<BlasName, ChunkMesh>,
     rtx_data: RTXData,
     camera: Camera,
+
+    acceleration_structure: TlasVariable,
+    indices: BufferVariable,
+    vertices: BufferVariable,
 }
 
 impl Cubetracer {
@@ -29,20 +35,70 @@ impl Cubetracer {
             ratio,
         );
 
-        let rtx_data = RTXData::new(context, swapchain, &camera);
+        let mesh = Mesh::from_file("assets/models/dog/dog.obj");
+
+        let mut vertices = mesh.device_vertices(context);
+        let mut indices = mesh.device_indices(context);
+
+        let blas = BlasVariable::from_geometry(context, &vertices, &indices, std::mem::size_of::<crate::mesh::Vertex>());
+        let mut acceleration_structure = TlasVariable::new();
+
+        acceleration_structure.register(BlasName::Dog, blas);
+        acceleration_structure.build(context);
+
+        let rtx_data = RTXData::new(
+            context,
+            swapchain,
+            &camera,
+            &mut acceleration_structure,
+            &mut vertices,
+            &mut indices
+        );
 
         Cubetracer {
+            chunks: HashMap::new(),
             rtx_data,
             camera,
+            acceleration_structure,
+            vertices,
+            indices,
         }
     }
 
-    pub fn register_or_update_chunk(&mut self, chunk: ChunkMesh) {
+    pub fn register_or_update_chunk(
+        &mut self,
+        context: &Arc<Context>,
+        x: i32, y: i32,
+        chunk: ChunkMesh
+    ) {
+        let name = BlasName::Chunk(x, y);
+        self.chunks.insert(name, chunk);
 
+        let chunk = &self.chunks[&name];
+        let vertices = BufferVariable::device_buffer(
+            context,
+            vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
+            &chunk.vertices
+        ).0;
+
+        let indices = BufferVariable::device_buffer(
+            context,
+            vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
+            &chunk.indices
+        ).0;
+
+        let blas = BlasVariable::from_geometry(context, &vertices, &indices, std::mem::size_of::<[f32; 4]>());
+
+        self.acceleration_structure.register(name, blas);
     }
 
     pub fn delete_chunk(&mut self, x: i32, y: i32) {
+        let name = BlasName::Chunk(x, y);
 
+        if self.chunks.contains_key(&name) {
+            self.chunks.remove(&name);
+        }
+        self.acceleration_structure.unregister(name);
     }
 
     pub fn camera(&mut self) -> &mut Camera {
@@ -50,6 +106,10 @@ impl Cubetracer {
     }
 
     pub fn draw_frame(&mut self, context: &Arc<Context>) {
+        if self.acceleration_structure.build(context) {
+            self.rtx_data.update_acceleration_structure(&mut self.acceleration_structure);
+        }
+
         self.rtx_data.uniform_scene.set(
             context,
             &UniformScene {
@@ -66,7 +126,14 @@ impl Cubetracer {
     }
 
     pub fn resize(&mut self, context: &Arc<Context>, swapchain: &Swapchain) {
-        self.rtx_data = RTXData::new(context, swapchain, &self.camera);
+        self.rtx_data = RTXData::new(
+            context,
+            swapchain,
+            &self.camera,
+            &mut self.acceleration_structure,
+            &mut self.vertices,
+            &mut self.indices,
+        );
     }
 }
 
@@ -77,9 +144,6 @@ pub struct RTXData {
     output_texture: TextureVariable,
     uniform_camera: UniformVariable,
     uniform_scene: UniformVariable,
-    vertices: BufferVariable,
-    indices: BufferVariable,
-    acceleration_structure: TlasVariable,
 
     command_buffers: Vec<vk::CommandBuffer>,
 
@@ -93,7 +157,14 @@ impl RTXData {
 }
 
 impl RTXData {
-    pub fn new(context: &Arc<Context>, swapchain: &Swapchain, camera: &Camera) -> Self {
+    pub fn new(
+        context: &Arc<Context>,
+        swapchain: &Swapchain,
+        camera: &Camera,
+        acceleration_structure: &mut TlasVariable,
+        vertices: &mut BufferVariable,
+        indices: &mut BufferVariable,
+    ) -> Self {
         let mut output_texture = TextureVariable::from_swapchain(context, swapchain);
         let mut uniform_camera = UniformVariable::new(&context, &camera.uniform());
         let mut uniform_scene = UniformVariable::new(
@@ -103,12 +174,10 @@ impl RTXData {
             },
         );
 
-        let (mut as_var, mut vertices, mut indices) = build_acceleration_structures(context);
-
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .binding(
                 vk::DescriptorType::ACCELERATION_STRUCTURE_NV,
-                &mut as_var,
+                acceleration_structure,
                 &[ShaderType::Raygen, ShaderType::ClosestHit],
             )
             .binding(
@@ -123,12 +192,12 @@ impl RTXData {
             )
             .binding(
                 vk::DescriptorType::STORAGE_BUFFER,
-                &mut vertices,
+                vertices,
                 &[ShaderType::ClosestHit],
             )
             .binding(
                 vk::DescriptorType::STORAGE_BUFFER,
-                &mut indices,
+                indices,
                 &[ShaderType::ClosestHit],
             )
             .binding(
@@ -150,9 +219,6 @@ impl RTXData {
             output_texture,
             uniform_camera,
             uniform_scene,
-            vertices,
-            indices,
-            acceleration_structure: as_var,
 
             // pipeline
             pipeline,
@@ -322,25 +388,6 @@ impl RTXData {
                 };
             });
     }
-}
-
-fn build_acceleration_structures(
-    context: &Arc<Context>,
-) -> (TlasVariable, BufferVariable, BufferVariable) {
-    let mesh = Mesh::from_file("assets/models/dog/dog.obj");
-
-    let vertices = mesh.device_vertices(context);
-    let indices = mesh.device_indices(context);
-
-    let blas = BlasVariable::from_geometry(context, &vertices, &indices);
-    let mut tlas = TlasVariable::from_blas_list(context, vec![blas]);
-    tlas.build(context);
-
-    (
-        tlas,
-        vertices,
-        indices,
-    )
 }
 
 impl Drop for RTXData {

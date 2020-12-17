@@ -35,6 +35,7 @@ const float T_MIN = 0.01;
 const float T_MAX = 10.0;
 
 void main() {
+    /*
 	ivec3 index = ivec3(indices.i[3 * gl_PrimitiveID], indices.i[3 * gl_PrimitiveID + 1], indices.i[3 * gl_PrimitiveID + 2]);
 
 	Vertex v0 = unpack(index.x);
@@ -48,6 +49,8 @@ void main() {
 
   	// Basic lighting
 	hitValue = vec3(max(dot(-scene.sunDirection, normal), 0.0)) * 0.8;
+    */
+    hitValue = vec3(1);
 
 	shadowed = true;
 

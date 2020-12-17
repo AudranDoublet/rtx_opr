@@ -24,8 +24,8 @@ impl BlockRenderer {
     pub fn classic(prop: FaceProperties) -> BlockRenderer {
         BlockRenderer::ClassicBlock {
             faces: [prop; 6],
-            height: 5,
-            width: 6,
+            height: 10,
+            width: 10,
         }
     }
 
@@ -90,7 +90,7 @@ impl BlockRenderer {
                     // up/down faces
                     let (height, up, right, position) = if rel.y != 0 {
                         // compute starting corner of the face
-                        let position = position
+                        let position = position * 10
                                             // up face: change y
                                         + Vector3::new(0, rel.y.max(0), 0) * *height
                                             // width offsets
@@ -109,7 +109,7 @@ impl BlockRenderer {
                         // add width offsets
                         let dpos = dpos - rel * width_offset + right * width_offset;
 
-                        (*height, Vector3::y(), right, position + dpos)
+                        (*height, Vector3::y(), right, position * 10 + dpos)
                     };
 
                     self.generate_face(

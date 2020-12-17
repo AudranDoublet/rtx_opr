@@ -4,7 +4,7 @@ use ash::vk;
 
 use std::sync::Arc;
 
-use crate::datatypes::{BufferVariable, DataType, BlasVariable, TlasVariable};
+use crate::datatypes::BufferVariable;
 
 pub struct AccelerationStructure {
     pub context: Arc<Context>,
@@ -139,43 +139,5 @@ impl Drop for AccelerationStructure {
             device.free_memory(self.memory, None);
             ray_tracing.destroy_acceleration_structure(self.acceleration_structure, None);
         }
-    }
-}
-
-pub struct ASVariable {
-    pub top_as: TlasVariable,
-    structures: Vec<vk::AccelerationStructureNV>,
-    info: Vec<vk::WriteDescriptorSetAccelerationStructureNV>,
-}
-
-impl ASVariable {
-    pub fn new(
-        context: &Arc<Context>,
-        vertices: &BufferVariable,
-        indices: &BufferVariable,
-    ) -> ASVariable {
-        let blas = BlasVariable::from_geometry(context, vertices, indices);
-        let mut tlas = TlasVariable::from_blas_list(context, vec![blas]);
-
-        tlas.build(context);
-
-        ASVariable {
-            top_as: tlas,
-            structures: Vec::new(),
-            info: Vec::new(),
-        }
-    }
-}
-
-impl DataType for ASVariable {
-    fn write_descriptor_builder(&mut self) -> vk::WriteDescriptorSetBuilder {
-        self.structures.push(self.top_as.acceleration_structure());
-        self.info.push(
-            vk::WriteDescriptorSetAccelerationStructureNV::builder()
-                .acceleration_structures(&self.structures)
-                .build(),
-        );
-
-        vk::WriteDescriptorSet::builder().push_next(&mut self.info[0])
     }
 }

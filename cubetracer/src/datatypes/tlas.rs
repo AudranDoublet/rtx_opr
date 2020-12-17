@@ -5,46 +5,69 @@ use crate::context::Context;
 use crate::datatypes::*;
 
 use std::sync::Arc;
-
-pub enum BlasName {
-    Chunk(i32, i32),
-}
+use std::collections::HashMap;
 
 pub struct TlasVariable {
-    blas: Vec<BlasVariable>,
-    instance_buffer: Option<BufferVariable>,
-    acceleration_structure: AccelerationStructure,
+    modified: bool,
 
+    blas_map: HashMap<BlasName, BlasVariable>,
+    instance_buffer: Option<BufferVariable>,
+
+    acceleration_structure: Option<AccelerationStructure>,
     structures: Vec<vk::AccelerationStructureNV>,
     info: Option<vk::WriteDescriptorSetAccelerationStructureNV>,
 }
 
 impl TlasVariable {
-    pub fn from_blas_list(
-        context: &Arc<Context>,
-        blas: Vec<BlasVariable>,
-    ) -> TlasVariable {
-        let acceleration_structure_info = vk::AccelerationStructureInfoNV::builder()
-            .ty(vk::AccelerationStructureTypeNV::TOP_LEVEL)
-            .instance_count(blas.len() as u32)
-            .build();
-        let acceleration_structure = AccelerationStructure::new(Arc::clone(context), acceleration_structure_info);
-
+    pub fn new() -> TlasVariable {
         TlasVariable {
-            structures: vec![acceleration_structure.acceleration_structure],
-            acceleration_structure,
-            blas,
+            blas_map: HashMap::new(),
+            structures: vec![],
+            acceleration_structure: None,
             instance_buffer: None,
             info: None,
+            modified: true,
         }
     }
 
-    pub fn acceleration_structure(&self) -> vk::AccelerationStructureNV {
-        self.acceleration_structure.acceleration_structure
+    pub fn register(&mut self, name: BlasName, blas: BlasVariable) {
+        self.blas_map.insert(name, blas);
+        self.modified = true;
     }
 
-    pub fn build(&mut self, context: &Arc<Context>) {
-        let data = self.blas.iter().map(|v| v.instance_data()).collect::<Vec<_>>();
+    pub fn unregister(&mut self, name: BlasName) {
+        if self.blas_map.contains_key(&name) {
+            self.blas_map.remove(&name);
+            self.modified = true;
+        }
+    }
+
+    /// build or rebuild the acceleration structure
+    /// returns if something has been done
+    pub fn build(&mut self, context: &Arc<Context>) -> bool {
+        if !self.modified {
+            return false;
+        }
+
+        self.modified = false;
+
+        let data = self.blas_map
+                        .iter()
+                        .map(|(_, v)| v.instance_data())
+                        .collect::<Vec<_>>();
+
+        let acceleration_structure_info = vk::AccelerationStructureInfoNV::builder()
+            .ty(vk::AccelerationStructureTypeNV::TOP_LEVEL)
+            .instance_count(data.len() as u32)
+            .build();
+
+        self.acceleration_structure = Some(
+            AccelerationStructure::new(Arc::clone(context), acceleration_structure_info)
+        );
+
+        self.structures = vec![
+            self.acceleration_structure.as_ref().unwrap().acceleration_structure
+        ];
 
         let instance_buffer = BufferVariable::device_buffer(
             context,
@@ -53,11 +76,12 @@ impl TlasVariable {
         ).0;
 
         // Build acceleration structure
-        let scratch_buffer_size = self.blas
-            .iter().filter_map(|v| v.build_memory_requirements())
+        let scratch_buffer_size = self.blas_map
+            .iter()
+            .filter_map(|(_, v)| v.build_memory_requirements())
             .max()
             .unwrap_or(0)
-            .max(self.acceleration_structure.get_memory_requirements(
+            .max(self.acceleration_structure.as_ref().unwrap().get_memory_requirements(
                 vk::AccelerationStructureMemoryRequirementsTypeNV::BUILD_SCRATCH,
             ).memory_requirements.size);
 
@@ -84,24 +108,25 @@ impl TlasVariable {
             ];
 
             // Build bottom AS
-            self.blas.iter_mut().for_each(|blas| {
-                blas.build(command_buffer, &scratch_buffer);
-
-                unsafe {
-                    context.device().cmd_pipeline_barrier(
-                        command_buffer,
-                        vk::PipelineStageFlags::ACCELERATION_STRUCTURE_BUILD_NV,
-                        vk::PipelineStageFlags::ACCELERATION_STRUCTURE_BUILD_NV,
-                        vk::DependencyFlags::empty(),
-                        &memory_barrier,
-                        &[],
-                        &[],
-                    )
-                };
+            self.blas_map.iter_mut().for_each(|(_, blas)| {
+                if blas.build(command_buffer, &scratch_buffer) {
+                    // memory barrier if we build the BLAS
+                    unsafe {
+                        context.device().cmd_pipeline_barrier(
+                            command_buffer,
+                            vk::PipelineStageFlags::ACCELERATION_STRUCTURE_BUILD_NV,
+                            vk::PipelineStageFlags::ACCELERATION_STRUCTURE_BUILD_NV,
+                            vk::DependencyFlags::empty(),
+                            &memory_barrier,
+                            &[],
+                            &[],
+                        )
+                    };
+                }
             });
 
             // Build top AS
-            self.acceleration_structure.cmd_build(
+            self.acceleration_structure.as_ref().unwrap().cmd_build(
                 command_buffer, &scratch_buffer, Some(&instance_buffer)
             );
 
@@ -119,6 +144,7 @@ impl TlasVariable {
         });
 
         self.instance_buffer = Some(instance_buffer);
+        true
     }
 }
 

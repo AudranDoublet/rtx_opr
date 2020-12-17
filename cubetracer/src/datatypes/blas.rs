@@ -2,10 +2,14 @@ use ash::vk;
 
 use crate::context::Context;
 use crate::datatypes::*;
-use crate::mesh::Vertex;
 
 use std::sync::Arc;
-use std::mem::size_of;
+
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+pub enum BlasName {
+    Chunk(i32, i32),
+    Dog,
+}
 
 #[derive(Copy, Clone)]
 pub struct GeometryInstance {
@@ -53,7 +57,8 @@ impl BlasVariable {
     pub fn from_geometry(
         context: &Arc<Context>,
         vertices: &BufferVariable,
-        indices: &BufferVariable
+        indices: &BufferVariable,
+        vertex_stride: usize,
     ) -> BlasVariable {
         ///// Create geometries list
         let geometries = vec![
@@ -66,7 +71,7 @@ impl BlasVariable {
                             .vertex_data(*vertices.buffer())
                             .vertex_count(vertices.element_count() as _)
                             .vertex_offset(0)
-                            .vertex_stride(size_of::<Vertex>() as _)
+                            .vertex_stride(vertex_stride as _)
                             .vertex_format(vk::Format::R32G32B32A32_SFLOAT)
                             .index_data(*indices.buffer())
                             .index_count(indices.element_count() as _)
@@ -131,10 +136,14 @@ impl BlasVariable {
         }
     }
 
-    pub fn build(&mut self, command_buffer: vk::CommandBuffer, scratch_buffer: &BufferVariable) {
+    pub fn build(&mut self, command_buffer: vk::CommandBuffer, scratch_buffer: &BufferVariable) -> bool {
         if !self.is_build {
             self.is_build = true;
             self.acceleration_structure.cmd_build(command_buffer, scratch_buffer, None);
+
+            true
+        } else {
+            false
         }
     }
 }

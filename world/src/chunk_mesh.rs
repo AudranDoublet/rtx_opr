@@ -29,8 +29,8 @@ pub struct ChunkMesh {
     vertices_map: HashMap<Vector3<i32>, u32>,
     textures_map: HashMap<Vector3<i32>, u32>,
 
-    vertices: Vec<[f32; 4]>,
-    indices: Vec<u32>,
+    pub vertices: Vec<[f32; 4]>,
+    pub indices: Vec<u32>,
 
     texture_vertices: Vec<[f32; 4]>,
     texture_indices: Vec<u32>,
