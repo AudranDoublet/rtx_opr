@@ -9,11 +9,10 @@ fn vec3to4(v: Vector3<f32>) -> Vector4<f32> {
 impl Camera {
     pub fn uniform(&self) -> UniformCamera {
         let origin = self.origin;
-        let top_left = self.get_virtual_screen_top_left();
-        let (left, up) = self.get_virtual_screen_axes_scaled();
+        let (forward, left, up) = self.get_virtual_screen_axes_scaled();
 
         UniformCamera {
-            top_left: vec3to4(top_left),
+            forward: vec3to4(forward),
             left: vec3to4(left),
             up: vec3to4(up),
             origin: vec3to4(origin),
@@ -46,10 +45,10 @@ fn compute_virtual_screen_size(fov: f32, aspect_ratio: f32) -> Vector2<f32> {
 }
 
 impl Camera {
-    pub fn get_virtual_screen_axes_scaled(&self) -> (Vector3<f32>, Vector3<f32>) {
+    pub fn get_virtual_screen_axes_scaled(&self) -> (Vector3<f32>, Vector3<f32>, Vector3<f32>) {
         let scales = self.virtual_screen_size;
 
-        (self.left * scales.x, self.up * scales.y)
+        (self.forward, self.left * scales.x, self.up * scales.y)
     }
 
     pub fn forward(&self) -> Vector3<f32> {
@@ -69,7 +68,7 @@ impl Camera {
         self.rotation.y = self
             .rotation
             .y
-            .max(-std::f32::consts::PI / 2.).min(std::f32::consts::PI / 2.);
+            .max(-std::f32::consts::PI / 2.1).min(std::f32::consts::PI / 2.1);
 
         self.update_axes();
     }

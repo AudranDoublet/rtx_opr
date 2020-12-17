@@ -4,7 +4,7 @@
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 layout(binding = 1, set = 0, rgba8) uniform image2D image;
 layout(binding = 2, set = 0) uniform Uniforms {
-    vec3 topLeft;
+    vec3 forward;
     vec3 left;
     vec3 up;
     vec3 origin;
@@ -13,11 +13,11 @@ layout(binding = 2, set = 0) uniform Uniforms {
 layout(location = 0) rayPayloadNV vec3 hitValue;
 
 void main() {
-    vec2 pos = vec2(gl_LaunchIDNV.xy) / vec2(gl_LaunchSizeNV.xy);
+    vec2 pos = vec2(gl_LaunchIDNV.xy) / vec2(gl_LaunchSizeNV.xy) - 0.5;
 
     const vec3 origin = camera.origin;
     const vec3 direction = normalize(
-        camera.topLeft
+        camera.forward
         - pos.x * camera.left
         + pos.y * camera.up
     );

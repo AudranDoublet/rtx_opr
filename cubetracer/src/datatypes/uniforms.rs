@@ -8,7 +8,7 @@ use crate::datatypes::{BufferVariable, DataType};
 #[repr(C)]
 // vec3 take 4 float in glsl, so use rust's vec4
 pub struct UniformCamera {
-    pub top_left: Vector4<f32>,
+    pub forward: Vector4<f32>,
     pub left: Vector4<f32>,
     pub up: Vector4<f32>,
     pub origin: Vector4<f32>,
