@@ -106,9 +106,7 @@ impl Cubetracer {
     }
 
     pub fn draw_frame(&mut self, context: &Arc<Context>) {
-        if self.acceleration_structure.build(context) {
-            self.rtx_data.update_acceleration_structure(&mut self.acceleration_structure);
-        }
+        self.acceleration_structure.build(context);
 
         self.rtx_data.uniform_scene.set(
             context,
@@ -228,10 +226,6 @@ impl RTXData {
         rtx.create_and_record_command_buffers(swapchain);
 
         rtx
-    }
-
-    pub fn update_acceleration_structure(&mut self, acceleration_structure: &mut TlasVariable) {
-        self.pipeline.update_binding(0, acceleration_structure);
     }
 
     fn create_and_record_command_buffers(&mut self, swapchain: &Swapchain) {
