@@ -82,6 +82,18 @@ impl BufferVariable {
         }
     }
 
+    pub fn null(context: &Arc<Context>) -> BufferVariable {
+        BufferVariable {
+            context: Arc::clone(context),
+            buffer: vk::Buffer::null(),
+            memory: vk::DeviceMemory::null(),
+            size: 0,
+            element_count: 0,
+            mapped_pointer: None,
+            info: Vec::new(),
+        }
+    }
+
     pub fn device_buffer<T: Copy>(
         context: &Arc<Context>,
         usage: vk::BufferUsageFlags,
@@ -120,15 +132,26 @@ impl BufferVariable {
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
         );
 
-        buffer.set_data(data);
+        buffer.set_host(data);
         buffer
     }
 
-    pub fn set_data<T: Copy>(&mut self, data: &[T]) {
+    pub fn set_host<T: Copy>(&mut self, data: &[T]) {
         unsafe {
             let data_ptr = self.map_memory();
             mem_copy(data_ptr, data);
         };
+    }
+
+    pub fn set_device<T: Copy>(
+        &mut self,
+        context: &Arc<Context>,
+        data: &[T],
+    ) {
+        context.execute_one_time_commands(|command_buffer| {
+            let staging_buffer = Self::host_buffer(context, vk::BufferUsageFlags::TRANSFER_SRC, data);
+            self.cmd_copy(command_buffer, &staging_buffer, staging_buffer.size);
+        });
     }
 
     /// Returns the raw vulkan buffer

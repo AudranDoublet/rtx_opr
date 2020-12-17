@@ -5,7 +5,7 @@ use crate::datatypes::*;
 
 use std::sync::Arc;
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(PartialOrd, Ord, PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum BlasName {
     Chunk(i32, i32),
     Dog,
@@ -118,6 +118,13 @@ impl BlasVariable {
             instance_data,
             _geometries: geometries,
             is_build: false,
+        }
+    }
+
+    pub fn bindings(&self) -> InstanceBinding {
+        InstanceBinding {
+            indices: vk::Buffer::null(),
+            triangles: vk::Buffer::null(),
         }
     }
 

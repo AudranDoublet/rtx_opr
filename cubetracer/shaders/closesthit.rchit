@@ -8,10 +8,10 @@ layout(location = 1) rayPayloadNV bool shadowed;
 hitAttributeNV vec3 attribs;
 
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
-layout(binding = 3, set = 0) buffer Vertices { vec4 v[]; } vertices;
-layout(binding = 4, set = 0) buffer Indices { uint i[]; } indices;
+//layout(binding = 3, set = 0) buffer Vertices { vec4 v[]; } vertices;
+//layout(binding = 4, set = 0) buffer Indices { uint i[]; } indices;
 
-layout(binding = 5, set = 0) uniform Uniforms {
+layout(binding = 3, set = 0) uniform Uniforms {
     vec3 sunDirection;
 } scene;
 
@@ -20,6 +20,7 @@ struct Vertex {
   vec3 normal;
 };
 
+/*
 Vertex unpack(uint index) {
 	vec4 d0 = vertices.v[2 * index + 0];
 	vec4 d1 = vertices.v[2 * index + 1];
@@ -29,6 +30,7 @@ Vertex unpack(uint index) {
 	v.normal = d1.xyz;
 	return v;
 }
+*/
 
 const uint CULL_MASK = 0xff;
 const float T_MIN = 0.01;

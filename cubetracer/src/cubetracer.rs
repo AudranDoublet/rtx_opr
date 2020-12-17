@@ -1,7 +1,6 @@
 use crate::camera::*;
 use crate::context::Context;
 use crate::datatypes::*;
-use crate::mesh::Mesh;
 use crate::pipeline::*;
 use crate::window::*;
 
@@ -15,19 +14,21 @@ use std::sync::Arc;
 use std::collections::HashMap;
 
 const SHADER_FOLDER: &str = "cubetracer/shaders";
+const MAX_INSTANCE_BINDING: usize = 1024;
 
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
-    rtx_data: RTXData,
     camera: Camera,
 
-    acceleration_structure: TlasVariable,
-    indices: BufferVariable,
-    vertices: BufferVariable,
+    rtx_data: Option<RTXData>,
+
+    acceleration_structure: Option<TlasVariable>,
+
+    local_instance_bindings: [InstanceBinding; MAX_INSTANCE_BINDING],
 }
 
 impl Cubetracer {
-    pub fn new(context: &Arc<Context>, swapchain: &Swapchain, ratio: f32, fov: f32) -> Self {
+    pub fn new(context: &Arc<Context>, ratio: f32, fov: f32) -> Self {
         let camera = Camera::new(
             Vector3::x(),
             Vector2::new(std::f32::consts::PI / 2.0, 0.0),
@@ -35,39 +36,46 @@ impl Cubetracer {
             ratio,
         );
 
-        let mesh = Mesh::from_file("assets/models/dog/dog.obj");
+        let local_instance_bindings = [InstanceBinding {
+            indices: vk::Buffer::null(),
+            triangles: vk::Buffer::null(),
+        }; MAX_INSTANCE_BINDING];
 
-        let mut vertices = mesh.device_vertices(context);
-        let mut indices = mesh.device_indices(context);
+        Cubetracer {
+            chunks: HashMap::new(),
+            rtx_data: None,
+            camera,
+            acceleration_structure: None,
+            local_instance_bindings,
+        }
+    }
 
-        let blas = BlasVariable::from_geometry(context, &vertices, &indices, std::mem::size_of::<crate::mesh::Vertex>());
+    fn begin(
+        &mut self,
+        context: &Arc<Context>,
+        swapchain: &Swapchain,
+        name: BlasName,
+        blas: BlasVariable
+    ) {
         let mut acceleration_structure = TlasVariable::new();
-
-        acceleration_structure.register(BlasName::Dog, blas);
-        acceleration_structure.build(context);
+        acceleration_structure.register(name, blas);
+        acceleration_structure.build(context, &mut self.local_instance_bindings);
 
         let rtx_data = RTXData::new(
             context,
             swapchain,
-            &camera,
+            &self.camera,
             &mut acceleration_structure,
-            &mut vertices,
-            &mut indices
         );
 
-        Cubetracer {
-            chunks: HashMap::new(),
-            rtx_data,
-            camera,
-            acceleration_structure,
-            vertices,
-            indices,
-        }
+        self.acceleration_structure = Some(acceleration_structure);
+        self.rtx_data = Some(rtx_data);
     }
 
     pub fn register_or_update_chunk(
         &mut self,
         context: &Arc<Context>,
+        swapchain: &Swapchain,
         x: i32, y: i32,
         chunk: ChunkMesh
     ) {
@@ -89,7 +97,12 @@ impl Cubetracer {
 
         let blas = BlasVariable::from_geometry(context, &vertices, &indices, std::mem::size_of::<[f32; 4]>());
 
-        self.acceleration_structure.register(name, blas);
+        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
+            acceleration_structure.register(name, blas);
+        } else {
+            self.begin(context, swapchain, name, blas);
+        }
+
     }
 
     pub fn delete_chunk(&mut self, x: i32, y: i32) {
@@ -98,40 +111,48 @@ impl Cubetracer {
         if self.chunks.contains_key(&name) {
             self.chunks.remove(&name);
         }
-        self.acceleration_structure.unregister(name);
+        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
+            acceleration_structure.unregister(name);
+        }
     }
 
     pub fn camera(&mut self) -> &mut Camera {
         &mut self.camera
     }
 
-    pub fn draw_frame(&mut self, context: &Arc<Context>) {
-        self.acceleration_structure.build(context);
+    pub fn draw_frame(&mut self, context: &Arc<Context>) -> bool {
+        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
+            if acceleration_structure.build(context, &mut self.local_instance_bindings) {
+            }
 
-        self.rtx_data.uniform_scene.set(
-            context,
-            &UniformScene {
-                sun_direction: self.camera.sun_direction(),
-            },
-        );
-        self.rtx_data.uniform_camera.set(
-            context, &self.camera.uniform(),
-        );
+            self.rtx_data.as_mut().unwrap().uniform_scene.set(
+                context,
+                &UniformScene {
+                    sun_direction: self.camera.sun_direction(),
+                },
+            );
+
+            self.rtx_data.as_mut().unwrap().uniform_camera.set(
+                context, &self.camera.uniform(),
+            );
+
+            true
+        } else {
+            false
+        }
     }
 
     pub fn commands(&self) -> &[vk::CommandBuffer] {
-        self.rtx_data.get_command_buffers()
+        self.rtx_data.as_ref().unwrap().get_command_buffers()
     }
 
     pub fn resize(&mut self, context: &Arc<Context>, swapchain: &Swapchain) {
-        self.rtx_data = RTXData::new(
+        self.rtx_data = Some(RTXData::new(
             context,
             swapchain,
             &self.camera,
-            &mut self.acceleration_structure,
-            &mut self.vertices,
-            &mut self.indices,
-        );
+            self.acceleration_structure.as_mut().unwrap(),
+        ));
     }
 }
 
@@ -160,11 +181,15 @@ impl RTXData {
         swapchain: &Swapchain,
         camera: &Camera,
         acceleration_structure: &mut TlasVariable,
-        vertices: &mut BufferVariable,
-        indices: &mut BufferVariable,
     ) -> Self {
+        let local_instance_bindings = [InstanceBinding {
+            indices: vk::Buffer::null(),
+            triangles: vk::Buffer::null(),
+        }; MAX_INSTANCE_BINDING];
+
         let mut output_texture = TextureVariable::from_swapchain(context, swapchain);
         let mut uniform_camera = UniformVariable::new(&context, &camera.uniform());
+        let mut uniform_bindings = UniformVariable::new(&context, &local_instance_bindings);
         let mut uniform_scene = UniformVariable::new(
             &context,
             &UniformScene {
@@ -189,19 +214,14 @@ impl RTXData {
                 &[ShaderType::Raygen],
             )
             .binding(
-                vk::DescriptorType::STORAGE_BUFFER,
-                vertices,
-                &[ShaderType::ClosestHit],
-            )
-            .binding(
-                vk::DescriptorType::STORAGE_BUFFER,
-                indices,
-                &[ShaderType::ClosestHit],
-            )
-            .binding(
                 vk::DescriptorType::UNIFORM_BUFFER,
                 &mut uniform_scene,
                 &[ShaderType::ClosestHit, ShaderType::Miss],
+            )
+            .binding(
+                vk::DescriptorType::UNIFORM_BUFFER,
+                &mut uniform_bindings,
+                &[ShaderType::ClosestHit],
             )
             .real_shader(ShaderType::Raygen, "raygen.rgen.spv")
             .real_shader(ShaderType::Miss, "miss.rmiss.spv")

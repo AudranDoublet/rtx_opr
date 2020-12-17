@@ -134,7 +134,6 @@ impl BaseApp {
 
         let tracer = cubetracer::Cubetracer::new(
             &context,
-            &swapchain,
             16. / 9.,
             FOV_RANGE.start + (FOV_RANGE.end - FOV_RANGE.start) / 2.,
         );
@@ -298,7 +297,7 @@ impl BaseApp {
 
                             for (x, z, chunk) in chunks {
                                 self.tracer.register_or_update_chunk(
-                                    &self.context, x, z, chunk
+                                    &self.context, &self.swapchain, x, z, chunk
                                 );
                             }
 
@@ -328,11 +327,12 @@ impl BaseApp {
                         self.window.request_redraw();
                     }
                     winit::event::Event::RedrawRequested(_) => {
-                        self.tracer.draw_frame(&self.context);
-                        if let Some(_) = self.draw_frame() {
-                            self.tracer.resize(&self.context, &self.swapchain);
+                        if self.tracer.draw_frame(&self.context) {
+                            if let Some(_) = self.draw_frame() {
+                                self.tracer.resize(&self.context, &self.swapchain);
+                            }
+                            frame_counter.tick();
                         }
-                        frame_counter.tick();
                     }
                     winit::event::Event::DeviceEvent { event, .. } => self.input_handler.on_device_event(event),
                     winit::event::Event::WindowEvent { event, .. } => match event {

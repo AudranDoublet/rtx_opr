@@ -2,13 +2,6 @@ use std::collections::HashMap;
 use crate::{World, Chunk, FaceProperties, BlockRenderer};
 use nalgebra::{Vector2, Vector3};
 
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-pub struct Vertex {
-    position: [f32; 4],
-    texture: [f32; 4],
-}
-
 fn add_vertice(v: Vector3<i32>, vertices: &mut Vec<[f32; 4]>, map: &mut HashMap<Vector3<i32>, u32>) -> u32 {
     let len = map.len() as u32;
 
@@ -25,18 +18,24 @@ fn add_vertice(v: Vector3<i32>, vertices: &mut Vec<[f32; 4]>, map: &mut HashMap<
          })
 }
 
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct TriangleData {
+    pub material: u32,
+    pub normal: [f32; 4],
+}
+
 pub struct ChunkMesh {
+    // only for build
     vertices_map: HashMap<Vector3<i32>, u32>,
     textures_map: HashMap<Vector3<i32>, u32>,
 
     pub vertices: Vec<[f32; 4]>,
     pub indices: Vec<u32>,
+    pub texture_indices: Vec<u32>,
 
-    texture_vertices: Vec<[f32; 4]>,
-    texture_indices: Vec<u32>,
-
-    triangle_materials: Vec<u32>,
-    triangle_normals: Vec<[f32; 4]>,
+    pub texture_vertices: Vec<[f32; 4]>,
+    pub triangle_data: Vec<TriangleData>,
 }
 
 impl ChunkMesh {
@@ -46,10 +45,9 @@ impl ChunkMesh {
             textures_map: HashMap::new(),
             vertices: Vec::new(),
             indices: Vec::new(),
-            texture_vertices: Vec::new(),
             texture_indices: Vec::new(),
-            triangle_materials: Vec::new(),
-            triangle_normals: Vec::new(),
+            texture_vertices: Vec::new(),
+            triangle_data: Vec::new(),
         }
     }
 
@@ -90,30 +88,22 @@ impl ChunkMesh {
         let texture_id = face_properties.texture_id as i32;
 
         // add triangle vertices
-        for v in &[v1, v2, v3] {
+        for (v, t) in &[(v1, t1), (v2, t2), (v3, t3)] {
+            let t = Vector3::new(texture_id, t.x, t.y);
+
             self.indices.push(
-                add_vertice(*v, &mut self.vertices, &mut self.vertices_map)
+                add_vertice(*v, &mut self.vertices, &mut self.vertices_map),
             );
-        }
-
-        // add triangle texture vertices
-        for v in &[t1, t2, t3] {
-            let v = Vector3::new(texture_id, v.x, v.y);
-
             self.texture_indices.push(
-                add_vertice(v, &mut self.texture_vertices, &mut self.textures_map)
+                add_vertice(t, &mut self.texture_vertices, &mut self.textures_map),
             );
         }
 
-        // add triangle normal
-        self.triangle_normals.push(
-            [normal.x as f32 / normal_sum, normal.y as f32 / normal_sum, normal.z as f32 / normal_sum, 0.0],
-        );
-
-        // add triangle mateirla
-        self.triangle_materials.push(
-            face_properties.material_id,
-        );
+        // add triangle data
+        self.triangle_data.push(TriangleData {
+            normal: [normal.x as f32 / normal_sum, normal.y as f32 / normal_sum, normal.z as f32 / normal_sum, 0.0],
+            material: face_properties.material_id,
+        });
     }
 
     pub fn dump(&self) {

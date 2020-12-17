@@ -45,7 +45,7 @@ impl UniformVariable {
     pub fn set<T: Sized>(&mut self, context: &Arc<Context>, value: &T) {
         let data = unsafe { any_as_u8_slice(value) };
 
-        self.host_buffer.set_data(data);
+        self.host_buffer.set_host(data);
 
         context.execute_one_time_commands(|command_buffer| {
             self.device_buffer

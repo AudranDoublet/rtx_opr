@@ -5,23 +5,32 @@ use crate::context::Context;
 use crate::datatypes::*;
 
 use std::sync::Arc;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct InstanceBinding {
+    pub indices: vk::Buffer,
+    pub triangles: vk::Buffer,
+}
 
 pub struct TlasVariable {
     modified: bool,
 
-    blas_map: HashMap<BlasName, BlasVariable>,
+    blas_map: BTreeMap<BlasName, BlasVariable>,
+
     instance_buffer: Option<BufferVariable>,
 
-    acceleration_structure: Option<AccelerationStructure>,
+    pub acceleration_structure: Option<AccelerationStructure>,
     structures: Vec<vk::AccelerationStructureNV>,
     info: Option<vk::WriteDescriptorSetAccelerationStructureNV>,
+
 }
 
 impl TlasVariable {
     pub fn new() -> TlasVariable {
         TlasVariable {
-            blas_map: HashMap::new(),
+            blas_map: BTreeMap::new(),
             structures: vec![],
             acceleration_structure: None,
             instance_buffer: None,
@@ -43,9 +52,9 @@ impl TlasVariable {
     }
 
     /// build or rebuild the acceleration structure
-    pub fn build(&mut self, context: &Arc<Context>) {
+    pub fn build(&mut self, context: &Arc<Context>, bindings: &mut [InstanceBinding]) -> bool {
         if !self.modified {
-            return;
+            return false;
         }
 
         self.modified = false;
@@ -54,6 +63,12 @@ impl TlasVariable {
                         .iter()
                         .map(|(_, v)| v.instance_data())
                         .collect::<Vec<_>>();
+
+        self.blas_map.iter()
+                     .enumerate()
+                     .for_each(|(i, (_, v))| {
+                         bindings[i] = v.bindings();
+                     });
 
         if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
             acceleration_structure.acceleration_structure_info.instance_count = data.len() as u32;
@@ -73,11 +88,15 @@ impl TlasVariable {
         }
 
         // Build instance buffer (list & informations of each BLAS)
-        let instance_buffer = BufferVariable::device_buffer(
-            context,
-            vk::BufferUsageFlags::RAY_TRACING_NV,
-            &data,
-        ).0;
+        let instance_buffer = if data.len() == 0 {
+            BufferVariable::null(context)
+        } else {
+            BufferVariable::device_buffer(
+                context,
+                vk::BufferUsageFlags::RAY_TRACING_NV,
+                &data,
+            ).0
+        };
 
         // create scratch buffer === size is maximum size needed to build the TLAS or one of the BLAS
         let scratch_buffer_size = self.blas_map
@@ -149,21 +168,20 @@ impl TlasVariable {
         });
 
         self.instance_buffer = Some(instance_buffer);
+        true
     }
 }
 
 impl DataType for TlasVariable {
     fn write_descriptor_builder(&mut self) -> vk::WriteDescriptorSetBuilder {
-
         self.info = Some(
             vk::WriteDescriptorSetAccelerationStructureNV::builder()
                 .acceleration_structures(&self.structures)
                 .build(),
         );
 
-        match self.info {
-            Some(ref mut e) => vk::WriteDescriptorSet::builder().push_next(e),
-            None => panic!("should not happen"),
-        }
+        vk::WriteDescriptorSet::builder().push_next(
+            self.info.as_mut().unwrap()
+        )
     }
 }
