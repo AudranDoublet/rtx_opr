@@ -297,7 +297,6 @@ impl BaseApp {
                                 .collect::<Vec<_>>();
 
                             for (x, z, chunk) in chunks {
-                                chunk.dump();
                                 self.tracer.register_or_update_chunk(
                                     &self.context, x, z, chunk
                                 );
