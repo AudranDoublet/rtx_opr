@@ -437,10 +437,7 @@ impl BaseApp {
                 .image_indices(&images_indices);
             let result = self.swapchain.present(&present_info);
             match result {
-                Ok(is_suboptimal) if is_suboptimal => {
-                    self.recreate_swapchain();
-                }
-                Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
+                Ok(true) | Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
                     self.recreate_swapchain();
                 }
                 Err(error) => panic!("Failed to present queue. Cause: {}", error),
@@ -498,6 +495,8 @@ impl BaseApp {
         self.swapchain = swapchain;
         self.swapchain_properties = swapchain_properties;
         self.render_pass = render_pass;
+
+        self.tracer.resize(&self.context, &self.swapchain);
     }
 
     /// Clean up the swapchain and all resources that depends on it.
