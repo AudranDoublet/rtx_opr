@@ -5,6 +5,8 @@ use crate::mesh::Mesh;
 use crate::pipeline::*;
 use crate::window::*;
 
+use world::ChunkMesh;
+
 use nalgebra::{Vector2, Vector3};
 
 use ash::version::DeviceV1_0;
@@ -33,6 +35,14 @@ impl Cubetracer {
             rtx_data,
             camera,
         }
+    }
+
+    pub fn register_or_update_chunk(&mut self, chunk: ChunkMesh) {
+
+    }
+
+    pub fn delete_chunk(&mut self, x: i32, y: i32) {
+
     }
 
     pub fn camera(&mut self) -> &mut Camera {
@@ -69,9 +79,10 @@ pub struct RTXData {
     uniform_scene: UniformVariable,
     vertices: BufferVariable,
     indices: BufferVariable,
-    acceleration_structure: ASVariable,
+    acceleration_structure: TlasVariable,
 
     command_buffers: Vec<vk::CommandBuffer>,
+
     pipeline: RaytracerPipeline,
 }
 
@@ -151,6 +162,10 @@ impl RTXData {
         rtx.create_and_record_command_buffers(swapchain);
 
         rtx
+    }
+
+    pub fn update_acceleration_structure(&mut self, acceleration_structure: &mut TlasVariable) {
+        self.pipeline.update_binding(0, acceleration_structure);
     }
 
     fn create_and_record_command_buffers(&mut self, swapchain: &Swapchain) {
@@ -311,14 +326,18 @@ impl RTXData {
 
 fn build_acceleration_structures(
     context: &Arc<Context>,
-) -> (ASVariable, BufferVariable, BufferVariable) {
+) -> (TlasVariable, BufferVariable, BufferVariable) {
     let mesh = Mesh::from_file("assets/models/dog/dog.obj");
 
     let vertices = mesh.device_vertices(context);
     let indices = mesh.device_indices(context);
 
+    let blas = BlasVariable::from_geometry(context, &vertices, &indices);
+    let mut tlas = TlasVariable::from_blas_list(context, vec![blas]);
+    tlas.build(context);
+
     (
-        ASVariable::new(&context, &vertices, &indices),
+        tlas,
         vertices,
         indices,
     )

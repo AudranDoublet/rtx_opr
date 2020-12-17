@@ -68,6 +68,9 @@ impl ChunkMesh {
         for y in 0..256 {
             for z in 0..16 {
                 for x in 0..16 {
+                    if chunk.block_at_chunk(x, y, z) == crate::Block::Air {
+                        continue;
+                    }
                     renderer.render(world, Vector3::new(x + cx, y, z + cz), &mut mesh);
                 }
             }

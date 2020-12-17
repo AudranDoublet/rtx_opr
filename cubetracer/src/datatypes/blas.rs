@@ -8,6 +8,31 @@ use std::sync::Arc;
 use std::mem::size_of;
 
 #[derive(Copy, Clone)]
+pub struct GeometryInstance {
+    pub transform: [f32; 12],
+    pub instance_custom_index: u32,
+    pub mask: u32,
+    pub instance_offset: u32,
+    pub flags: vk::GeometryInstanceFlagsNV,
+    pub acceleration_structure_handle: u64,
+}
+
+impl GeometryInstance {
+    pub fn get_data(&self) -> GeometryInstanceData {
+        let instance_custom_indexand_mask =
+            (self.mask << 24) | (self.instance_custom_index & 0x00_ff_ff_ff);
+        let instance_offset_and_flags =
+            (self.flags.as_raw() << 24) | (self.instance_offset & 0x00_ff_ff_ff);
+        GeometryInstanceData {
+            transform: self.transform,
+            instance_custom_indexand_mask,
+            instance_offset_and_flags,
+            acceleration_structure_handle: self.acceleration_structure_handle,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
 #[allow(dead_code)]
 #[repr(C)]
 pub struct GeometryInstanceData {
@@ -18,9 +43,10 @@ pub struct GeometryInstanceData {
 }
 
 pub struct BlasVariable {
-    pub acceleration_structure: AccelerationStructure,
-    pub instance_buffer: BufferVariable,
-    pub geometries: Vec<vk::GeometryNV>,
+    is_build: bool,
+    acceleration_structure: AccelerationStructure,
+    instance_data: GeometryInstanceData,
+    _geometries: Vec<vk::GeometryNV>,
 }
 
 impl BlasVariable {
@@ -72,39 +98,43 @@ impl BlasVariable {
             0.0, 0.0, 1.0, 0.0,
         ];
 
-        let instance_buffer = {
-            let geometry_instance = GeometryInstance {
-                transform,
-                instance_custom_index: 0,
-                mask: 0xff,
-                instance_offset: 0,
-                flags: vk::GeometryInstanceFlagsNV::TRIANGLE_CULL_DISABLE_NV,
-                acceleration_structure_handle: acceleration_structure.handle,
-            };
-            let geometry_instance = geometry_instance.get_data();
-            unsafe {
-                BufferVariable::device_buffer(
-                    context,
-                    vk::BufferUsageFlags::RAY_TRACING_NV,
-                    any_as_u8_slice(&geometry_instance),
-                )
-                .0
-            }
+        let geometry_instance = GeometryInstance {
+            transform,
+            instance_custom_index: 0,
+            mask: 0xff,
+            instance_offset: 0,
+            flags: vk::GeometryInstanceFlagsNV::TRIANGLE_CULL_DISABLE_NV,
+            acceleration_structure_handle: acceleration_structure.handle,
         };
+        let instance_data = geometry_instance.get_data();
 
         BlasVariable {
             acceleration_structure,
-            instance_buffer,
-            geometries,
+            instance_data,
+            _geometries: geometries,
+            is_build: false,
         }
     }
 
-    pub fn instance(&self) -> &BufferVariable {
-        &self.instance_buffer
+    pub fn instance_data(&self) -> GeometryInstanceData {
+        self.instance_data
     }
-}
 
-unsafe fn any_as_u8_slice<T: Sized>(any: &T) -> &[u8] {
-    let ptr = (any as *const T) as *const u8;
-    std::slice::from_raw_parts(ptr, std::mem::size_of::<T>())
+    pub fn build_memory_requirements(&self) -> Option<u64> {
+        match self.is_build {
+            true => None,
+            false => Some(
+                self.acceleration_structure.get_memory_requirements(
+                    vk::AccelerationStructureMemoryRequirementsTypeNV::BUILD_SCRATCH,
+                ).memory_requirements.size
+            ),
+        }
+    }
+
+    pub fn build(&mut self, command_buffer: vk::CommandBuffer, scratch_buffer: &BufferVariable) {
+        if !self.is_build {
+            self.is_build = true;
+            self.acceleration_structure.cmd_build(command_buffer, scratch_buffer, None);
+        }
+    }
 }

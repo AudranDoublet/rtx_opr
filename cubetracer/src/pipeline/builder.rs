@@ -292,6 +292,8 @@ impl<'a> PipelineBuilder<'a> {
             descriptor_set_layout,
             descriptor_pool,
             descriptor_sets,
+            desc_types: self.variables.iter().map(|(a, _)| *a).collect(),
+            context: Arc::clone(&self.context),
         }
     }
 }

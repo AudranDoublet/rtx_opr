@@ -5,7 +5,7 @@ use winit::event_loop::EventLoop;
 use utils::framecounter::FrameCounter;
 use utils::wininput;
 
-use world::{create_main_world, main_world, ChunkMesh, ChunkListener, PlayerInput};
+use world::{create_main_world, main_world, ChunkListener, PlayerInput};
 
 use crate::config::*;
 
@@ -15,6 +15,8 @@ use cubetracer::context::Context;
 use cubetracer::window::*;
 
 use ash::{version::DeviceV1_0, vk, Device};
+
+use rayon::prelude::*;
 
 const MAX_FRAMES_IN_FLIGHT: usize = 2;
 
@@ -288,17 +290,20 @@ impl BaseApp {
                         self.tracer.camera().origin = self.player.head_position();
 
                         if listener.has_been_updated() {
-                            let world = main_world();
-
-                            /*
-                            let chunks_to_add: Vec<ChunkMesh> = listener
+                            let chunks = listener
                                 .loaded_chunks
-                                .iter()
-                                .map(|c| world.chunk(c.0, c.1).unwrap().mesh(world))
-                                .collect();
-                            */
+                                .par_iter()
+                                .map(|c| main_world().chunk(c.0, c.1).unwrap().mesh(main_world()))
+                                .collect::<Vec<_>>();
 
-                            let chunks_to_rm: Vec<(i32, i32)> = listener.unloaded_chunks.clone();
+                            for chunk in chunks {
+                                self.tracer.register_or_update_chunk(chunk);
+                            }
+
+                            listener
+                                .unloaded_chunks
+                                .iter()
+                                .for_each(|(x, y)| self.tracer.delete_chunk(*x, *y));
 
                             listener.clear();
                         }
