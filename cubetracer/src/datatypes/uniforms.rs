@@ -29,8 +29,12 @@ impl UniformVariable {
     pub fn new<T: Sized>(context: &Arc<Context>, value: &T) -> UniformVariable {
         let data = unsafe { any_as_u8_slice(value) };
 
-        let (device_buffer, host_buffer) =
-            BufferVariable::device_buffer(context, vk::BufferUsageFlags::UNIFORM_BUFFER, data);
+        let (device_buffer, host_buffer) = BufferVariable::device_buffer(
+            "uniform_variable_buffer".to_string(),
+            context,
+            vk::BufferUsageFlags::UNIFORM_BUFFER,
+            data
+        );
 
         let mut variable = UniformVariable {
             host_buffer,

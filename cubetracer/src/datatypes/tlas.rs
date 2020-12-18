@@ -17,7 +17,7 @@ pub struct InstanceBinding {
 pub struct TlasVariable {
     modified: bool,
 
-    blas_map: BTreeMap<BlasName, BlasVariable>,
+    pub blas_map: BTreeMap<BlasName, BlasVariable>,
 
     instance_buffer: Option<BufferVariable>,
 
@@ -89,9 +89,10 @@ impl TlasVariable {
 
         // Build instance buffer (list & informations of each BLAS)
         let instance_buffer = if data.len() == 0 {
-            BufferVariable::null(context)
+            BufferVariable::null("null_instance_buffer_tlas".to_string(), context)
         } else {
             BufferVariable::device_buffer(
+                "instance_buffer_tlas".to_string(),
                 context,
                 vk::BufferUsageFlags::RAY_TRACING_NV,
                 &data,
@@ -109,6 +110,7 @@ impl TlasVariable {
             ).memory_requirements.size);
 
         let scratch_buffer = BufferVariable::create(
+            "scratch_buffer_tlas".to_string(),
             context,
             scratch_buffer_size,
             scratch_buffer_size as _,

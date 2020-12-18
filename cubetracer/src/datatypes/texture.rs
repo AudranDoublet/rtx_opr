@@ -109,7 +109,12 @@ impl TextureVariable {
         let extent = vk::Extent2D { width, height };
         let device = context.device();
 
-        let buffer = BufferVariable::host_buffer(context, vk::BufferUsageFlags::TRANSFER_SRC, data);
+        let buffer = BufferVariable::host_buffer(
+            "rgba_texture_buffer".to_string(),
+            context,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            data
+        );
 
         let image = ImageVariable::create(
             Arc::clone(context),

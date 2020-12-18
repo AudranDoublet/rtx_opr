@@ -34,7 +34,7 @@ Vertex unpack(uint index) {
 
 const uint CULL_MASK = 0xff;
 const float T_MIN = 0.01;
-const float T_MAX = 10.0;
+const float T_MAX = 100.0;
 
 void main() {
     /*

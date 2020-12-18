@@ -84,18 +84,20 @@ impl Cubetracer {
 
         let chunk = &self.chunks[&name];
         let vertices = BufferVariable::device_buffer(
+            "chunk_vertices".to_string(),
             context,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
             &chunk.vertices
         ).0;
 
         let indices = BufferVariable::device_buffer(
+            "chunk_indices".to_string(),
             context,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
             &chunk.indices
         ).0;
 
-        let blas = BlasVariable::from_geometry(context, &vertices, &indices, std::mem::size_of::<[f32; 4]>());
+        let blas = BlasVariable::from_geometry(context, vertices, indices, std::mem::size_of::<[f32; 4]>());
 
         if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
             acceleration_structure.register(name, blas);
@@ -120,7 +122,7 @@ impl Cubetracer {
         &mut self.camera
     }
 
-    pub fn draw_frame(&mut self, context: &Arc<Context>) -> bool {
+    pub fn update(&mut self, context: &Arc<Context>) -> bool {
         if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
             if acceleration_structure.build(context, &mut self.local_instance_bindings) {
             }

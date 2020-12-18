@@ -238,6 +238,7 @@ impl<'a> PipelineBuilder<'a> {
         };
 
         let shader_binding_table_buffer = BufferVariable::device_buffer(
+            "shader_binding_table".to_string(),
             &self.context,
             vk::BufferUsageFlags::RAY_TRACING_NV,
             &shader_handles,

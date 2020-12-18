@@ -101,6 +101,7 @@ impl Mesh {
 
     pub fn device_vertices(&self, context: &Arc<Context>) -> BufferVariable {
         BufferVariable::device_buffer(
+            "mesh_vertices_old".to_string(),
             context,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
             &self.vertices,
@@ -110,6 +111,7 @@ impl Mesh {
 
     pub fn device_indices(&self, context: &Arc<Context>) -> BufferVariable {
         BufferVariable::device_buffer(
+            "mesh_indices_old".to_string(),
             context,
             vk::BufferUsageFlags::INDEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
             &self.indices,

@@ -218,7 +218,9 @@ impl BaseApp {
                 let delta_time = frame_counter.delta_time();
 
                 match event {
-                    winit::event::Event::LoopDestroyed => return,
+                    winit::event::Event::LoopDestroyed => {
+                        return
+                    },
                     winit::event::Event::MainEventsCleared => {
                         self.input_handler.update_time(delta_time);
                         total_time += delta_time;
@@ -327,7 +329,7 @@ impl BaseApp {
                         self.window.request_redraw();
                     }
                     winit::event::Event::RedrawRequested(_) => {
-                        if self.tracer.draw_frame(&self.context) {
+                        if self.tracer.update(&self.context) {
                             if let Some(_) = self.draw_frame() {
                                 self.tracer.resize(&self.context, &self.swapchain);
                             }

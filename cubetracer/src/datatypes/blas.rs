@@ -51,13 +51,15 @@ pub struct BlasVariable {
     acceleration_structure: AccelerationStructure,
     instance_data: GeometryInstanceData,
     _geometries: Vec<vk::GeometryNV>,
+    vertices: BufferVariable,
+    indices: BufferVariable,
 }
 
 impl BlasVariable {
     pub fn from_geometry(
         context: &Arc<Context>,
-        vertices: &BufferVariable,
-        indices: &BufferVariable,
+        vertices: BufferVariable,
+        indices: BufferVariable,
         vertex_stride: usize,
     ) -> BlasVariable {
         ///// Create geometries list
@@ -118,6 +120,8 @@ impl BlasVariable {
             instance_data,
             _geometries: geometries,
             is_build: false,
+            vertices,
+            indices,
         }
     }
 

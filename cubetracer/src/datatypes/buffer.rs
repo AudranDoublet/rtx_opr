@@ -15,6 +15,7 @@ unsafe impl Send for MemoryMapPointer {}
 unsafe impl Sync for MemoryMapPointer {}
 
 pub struct BufferVariable {
+    name: String,
     context: Arc<Context>,
     buffer: vk::Buffer,
     memory: vk::DeviceMemory,
@@ -27,6 +28,7 @@ pub struct BufferVariable {
 
 impl BufferVariable {
     pub fn create(
+        name: String,
         context: &Arc<Context>,
         size: u64,
         element_count: usize,
@@ -71,6 +73,7 @@ impl BufferVariable {
         };
 
         BufferVariable {
+            name,
             context: Arc::clone(context),
             buffer,
             memory,
@@ -82,8 +85,9 @@ impl BufferVariable {
         }
     }
 
-    pub fn null(context: &Arc<Context>) -> BufferVariable {
+    pub fn null(name: String, context: &Arc<Context>) -> BufferVariable {
         BufferVariable {
+            name,
             context: Arc::clone(context),
             buffer: vk::Buffer::null(),
             memory: vk::DeviceMemory::null(),
@@ -95,6 +99,7 @@ impl BufferVariable {
     }
 
     pub fn device_buffer<T: Copy>(
+        name: String,
         context: &Arc<Context>,
         usage: vk::BufferUsageFlags,
         data: &[T],
@@ -102,9 +107,10 @@ impl BufferVariable {
         context.execute_one_time_commands(|command_buffer| {
             let size = (data.len() * size_of::<T>()) as vk::DeviceSize;
             let staging_buffer =
-                Self::host_buffer(context, vk::BufferUsageFlags::TRANSFER_SRC, data);
+                Self::host_buffer(format!("{} host-copy", name), context, vk::BufferUsageFlags::TRANSFER_SRC, data);
 
             let buffer = Self::create(
+                name,
                 context,
                 size,
                 data.len(),
@@ -118,6 +124,7 @@ impl BufferVariable {
     }
 
     pub fn host_buffer<T: Copy>(
+        name: String,
         context: &Arc<Context>,
         usage: vk::BufferUsageFlags,
         data: &[T],
@@ -125,6 +132,7 @@ impl BufferVariable {
         let size = (data.len() * size_of::<T>()) as vk::DeviceSize;
 
         let mut buffer = Self::create(
+            name,
             context,
             size,
             data.len(),
@@ -149,7 +157,7 @@ impl BufferVariable {
         data: &[T],
     ) {
         context.execute_one_time_commands(|command_buffer| {
-            let staging_buffer = Self::host_buffer(context, vk::BufferUsageFlags::TRANSFER_SRC, data);
+            let staging_buffer = Self::host_buffer(format!("{} host-copy set", self.name), context, vk::BufferUsageFlags::TRANSFER_SRC, data);
             self.cmd_copy(command_buffer, &staging_buffer, staging_buffer.size);
         });
     }
@@ -226,6 +234,16 @@ impl DataType for BufferVariable {
         );
 
         vk::WriteDescriptorSet::builder().buffer_info(&self.info)
+    }
+}
+
+impl Drop for BufferVariable {
+    fn drop(&mut self) {
+        unsafe {
+            self.unmap_memory();
+            self.context.device().destroy_buffer(self.buffer, None);
+            self.context.device().free_memory(self.memory, None);
+        }
     }
 }
 
