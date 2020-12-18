@@ -5,7 +5,7 @@ use winit::event_loop::EventLoop;
 use utils::framecounter::FrameCounter;
 use utils::wininput;
 
-use world::{create_main_world, main_world, ChunkListener, PlayerInput};
+use world::{create_main_world, main_world, ChunkListener, PlayerInput, ChunkMesherClient};
 
 use crate::config::*;
 
@@ -76,6 +76,7 @@ pub struct BaseApp {
     mouse_is_focused: bool,
     tracer: cubetracer::Cubetracer,
 
+    chunk_mesher_client: ChunkMesherClient,
     player: world::Player,
 }
 
@@ -155,6 +156,7 @@ impl BaseApp {
 
             tracer,
 
+            chunk_mesher_client: ChunkMesherClient::new(),
             player,
         };
         game.process_event(event_loop);
@@ -291,13 +293,12 @@ impl BaseApp {
                         self.tracer.camera().origin = self.player.head_position();
 
                         if listener.has_been_updated() {
-                            let chunks = listener
+                            listener
                                 .loaded_chunks
-                                .par_iter()
-                                .map(|c| (c.0, c.1, main_world().chunk(c.0, c.1).unwrap().mesh(main_world())))
-                                .collect::<Vec<_>>();
+                                .iter()
+                                .for_each(|(x, z)| self.chunk_mesher_client.request(*x, *z));
 
-                            for (x, z, chunk) in chunks {
+                            while let Some((x, z, chunk)) = self.chunk_mesher_client.pull() {
                                 self.tracer.register_or_update_chunk(
                                     &self.context, &self.swapchain, x, z, chunk
                                 );

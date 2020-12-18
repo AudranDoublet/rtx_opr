@@ -1,6 +1,9 @@
 use std::collections::HashMap;
-use crate::{World, Chunk, FaceProperties};
+use crate::{World, Chunk, FaceProperties, main_world};
 use nalgebra::{Vector2, Vector3};
+
+use std::sync::mpsc;
+use std::thread;
 
 fn add_vertice(v: Vector3<i32>, vertices: &mut Vec<[f32; 4]>, map: &mut HashMap<Vector3<i32>, u32>) -> u32 {
     let len = map.len() as u32;
@@ -109,5 +112,58 @@ impl ChunkMesh {
         for i in (0..self.indices.len()).step_by(3) {
             println!("f {} {} {}", self.indices[i] + 1, self.indices[i + 1] + 1, self.indices[i + 2] + 1);
         }
+    }
+}
+
+pub struct ChunkMesher {
+    request: mpsc::Receiver<(i32, i32)>,
+    callback: mpsc::Sender<(i32, i32, ChunkMesh)>,
+}
+
+impl ChunkMesher {
+    pub fn run(&self) {
+        while let Ok((x, z)) = self.request.recv() {
+            let world = main_world();
+            if let Some(chunk) = world.chunk(x, z) {
+                let mesh = ChunkMesh::from_chunk(world, chunk);
+                self.callback.send((x, z, mesh)).expect("can't send meshing response");
+            }
+        }
+    }
+}
+
+pub struct ChunkMesherClient {
+    request: mpsc::Sender<(i32, i32)>,
+    receiver: mpsc::Receiver<(i32, i32, ChunkMesh)>,
+}
+
+impl ChunkMesherClient {
+    pub fn new() -> Self {
+        let (request_sender, request_receiver) = mpsc::channel();
+        let (response_sender, response_receiver) = mpsc::channel();
+
+        thread::spawn(move || {
+            ChunkMesher {
+                request: request_receiver,
+                callback: response_sender,
+            }.run()
+        });
+
+        ChunkMesherClient {
+            request: request_sender,
+            receiver: response_receiver,
+        }
+    }
+
+    pub fn pull(&self) -> Option<(i32, i32, ChunkMesh)> {
+        if let Ok(v) = self.receiver.try_recv() {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn request(&self, x: i32, y: i32) {
+        self.request.send((x, y)).expect("can't send meshing request")
     }
 }
