@@ -98,6 +98,30 @@ impl TextureVariable {
         TextureVariable::new(Arc::clone(context), image, view, None)
     }
 
+    pub fn texture_array2d(
+        context: &Arc<Context>,
+        width: u32,
+        height: u32,
+        paths: Vec<&str>,
+    ) -> TextureVariable {
+        let image = ImageVariable::array_from_paths(context, width, height, paths);
+        context.execute_one_time_commands(|cmd|
+            image.cmd_generate_mipmaps(cmd)
+        );
+
+        let view = image.create_view(
+            vk::ImageViewType::TYPE_2D_ARRAY, vk::ImageAspectFlags::COLOR,
+        );
+        let sampler = image.create_sampler(context);
+
+        TextureVariable::new(
+            Arc::clone(context),
+            image,
+            view,
+            Some(sampler),
+        )
+    }
+
     pub fn cmd_from_rgba(
         context: &Arc<Context>,
         command_buffer: vk::CommandBuffer,
@@ -119,8 +143,8 @@ impl TextureVariable {
         let image = ImageVariable::create(
             Arc::clone(context),
             ImageParameters {
-                mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
                 extent,
+                mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
                 format: vk::Format::R8G8B8A8_UNORM,
                 mip_levels: max_mip_levels,
                 usage: vk::ImageUsageFlags::TRANSFER_SRC
@@ -140,8 +164,7 @@ impl TextureVariable {
             );
 
             image.cmd_copy_buffer(command_buffer, &buffer, extent);
-
-            image.cmd_generate_mipmaps(command_buffer, extent);
+            image.cmd_generate_mipmaps(command_buffer);
         }
 
         let image_view = image.create_view(vk::ImageViewType::TYPE_2D, vk::ImageAspectFlags::COLOR);
@@ -269,10 +292,17 @@ impl TextureVariable {
 impl DataType for TextureVariable {
     fn write_descriptor_builder(&mut self) -> vk::WriteDescriptorSetBuilder {
         self.info.push(
-            vk::DescriptorImageInfo::builder()
-                .image_view(self.view)
-                .image_layout(vk::ImageLayout::GENERAL)
-                .build(),
+            {
+                let bld = vk::DescriptorImageInfo::builder()
+                    .image_view(self.view)
+                    .image_layout(vk::ImageLayout::GENERAL);
+
+                if let Some(sampler) = self.sampler {
+                    bld.sampler(sampler)
+                } else {
+                    bld
+                }.build()
+            }
         );
 
         vk::WriteDescriptorSet::builder().image_info(&self.info)

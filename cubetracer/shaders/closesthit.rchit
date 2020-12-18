@@ -15,6 +15,8 @@ layout(binding = 3, set = 0) uniform Uniforms {
     vec3 sunDirection;
 } scene;
 
+layout (binding = 4, set = 0) uniform sampler2DArray texture_array;
+
 struct Vertex {
   vec3 position;
   vec3 normal;
@@ -52,7 +54,8 @@ void main() {
   	// Basic lighting
 	hitValue = vec3(max(dot(-scene.sunDirection, normal), 0.0)) * 0.8;
     */
-    hitValue = vec3(1);
+    hitValue = textureLod(texture_array, vec3(attribs.x, attribs.y, 0), 0.).xyz;
+    //hitValue = vec3(1);
 
 	shadowed = true;
 

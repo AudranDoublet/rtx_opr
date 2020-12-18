@@ -1,3 +1,5 @@
+extern crate image;
+
 use ash::vk;
 use std::sync::Arc;
 
@@ -89,6 +91,7 @@ impl ImageVariable {
         let alloc_info = vk::MemoryAllocateInfo::builder()
             .allocation_size(mem_requirements.size)
             .memory_type_index(mem_type_index);
+
         let memory = unsafe {
             let mem = device
                 .allocate_memory(&alloc_info, None)
@@ -109,6 +112,154 @@ impl ImageVariable {
             layers: parameters.layers,
             managed: false,
         }
+    }
+
+    pub fn from_path(
+        context: &Arc<Context>,
+        path: &str,
+        width: u32,
+        height: u32,
+    ) -> ImageVariable {
+        let image = image::open(path)
+            .expect(format!("can't load texture {}", path).as_str())
+            .into_rgba8();
+
+        let rimage =
+            image::imageops::resize(&image, width, height, image::imageops::FilterType::Gaussian);
+
+        let params = ImageParameters {
+            extent: vk::Extent2D {
+                width,
+                height,
+            },
+            layers: 1,
+            mip_levels: 1,
+            mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            format: vk::Format::R8G8B8A8_UNORM,
+            usage: vk::ImageUsageFlags::TRANSFER_SRC
+                | vk::ImageUsageFlags::TRANSFER_DST
+                | vk::ImageUsageFlags::SAMPLED,
+            ..ImageParameters::default()
+        };
+
+        let buffer = BufferVariable::host_buffer(
+            "image_data".to_string(),
+            context,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            &rimage.into_raw()
+        );
+
+        let image = Self::create(Arc::clone(context), params);
+        context.execute_one_time_commands(|cmd| {
+            image.cmd_transition_image_layout(
+                cmd,
+                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            );
+
+            image.cmd_copy_buffer(cmd, &buffer, vk::Extent2D {
+                width,
+                height,
+            });
+            image.cmd_transition_image_layout(
+                cmd,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            );
+        });
+
+        image
+    }
+
+    pub fn array_from_paths(
+        context: &Arc<Context>,
+        width: u32,
+        height: u32,
+        paths: Vec<&str>,
+    ) -> ImageVariable {
+        let images = paths
+             .iter()
+             .map(|path| Self::from_path(context, path, width, height))
+             .collect();
+
+        Self::create_image_array(context, width, height, images)
+    }
+
+    pub fn create_image_array(
+        context: &Arc<Context>,
+        width: u32,
+        height: u32,
+        images: Vec<ImageVariable>,
+    ) -> Self {
+        // compute needed mip levels
+        let mip_levels = (width.max(height) as f32).log2().floor() as u32 + 1;
+        dbg!(mip_levels);
+
+        let params = ImageParameters {
+            extent: vk::Extent2D {
+                width,
+                height,
+            },
+            layers: images.len() as u32,
+            mip_levels,
+            mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            format: vk::Format::R8G8B8A8_UNORM,
+            usage: vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+            ..ImageParameters::default()
+        };
+
+        let result = Self::create(Arc::clone(context), params);
+        context.execute_one_time_commands(|cmd_buffer| {
+            result.cmd_transition_image_layout(
+                cmd_buffer,
+                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL
+            );
+        });
+
+        for (i, image) in images.iter().enumerate() {
+            let regions = [
+                vk::ImageCopy::builder()
+                    .src_subresource(vk::ImageSubresourceLayers {
+                        aspect_mask: vk::ImageAspectFlags::COLOR,
+                        mip_level: 0,
+                        base_array_layer: 0,
+                        layer_count: 1,
+                    })
+                    .dst_subresource(vk::ImageSubresourceLayers {
+                        aspect_mask: vk::ImageAspectFlags::COLOR,
+                        mip_level: 0,
+                        base_array_layer: i as u32,
+                        layer_count: 1,
+                    })
+                    .dst_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
+                    .extent(image.extent)
+                    .build()
+            ];
+
+            context.execute_one_time_commands(|cmd_buffer| {
+                unsafe {
+                    context.device().cmd_copy_image(
+                        cmd_buffer,
+                        image.image,
+                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                        result.image,
+                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                        &regions,
+                    );
+                }
+            });
+        }
+
+        context.execute_one_time_commands(|cmd_buffer| {
+            result.cmd_transition_image_layout(
+                cmd_buffer,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                vk::ImageLayout::GENERAL,
+            );
+        });
+
+        result
     }
 
     pub fn create_swapchain_image(
@@ -156,6 +307,29 @@ impl ImageVariable {
                 .device()
                 .create_image_view(&create_info, None)
                 .expect("Failed to create image view")
+        }
+    }
+
+    pub fn create_sampler(
+        &self,
+        context: &Arc<Context>,
+    ) -> vk::Sampler {
+        let info = vk::SamplerCreateInfo::builder()
+            .mag_filter(vk::Filter::LINEAR)
+            .min_filter(vk::Filter::LINEAR)
+            .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+            .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+            .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+            .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+            .mip_lod_bias(0.0)
+            .min_lod(0.0)
+            .max_lod(self.mip_levels as f32)
+            .build();
+
+
+        unsafe {
+            context.device().create_sampler(&info, None)
+                .expect("can't create sampler")
         }
     }
 
@@ -300,6 +474,24 @@ impl ImageVariable {
         }
     }
 
+    /// create a BufferImageCopy for this image to a buffer
+    pub fn buffer_image_copy(&self, offset: u64, layer: u32) -> vk::BufferImageCopy {
+        vk::BufferImageCopy::builder()
+            .image_subresource(vk::ImageSubresourceLayers {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                mip_level: 0,
+                base_array_layer: layer,
+                layer_count: 1,
+            })
+            .image_extent(vk::Extent3D {
+                width: self.extent.width,
+                height: self.extent.height,
+                depth: 1,
+            })
+            .buffer_offset(offset)
+            .build()
+    }
+
     /// Record command to copy [src_image] into this image.
     ///
     /// The full extent of the passed in layer will be copied, so the target image
@@ -332,7 +524,7 @@ impl ImageVariable {
         };
     }
 
-    pub fn cmd_generate_mipmaps(&self, command_buffer: vk::CommandBuffer, extent: vk::Extent2D) {
+    pub fn cmd_generate_mipmaps(&self, command_buffer: vk::CommandBuffer) {
         let format_properties = unsafe {
             self.context
                 .instance()
@@ -361,8 +553,8 @@ impl ImageVariable {
             })
             .build();
 
-        let mut mip_width = extent.width as i32;
-        let mut mip_height = extent.height as i32;
+        let mut mip_width = self.extent.width as i32;
+        let mut mip_height = self.extent.height as i32;
         for level in 1..self.mip_levels {
             let next_mip_width = if mip_width > 1 {
                 mip_width / 2

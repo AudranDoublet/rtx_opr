@@ -98,6 +98,22 @@ impl BufferVariable {
         }
     }
 
+    pub fn empty_device_buffer(
+        name: String,
+        context: &Arc<Context>,
+        usage: vk::BufferUsageFlags,
+        size: usize,
+    ) -> BufferVariable {
+        Self::create(
+            name,
+            context,
+            size as u64,
+            size,
+            vk::BufferUsageFlags::TRANSFER_DST | usage,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+        )
+    }
+
     pub fn device_buffer<T: Copy>(
         name: String,
         context: &Arc<Context>,
@@ -121,6 +137,22 @@ impl BufferVariable {
             buffer.cmd_copy(command_buffer, &staging_buffer, staging_buffer.size);
             (buffer, staging_buffer)
         })
+    }
+
+    pub fn empty_host_buffer(
+        name: String,
+        context: &Arc<Context>,
+        usage: vk::BufferUsageFlags,
+        size: usize,
+    ) -> BufferVariable {
+        Self::create(
+            name,
+            context,
+            size as u64,
+            size,
+            vk::BufferUsageFlags::TRANSFER_SRC | usage,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+        )
     }
 
     pub fn host_buffer<T: Copy>(

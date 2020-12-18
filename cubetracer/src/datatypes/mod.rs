@@ -16,6 +16,6 @@ pub use acceleration_structure::*;
 pub use blas::*;
 pub use tlas::*;
 pub use buffer::*;
-pub use image::*;
+pub use self::image::*;
 pub use texture::*;
 pub use uniforms::*;

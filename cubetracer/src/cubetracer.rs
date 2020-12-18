@@ -23,17 +23,26 @@ pub struct Cubetracer {
     rtx_data: Option<RTXData>,
 
     acceleration_structure: Option<TlasVariable>,
+    texture_array: TextureVariable,
 
     local_instance_bindings: [InstanceBinding; MAX_INSTANCE_BINDING],
 }
 
 impl Cubetracer {
-    pub fn new(_context: &Arc<Context>, ratio: f32, fov: f32) -> Self {
+    pub fn new(context: &Arc<Context>, ratio: f32, fov: f32) -> Self {
         let camera = Camera::new(
             Vector3::x(),
             Vector2::new(std::f32::consts::PI / 2.0, 0.0),
             fov,
             ratio,
+        );
+
+        let texture_array = TextureVariable::texture_array2d(
+            context, 512, 512,
+            vec![
+                "data/stone.png",
+                "data/stone_n.png",
+            ],
         );
 
         let local_instance_bindings = [InstanceBinding {
@@ -47,6 +56,7 @@ impl Cubetracer {
             camera,
             acceleration_structure: None,
             local_instance_bindings,
+            texture_array,
         }
     }
 
@@ -66,6 +76,7 @@ impl Cubetracer {
             swapchain,
             &self.camera,
             &mut acceleration_structure,
+            &mut self.texture_array,
         );
 
         self.acceleration_structure = Some(acceleration_structure);
@@ -154,6 +165,7 @@ impl Cubetracer {
             swapchain,
             &self.camera,
             self.acceleration_structure.as_mut().unwrap(),
+            &mut self.texture_array,
         ));
     }
 }
@@ -183,6 +195,7 @@ impl RTXData {
         swapchain: &Swapchain,
         camera: &Camera,
         acceleration_structure: &mut TlasVariable,
+        texture_array: &mut TextureVariable,
     ) -> Self {
         let local_instance_bindings = [InstanceBinding {
             indices: vk::Buffer::null(),
@@ -219,6 +232,11 @@ impl RTXData {
                 vk::DescriptorType::UNIFORM_BUFFER,
                 &mut uniform_scene,
                 &[ShaderType::ClosestHit, ShaderType::Miss],
+            )
+            .binding(
+                vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                texture_array,
+                &[ShaderType::ClosestHit],
             )
             .binding(
                 vk::DescriptorType::UNIFORM_BUFFER,
