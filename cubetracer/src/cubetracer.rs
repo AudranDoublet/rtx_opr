@@ -28,7 +28,7 @@ pub struct Cubetracer {
 }
 
 impl Cubetracer {
-    pub fn new(context: &Arc<Context>, ratio: f32, fov: f32) -> Self {
+    pub fn new(_context: &Arc<Context>, ratio: f32, fov: f32) -> Self {
         let camera = Camera::new(
             Vector3::x(),
             Vector2::new(std::f32::consts::PI / 2.0, 0.0),

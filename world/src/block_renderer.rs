@@ -7,6 +7,15 @@ pub struct FaceProperties {
     pub material_id: u32,
 }
 
+impl FaceProperties {
+    pub fn new(texture_id: u32, material_id: u32) -> FaceProperties {
+        FaceProperties {
+            texture_id,
+            material_id,
+        }
+    }
+}
+
 pub enum BlockRenderer {
     Empty,
     ClassicBlock {
@@ -19,6 +28,44 @@ pub enum BlockRenderer {
         normal_id: Option<usize>,
     },
 }
+
+#[macro_export]
+macro_rules! topdown_renderer {
+    // default behaviour
+    ($side_face:expr, $top_face:expr, $down_face:expr) => {{
+        topdown_renderer!($side_face, $top_face, $down_face, width=10, height=10)
+    }};
+
+    // When something is passed
+    ($side_face:expr, $top_face:expr, $down_face:expr, width=$width:expr, height=$height:expr) => {{
+        BlockRenderer::ClassicBlock {
+            faces: [$top_face, $down_face, $side_face, $side_face, $side_face, $side_face],
+            height: $height,
+            width: $width,
+        }
+    }}
+}
+
+#[macro_export]
+macro_rules! classic_renderer {
+    // default behaviour
+    ($face:expr) => {{
+        classic_renderer!($face, width=10, height=10)
+    }};
+
+    // When something is passed
+    ($face:expr, width=$width:expr, height=$height:expr) => {{
+        BlockRenderer::ClassicBlock {
+            faces: [$face; 6],
+            height: $height,
+            width: $width,
+        }
+    }}
+}
+
+pub const BLOCK_RENDERERS: [BlockRenderer; 1] = [
+    BlockRenderer::Empty,
+];
 
 impl BlockRenderer {
     pub fn classic(prop: FaceProperties) -> BlockRenderer {

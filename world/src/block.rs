@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::AABB;
+use crate::{BlockRenderer, FaceProperties, classic_renderer, topdown_renderer};
 use nalgebra::Vector3;
 
 #[repr(u32)]
@@ -186,11 +187,65 @@ impl Block {
 
     pub fn is_opaque(&self) -> bool {
         match self {
-            Block::Air => false,
-            Block::Water => false,
+            Block::Air | Block::Water | Block::Snow => false,
             b if b.is_leaves() => false,
             b if b.is_flower() => false,
             _ => true,
+        }
+    }
+
+    pub fn block_renderer(&self) -> BlockRenderer {
+        match self {
+            Block::Air              => BlockRenderer::Empty,
+            Block::Water            => BlockRenderer::Empty, //FIXME
+            Block::Stone            => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::Grass            => topdown_renderer!(
+                FaceProperties::new(1, 0),
+                FaceProperties::new(2, 0),
+                FaceProperties::new(3, 0)
+            ),
+            Block::Dirt             => classic_renderer!(FaceProperties::new(3, 0)),
+            Block::Gravel           => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::Sand             => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::Cactus           => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::Snow             => classic_renderer!(FaceProperties::new(0, 0), width=10, height=1),
+            Block::TallGrass        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::OakLog           => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::AcaciaLog        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::BigOakLog        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::BirchLog         => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::JungleLog        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::SpruceLog        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::OakLeaves        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::AcaciaLeaves     => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::BigOakLeaves     => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::BirchLeaves      => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::JungleLeaves     => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::SpruceLeaves     => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::OrangeTulipe     => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::PinkTulip        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::RedTulip         => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::WhiteTulip       => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::Dandelion        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::AzureBluet       => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::OxeyeDaisy       => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::BlueOrchid       => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::Allium           => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::Poppy            => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::LightWhite       => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::LightRed         => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::LightGreen       => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::LightBlue        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::LightYellow      => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::LightCyan        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::OakPlanks        => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::AcaciaPlanks     => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::BigOakPlanks     => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::BirchPlanks      => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::JunglePlanks     => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::SprucePlanks     => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::Brick            => classic_renderer!(FaceProperties::new(0, 0)),
+            Block::StoneBricks      => classic_renderer!(FaceProperties::new(0, 0)),
         }
     }
 

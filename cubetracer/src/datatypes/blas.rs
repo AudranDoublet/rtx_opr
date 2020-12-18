@@ -51,8 +51,8 @@ pub struct BlasVariable {
     acceleration_structure: AccelerationStructure,
     instance_data: GeometryInstanceData,
     _geometries: Vec<vk::GeometryNV>,
-    vertices: BufferVariable,
-    indices: BufferVariable,
+    _vertices: BufferVariable,
+    _indices: BufferVariable,
 }
 
 impl BlasVariable {
@@ -120,8 +120,8 @@ impl BlasVariable {
             instance_data,
             _geometries: geometries,
             is_build: false,
-            vertices,
-            indices,
+            _vertices: vertices,
+            _indices: indices,
         }
     }
 

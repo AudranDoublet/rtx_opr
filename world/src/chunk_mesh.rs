@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::{World, Chunk, FaceProperties, BlockRenderer};
+use crate::{World, Chunk, FaceProperties};
 use nalgebra::{Vector2, Vector3};
 
 fn add_vertice(v: Vector3<i32>, vertices: &mut Vec<[f32; 4]>, map: &mut HashMap<Vector3<i32>, u32>) -> u32 {
@@ -52,11 +52,6 @@ impl ChunkMesh {
     }
 
     pub fn from_chunk(world: &World, chunk: &Chunk) -> ChunkMesh {
-        let renderer = BlockRenderer::classic(FaceProperties {
-            texture_id: 0,
-            material_id: 0,
-        });
-
         let (cx, cz) = {
             let cpos = chunk.position();
             (cpos.x, cpos.y)
@@ -66,10 +61,10 @@ impl ChunkMesh {
         for y in 0..256 {
             for z in 0..16 {
                 for x in 0..16 {
-                    if chunk.block_at_chunk(x, y, z) == crate::Block::Air {
-                        continue;
-                    }
-                    renderer.render(world, Vector3::new(x + cx, y, z + cz), &mut mesh);
+                    chunk
+                        .block_at_chunk(x, y, z)
+                        .block_renderer()
+                        .render(world, Vector3::new(x + cx, y, z + cz), &mut mesh);
                 }
             }
         }
