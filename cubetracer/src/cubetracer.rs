@@ -4,7 +4,7 @@ use crate::datatypes::*;
 use crate::pipeline::*;
 use crate::window::*;
 
-use world::ChunkMesh;
+use world::{main_world, ChunkMesh};
 
 use nalgebra::{Vector2, Vector3};
 
@@ -37,12 +37,11 @@ impl Cubetracer {
             ratio,
         );
 
+        let textures_info = &main_world().textures;
+        let (w, h) = textures_info.dimensions();
+
         let texture_array = TextureVariable::texture_array2d(
-            context, 512, 512,
-            vec![
-                "data/stone.png",
-                "data/stone_n.png",
-            ],
+            context, w as u32, h as u32, textures_info.paths(),
         );
 
         let local_instance_bindings = [InstanceBinding {

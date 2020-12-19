@@ -459,7 +459,7 @@ impl Player {
             self.update_seen_chunks(world, listener, position)
         };
 
-        self.known_chunks
+        let mut modified = self.known_chunks
             .iter()
             .filter(|v| {
                 if let Some(chunk) = world.chunk_mut(v.x, v.y) {
@@ -468,7 +468,17 @@ impl Player {
                 } else {
                     false
                 }
-            })
-            .for_each(|v| listener.chunk_load(v.x, v.y));
+            }).collect::<Vec<_>>();
+
+        let (cx, cz) = worldf_to_chunk(position);
+        let curr_chunk = Vector2::new(cx, cz);
+        modified.sort_by(|a, b| {
+            let va = *a - curr_chunk;
+            let vb = *b - curr_chunk;
+
+            (va.x * va.x + va.y * va.y).cmp(&(vb.x * vb.x + vb.y * vb.y))
+        });
+
+        modified.iter().for_each(|v| listener.chunk_load(v.x, v.y));
     }
 }

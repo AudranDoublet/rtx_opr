@@ -16,8 +16,6 @@ use cubetracer::window::*;
 
 use ash::{version::DeviceV1_0, vk, Device};
 
-use rayon::prelude::*;
-
 const MAX_FRAMES_IN_FLIGHT: usize = 2;
 
 pub struct MyChunkListener {
@@ -298,18 +296,18 @@ impl BaseApp {
                                 .iter()
                                 .for_each(|(x, z)| self.chunk_mesher_client.request(*x, *z));
 
-                            while let Some((x, z, chunk)) = self.chunk_mesher_client.pull() {
-                                self.tracer.register_or_update_chunk(
-                                    &self.context, &self.swapchain, x, z, chunk
-                                );
-                            }
-
                             listener
                                 .unloaded_chunks
                                 .iter()
                                 .for_each(|(x, y)| self.tracer.delete_chunk(*x, *y));
 
                             listener.clear();
+                        }
+
+                        while let Some((x, z, chunk)) = self.chunk_mesher_client.pull() {
+                            self.tracer.register_or_update_chunk(
+                                &self.context, &self.swapchain, x, z, chunk
+                            );
                         }
 
                         // - Cube Tracer -
@@ -334,8 +332,8 @@ impl BaseApp {
                             if let Some(_) = self.draw_frame() {
                                 self.tracer.resize(&self.context, &self.swapchain);
                             }
-                            frame_counter.tick();
                         }
+                        frame_counter.tick();
                     }
                     winit::event::Event::DeviceEvent { event, .. } => self.input_handler.on_device_event(event),
                     winit::event::Event::WindowEvent { event, .. } => match event {

@@ -1,0 +1,112 @@
+texture_path: data/ # all textures should be in this path
+texture_extension: .png # all textures should have the same extension
+texture_normal_extension: _n.png # all textures normals should have the same extension
+texture_dimension: [512, 512] # if a texture doesn't match, it will be resized
+
+empty_blocks:
+    - Air
+
+    #FIXME
+    - Water
+    - LightWhite
+    - LightRed
+    - LightGreen
+    - LightBlue
+    - LightYellow
+    - LightCyan
+
+classic_blocks:
+    Stone:
+        side: "stone"
+    Grass:
+        side: "grass_side"
+        top: "grass_top"
+        bottom: "dirt"
+    Dirt:
+        side: "dirt"
+    Gravel:
+        side: "dirt"
+    Sand:
+        side: "sand"
+    Cactus:
+        side: "cactus_side"
+        top: "cactus_top"
+        bottom: "cactus_bottom"
+        width: 9
+    Snow:
+        side: "snow"
+        height: 1
+
+    OakLog:
+        side: "log_oak"
+        top: "log_oak_top"
+    AcaciaLog:
+        side: "log_acacia"
+        top: "log_acacia_top"
+    BigOakLog:
+        side: "log_big_oak"
+        top: "log_big_oak_top"
+    BirchLog:
+        side: "log_birch"
+        top: "log_birch_top"
+    JungleLog:
+        side: "log_jungle"
+        top: "log_jungle_top"
+    SpruceLog:
+        side: "log_spruce"
+        top: "log_spruce_top"
+
+    OakLeaves:
+        side: "leaves_oak"
+    AcaciaLeaves:
+        side: "leaves_acacia"
+    BigOakLeaves:
+        side: "leaves_big_oak"
+    BirchLeaves:
+        side: "leaves_birch"
+    JungleLeaves:
+        side: "leaves_jungle"
+    SpruceLeaves:
+        side: "leaves_spruce"
+
+    OakPlanks:
+        side: "planks_oak"
+    AcaciaPlanks:
+        side: "planks_acacia"
+    BigOakPlanks:
+        side: "planks_big_oak"
+    BirchPlanks:
+        side: "planks_birch"
+    JunglePlanks:
+        side: "planks_jungle"
+    SprucePlanks:
+        side: "planks_spruce"
+
+    Brick:
+        side: "brick"
+    StoneBricks:
+        side: "stonebrick"
+
+flower_blocks:
+    TallGrass:
+        texture: "tallgrass"
+    OrangeTulipe:
+        texture: "flower_tulip_orange"
+    PinkTulip:
+        texture: "flower_tulip_pink"
+    RedTulip:
+        texture: "flower_tulip_red"
+    WhiteTulip:
+        texture: "flower_tulip_white"
+    Dandelion:
+        texture: "flower_dandelion"
+    AzureBluet:
+        texture: "flower_houstonia"
+    OxeyeDaisy:
+        texture: "flower_oxeye_daisy"
+    BlueOrchid:
+        texture: "flower_blue_orchid"
+    Allium:
+        texture: "flower_allium"
+    Poppy:
+        texture: "flower_rose"

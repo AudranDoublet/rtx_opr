@@ -64,10 +64,8 @@ impl ChunkMesh {
         for y in 0..256 {
             for z in 0..16 {
                 for x in 0..16 {
-                    chunk
-                        .block_at_chunk(x, y, z)
-                        .block_renderer()
-                        .render(world, Vector3::new(x + cx, y, z + cz), &mut mesh);
+                    world.renderers[chunk.block_at_chunk(x, y, z) as usize]
+                         .render(world, Vector3::new(x + cx, y, z + cz), &mut mesh);
                 }
             }
         }
@@ -156,10 +154,10 @@ impl ChunkMesherClient {
     }
 
     pub fn pull(&self) -> Option<(i32, i32, ChunkMesh)> {
-        if let Ok(v) = self.receiver.try_recv() {
-            Some(v)
-        } else {
-            None
+        match self.receiver.try_recv() {
+            Ok(v) => Some(v),
+            Err(mpsc::TryRecvError::Empty) => None,
+            Err(e) => Err(e).expect("can't pull chunk mesh"),
         }
     }
 

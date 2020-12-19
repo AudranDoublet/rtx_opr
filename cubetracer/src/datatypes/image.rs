@@ -175,7 +175,7 @@ impl ImageVariable {
         context: &Arc<Context>,
         width: u32,
         height: u32,
-        paths: Vec<&str>,
+        paths: &Vec<String>,
     ) -> ImageVariable {
         let images = paths
              .iter()

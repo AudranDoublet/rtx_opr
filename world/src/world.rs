@@ -2,7 +2,7 @@ use nalgebra::{Vector2, Vector3};
 
 use std::{collections::HashMap, rc::Rc, sync::mpsc, thread};
 
-use crate::{world_to_chunk, Block, Chunk, ChunkListener, ChunkManager, Player};
+use crate::{world_to_chunk, Block, Chunk, ChunkListener, ChunkManager, Player, BlockRenderer, BlockConfig, TextureList};
 
 pub static mut WORLD: Option<Box<World>> = None;
 
@@ -27,14 +27,32 @@ pub struct World {
     chunks: HashMap<Vector2<i32>, Rc<Chunk>>,
     sender: mpsc::Sender<(bool, i32, i32)>,
     seed: isize,
+
+    pub textures: TextureList,
+    pub renderers: Vec<BlockRenderer>,
 }
 
 impl World {
     pub fn new(sender: mpsc::Sender<(bool, i32, i32)>, seed: isize) -> World {
+        let config: BlockConfig = serde_yaml::from_str(include_str!("block_data.yaml")).unwrap();
+
+        let mut textures = config.init_texture_list();
+        let mut renderers = Vec::new();
+
+        for i in 0..Block::StoneBricks as u32 {
+            let block = Block::from_id(i);
+
+            renderers.push(
+                config.build_block_renderer(block.to_string(), &mut textures)
+            );
+        }
+
         World {
             chunks: HashMap::new(),
             seed,
             sender,
+            renderers,
+            textures,
         }
     }
 

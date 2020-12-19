@@ -102,7 +102,7 @@ impl TextureVariable {
         context: &Arc<Context>,
         width: u32,
         height: u32,
-        paths: Vec<&str>,
+        paths: &Vec<String>,
     ) -> TextureVariable {
         let image = ImageVariable::array_from_paths(context, width, height, paths);
         context.execute_one_time_commands(|cmd|
@@ -291,7 +291,7 @@ impl TextureVariable {
 
 impl DataType for TextureVariable {
     fn write_descriptor_builder(&mut self) -> vk::WriteDescriptorSetBuilder {
-        self.info.push(
+        self.info = vec![ 
             {
                 let bld = vk::DescriptorImageInfo::builder()
                     .image_view(self.view)
@@ -303,7 +303,7 @@ impl DataType for TextureVariable {
                     bld
                 }.build()
             }
-        );
+        ];
 
         vk::WriteDescriptorSet::builder().image_info(&self.info)
     }

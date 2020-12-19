@@ -64,12 +64,12 @@ impl UniformVariable {
 
 impl DataType for UniformVariable {
     fn write_descriptor_builder(&mut self) -> vk::WriteDescriptorSetBuilder {
-        self.info.push(
+        self.info = vec![
             vk::DescriptorBufferInfo::builder()
                 .buffer(*self.device_buffer.buffer())
                 .range(vk::WHOLE_SIZE)
                 .build(),
-        );
+        ];
 
         vk::WriteDescriptorSet::builder().buffer_info(&self.info)
     }
