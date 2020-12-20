@@ -50,6 +50,9 @@ pub struct BlasVariable {
     is_build: bool,
     acceleration_structure: AccelerationStructure,
     instance_data: GeometryInstanceData,
+
+    triangle_data: BufferVariable,
+    textures: BufferVariable,
     _geometries: Vec<vk::GeometryNV>,
     _vertices: BufferVariable,
     _indices: BufferVariable,
@@ -60,6 +63,8 @@ impl BlasVariable {
         context: &Arc<Context>,
         vertices: BufferVariable,
         indices: BufferVariable,
+        triangle_data: BufferVariable,
+        textures: BufferVariable,
         vertex_stride: usize,
     ) -> BlasVariable {
         ///// Create geometries list
@@ -118,11 +123,21 @@ impl BlasVariable {
         BlasVariable {
             acceleration_structure,
             instance_data,
+            triangle_data,
+            textures,
             _geometries: geometries,
             is_build: false,
             _vertices: vertices,
             _indices: indices,
         }
+    }
+
+    pub fn triangle_data(&self) -> &BufferVariable {
+        &self.triangle_data
+    }
+
+    pub fn textures(&self) -> &BufferVariable {
+        &self.textures
     }
 
     pub fn bindings(&self) -> InstanceBinding {

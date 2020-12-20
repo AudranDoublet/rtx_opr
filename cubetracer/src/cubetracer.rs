@@ -16,6 +16,14 @@ use std::collections::HashMap;
 const SHADER_FOLDER: &str = "cubetracer/shaders";
 const MAX_INSTANCE_BINDING: usize = 1024;
 
+const DS_IDX_ATLAS: u32 = 0;
+const DS_IDX_IMAGE: u32 = 1;
+const DS_IDX_UNI_CAMERA: u32 = 2;
+const DS_IDX_UNI_SCENE: u32 = 3;
+const DS_IDX_TEXTURE: u32 = 4;
+const DS_IDX_BLAS_DATA: u32 = 5;
+const DS_IDX_BLAS_TEXTURES: u32 = 6;
+
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
     camera: Camera,
@@ -94,20 +102,37 @@ impl Cubetracer {
 
         let chunk = &self.chunks[&name];
         let vertices = BufferVariable::device_buffer(
-            "chunk_vertices".to_string(),
+            "blas_vertices".to_string(),
             context,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
             &chunk.vertices
         ).0;
 
         let indices = BufferVariable::device_buffer(
-            "chunk_indices".to_string(),
+            "blas_indices".to_string(),
             context,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
             &chunk.indices
         ).0;
 
-        let blas = BlasVariable::from_geometry(context, vertices, indices, std::mem::size_of::<[f32; 4]>());
+        let triangle_data = BufferVariable::device_buffer(
+            "blas_triangles_data".to_string(),
+            context,
+            vk::BufferUsageFlags::STORAGE_BUFFER,
+            &chunk.triangle_data
+        ).0;
+
+        let textures = BufferVariable::device_buffer(
+            "blas_textures".to_string(),
+            context,
+            vk::BufferUsageFlags::STORAGE_BUFFER,
+            &chunk.texture_vertices
+        ).0;
+        dbg!(&chunk.triangle_data[0]);
+
+        let blas = BlasVariable::from_geometry(
+            context, vertices, indices, triangle_data, textures, std::mem::size_of::<[f32; 4]>()
+        );
 
         if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
             acceleration_structure.register(name, blas);
@@ -135,6 +160,10 @@ impl Cubetracer {
     pub fn update(&mut self, context: &Arc<Context>) -> bool {
         if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
             if acceleration_structure.build(context, &mut self.local_instance_bindings) {
+                self.rtx_data.as_mut().unwrap().update_blas_data(
+                    &mut acceleration_structure.get_blas_data(),
+                    &mut acceleration_structure.get_blas_textures(),
+                );
             }
 
             self.rtx_data.as_mut().unwrap().uniform_scene.set(
@@ -186,6 +215,13 @@ impl RTXData {
     pub fn get_command_buffers(&self) -> &[vk::CommandBuffer] {
         &self.command_buffers
     }
+
+    pub fn update_blas_data(&mut self, data: &mut BufferVariableList, textures: &mut BufferVariableList) {
+        UpdateFactory::new(&self.context)
+            .register(DS_IDX_BLAS_DATA, vk::DescriptorType::STORAGE_BUFFER, data)
+            .register(DS_IDX_BLAS_TEXTURES, vk::DescriptorType::STORAGE_BUFFER, textures)
+            .update(&mut self.pipeline);
+    }
 }
 
 impl RTXData {
@@ -196,14 +232,11 @@ impl RTXData {
         acceleration_structure: &mut TlasVariable,
         texture_array: &mut TextureVariable,
     ) -> Self {
-        let local_instance_bindings = [InstanceBinding {
-            indices: vk::Buffer::null(),
-            triangles: vk::Buffer::null(),
-        }; MAX_INSTANCE_BINDING];
-
         let mut output_texture = TextureVariable::from_swapchain(context, swapchain);
         let mut uniform_camera = UniformVariable::new(&context, &camera.uniform());
-        let mut uniform_bindings = UniformVariable::new(&context, &local_instance_bindings);
+
+        let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
+
         let mut uniform_scene = UniformVariable::new(
             &context,
             &UniformScene {
@@ -212,34 +245,53 @@ impl RTXData {
         );
 
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
-            .binding(
+            .binding( // 0
+                DS_IDX_ATLAS,
                 vk::DescriptorType::ACCELERATION_STRUCTURE_NV,
+                1,
                 acceleration_structure,
                 &[ShaderType::Raygen, ShaderType::ClosestHit],
             )
-            .binding(
+            .binding( // 1
+                DS_IDX_IMAGE,
                 vk::DescriptorType::STORAGE_IMAGE,
+                1,
                 &mut output_texture,
                 &[ShaderType::Raygen],
             )
-            .binding(
+            .binding( // 2
+                DS_IDX_UNI_CAMERA,
                 vk::DescriptorType::UNIFORM_BUFFER,
+                1,
                 &mut uniform_camera,
                 &[ShaderType::Raygen],
             )
-            .binding(
+            .binding( // 3
+                DS_IDX_UNI_SCENE,
                 vk::DescriptorType::UNIFORM_BUFFER,
+                1,
                 &mut uniform_scene,
                 &[ShaderType::ClosestHit, ShaderType::Miss],
             )
-            .binding(
+            .binding( // 4
+                DS_IDX_TEXTURE,
                 vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                1,
                 texture_array,
                 &[ShaderType::ClosestHit],
             )
-            .binding(
-                vk::DescriptorType::UNIFORM_BUFFER,
-                &mut uniform_bindings,
+            .binding( // 5
+                DS_IDX_BLAS_DATA,
+                vk::DescriptorType::STORAGE_BUFFER,
+                max_nb_chunks as u32,
+                &mut BufferVariableList::empty(max_nb_chunks),
+                &[ShaderType::ClosestHit],
+            )
+            .binding( // 6
+                DS_IDX_BLAS_TEXTURES,
+                vk::DescriptorType::STORAGE_BUFFER,
+                max_nb_chunks as u32,
+                &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit],
             )
             .real_shader(ShaderType::Raygen, "raygen.rgen.spv")

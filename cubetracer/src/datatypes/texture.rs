@@ -307,6 +307,10 @@ impl DataType for TextureVariable {
 
         vk::WriteDescriptorSet::builder().image_info(&self.info)
     }
+
+    fn len(&self) -> usize {
+        1
+    }
 }
 
 impl Drop for TextureVariable {

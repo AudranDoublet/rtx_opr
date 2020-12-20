@@ -1,8 +1,10 @@
 mod builder;
+mod update_factory;
 mod shader;
 
 pub use builder::*;
 pub use shader::*;
+pub use update_factory::*;
 
 use std::sync::Arc;
 

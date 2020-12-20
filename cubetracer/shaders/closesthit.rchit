@@ -2,59 +2,48 @@
 #extension GL_NV_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : enable
 
+struct TriangleData {
+    uint material;
+    vec3 normal;
+    ivec3 texture_indices;
+};
+
 layout(location = 0) rayPayloadInNV vec3 hitValue;
 layout(location = 1) rayPayloadNV bool shadowed;
 
 hitAttributeNV vec3 attribs;
 
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
-//layout(binding = 3, set = 0) buffer Vertices { vec4 v[]; } vertices;
-//layout(binding = 4, set = 0) buffer Indices { uint i[]; } indices;
-
 layout(binding = 3, set = 0) uniform Uniforms {
     vec3 sunDirection;
 } scene;
 
 layout (binding = 4, set = 0) uniform sampler2DArray texture_array;
+layout (binding = 5, set = 0) buffer BlasTriangleData {
+    TriangleData data[];
+} blas_triangle_data[];
+layout (binding = 6, set = 0) buffer ChunkTextures {
+    vec3 data[];
+} blas_textures[];
 
-struct Vertex {
-  vec3 position;
-  vec3 normal;
-};
-
-/*
-Vertex unpack(uint index) {
-	vec4 d0 = vertices.v[2 * index + 0];
-	vec4 d1 = vertices.v[2 * index + 1];
-
-	Vertex v;
-	v.position = d0.xyz;
-	v.normal = d1.xyz;
-	return v;
-}
-*/
 
 const uint CULL_MASK = 0xff;
 const float T_MIN = 0.01;
 const float T_MAX = 100.0;
 
 void main() {
+    vec3 normal = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].normal;
     /*
-	ivec3 index = ivec3(indices.i[3 * gl_PrimitiveID], indices.i[3 * gl_PrimitiveID + 1], indices.i[3 * gl_PrimitiveID + 2]);
-
-	Vertex v0 = unpack(index.x);
-	Vertex v1 = unpack(index.y);
-	Vertex v2 = unpack(index.z);
-
   	// Interpolate and transform normal
 	vec3 barycentricCoords = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 	vec4 ogNormal = vec4(normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z), 0.0);
 	vec3 normal = normalize((gl_ObjectToWorldNV * ogNormal).xyz);
 
   	// Basic lighting
-	hitValue = vec3(max(dot(-scene.sunDirection, normal), 0.0)) * 0.8;
     */
-    hitValue = textureLod(texture_array, vec3(attribs.x, attribs.y, 0), 0.).xyz;
+
+    hitValue = vec3(max(abs(dot(-scene.sunDirection, normal)), 0.0)) * 0.8;
+    // hitValue = textureLod(texture_array, vec3(attribs.x, attribs.y, 0), 0.).xyz;
     //hitValue = vec3(1);
 
 	shadowed = true;

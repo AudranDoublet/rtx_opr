@@ -73,6 +73,10 @@ impl DataType for UniformVariable {
 
         vk::WriteDescriptorSet::builder().buffer_info(&self.info)
     }
+
+    fn len(&self) -> usize {
+        1
+    }
 }
 
 unsafe fn any_as_u8_slice<T: Sized>(any: &T) -> &[u8] {

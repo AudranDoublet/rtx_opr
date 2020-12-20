@@ -34,7 +34,6 @@ impl<'a> BuilderWithType for vk::RayTracingShaderGroupCreateInfoNVBuilder<'a> {
 
 pub struct PipelineBuilder<'a> {
     shader_group_id: u32,
-    binding_id: u32,
     folder: String,
 
     context: Arc<Context>,
@@ -50,7 +49,6 @@ impl<'a> PipelineBuilder<'a> {
     pub fn new(context: &Arc<Context>, folder: &str) -> PipelineBuilder<'a> {
         PipelineBuilder {
             shader_group_id: 0,
-            binding_id: 0,
 
             context: Arc::clone(context),
             folder: folder.to_string(),
@@ -102,7 +100,9 @@ impl<'a> PipelineBuilder<'a> {
     /// add a new memory binding for shaders
     pub fn binding(
         &mut self,
+        idx: u32,
         desc_type: vk::DescriptorType,
+        descriptor_count: u32,
         variable: &'a mut dyn DataType,
         stages: &[ShaderType],
     ) -> &mut Self {
@@ -113,9 +113,9 @@ impl<'a> PipelineBuilder<'a> {
 
         self.bindings.push(
             vk::DescriptorSetLayoutBinding::builder()
-                .binding(self.binding_id)
+                .binding(idx)
                 .descriptor_type(desc_type)
-                .descriptor_count(1)
+                .descriptor_count(descriptor_count)
                 .stage_flags(stage_flags)
                 .build(),
         );
@@ -123,7 +123,6 @@ impl<'a> PipelineBuilder<'a> {
         *self.descriptor_counts.entry(desc_type).or_insert(0) += 1;
         self.variables.push((desc_type, variable));
 
-        self.binding_id += 1;
         self
     }
 

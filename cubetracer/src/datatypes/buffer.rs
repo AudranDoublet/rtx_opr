@@ -267,6 +267,10 @@ impl DataType for BufferVariable {
 
         vk::WriteDescriptorSet::builder().buffer_info(&self.info)
     }
+
+    fn len(&self) -> usize {
+        1
+    }
 }
 
 impl Drop for BufferVariable {

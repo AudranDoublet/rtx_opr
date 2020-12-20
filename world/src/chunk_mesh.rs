@@ -25,7 +25,8 @@ fn add_vertice(v: Vector3<i32>, vertices: &mut Vec<[f32; 4]>, map: &mut HashMap<
 #[repr(C)]
 pub struct TriangleData {
     pub material: u32,
-    pub normal: [f32; 4],
+    pub normal: [f32; 3],
+    pub texture_indices: [u32; 4],
 }
 
 pub struct ChunkMesh {
@@ -35,7 +36,6 @@ pub struct ChunkMesh {
 
     pub vertices: Vec<[f32; 4]>,
     pub indices: Vec<u32>,
-    pub texture_indices: Vec<u32>,
 
     pub texture_vertices: Vec<[f32; 4]>,
     pub triangle_data: Vec<TriangleData>,
@@ -48,7 +48,6 @@ impl ChunkMesh {
             textures_map: HashMap::new(),
             vertices: Vec::new(),
             indices: Vec::new(),
-            texture_indices: Vec::new(),
             texture_vertices: Vec::new(),
             triangle_data: Vec::new(),
         }
@@ -83,6 +82,8 @@ impl ChunkMesh {
         let normal_sum = normal.sum() as f32;
         let texture_id = face_properties.texture_id as i32;
 
+        let mut texture_indices = vec![];
+
         // add triangle vertices
         for (v, t) in &[(v1, t1), (v2, t2), (v3, t3)] {
             let t = Vector3::new(texture_id, t.x, t.y);
@@ -90,15 +91,17 @@ impl ChunkMesh {
             self.indices.push(
                 add_vertice(*v, &mut self.vertices, &mut self.vertices_map),
             );
-            self.texture_indices.push(
+
+            texture_indices.push(
                 add_vertice(t, &mut self.texture_vertices, &mut self.textures_map),
             );
         }
 
         // add triangle data
         self.triangle_data.push(TriangleData {
-            normal: [normal.x as f32 / normal_sum, normal.y as f32 / normal_sum, normal.z as f32 / normal_sum, 0.0],
+            normal: [normal.x as f32 / normal_sum, normal.y as f32 / normal_sum, normal.z as f32 / normal_sum],
             material: face_properties.material_id,
+            texture_indices: [texture_indices[0], texture_indices[1], texture_indices[2], 0],
         });
     }
 

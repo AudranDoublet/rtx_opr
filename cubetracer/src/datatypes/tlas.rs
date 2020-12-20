@@ -51,6 +51,24 @@ impl TlasVariable {
         }
     }
 
+    pub fn get_blas_textures(&self) -> BufferVariableList {
+        BufferVariableList::new(
+            self.blas_map.values()
+            .into_iter()
+            .map(|blas| *blas.textures().buffer())
+            .collect()
+        )
+    }
+
+    pub fn get_blas_data(&self) -> BufferVariableList {
+        BufferVariableList::new(
+            self.blas_map.values()
+            .into_iter()
+            .map(|blas| *blas.triangle_data().buffer())
+            .collect()
+        )
+    }
+
     /// build or rebuild the acceleration structure
     pub fn build(&mut self, context: &Arc<Context>, bindings: &mut [InstanceBinding]) -> bool {
         if !self.modified {
@@ -185,5 +203,9 @@ impl DataType for TlasVariable {
         vk::WriteDescriptorSet::builder().push_next(
             self.info.as_mut().unwrap()
         )
+    }
+
+    fn len(&self) -> usize {
+        1
     }
 }
