@@ -128,7 +128,6 @@ impl Cubetracer {
             vk::BufferUsageFlags::STORAGE_BUFFER,
             &chunk.texture_vertices
         ).0;
-        dbg!(&chunk.triangle_data[0]);
 
         let blas = BlasVariable::from_geometry(
             context, vertices, indices, triangle_data, textures, std::mem::size_of::<[f32; 4]>()

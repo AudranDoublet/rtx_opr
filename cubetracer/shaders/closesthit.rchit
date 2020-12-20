@@ -3,9 +3,9 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 
 struct TriangleData {
-    uint material;
     vec3 normal;
     ivec3 texture_indices;
+    uint material;
 };
 
 layout(location = 0) rayPayloadInNV vec3 hitValue;
@@ -42,8 +42,8 @@ void main() {
   	// Basic lighting
     */
 
-    hitValue = vec3(max(abs(dot(-scene.sunDirection, normal)), 0.0)) * 0.8;
-    // hitValue = textureLod(texture_array, vec3(attribs.x, attribs.y, 0), 0.).xyz;
+    // hitValue =  * 0.8;
+    hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, vec3(attribs.x, attribs.y, 0), 0.).xyz;
     //hitValue = vec3(1);
 
 	shadowed = true;

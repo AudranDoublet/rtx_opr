@@ -24,9 +24,9 @@ fn add_vertice(v: Vector3<i32>, vertices: &mut Vec<[f32; 4]>, map: &mut HashMap<
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct TriangleData {
+    pub normal: [f32; 4],
+    pub texture_indices: [u32; 3],
     pub material: u32,
-    pub normal: [f32; 3],
-    pub texture_indices: [u32; 4],
 }
 
 pub struct ChunkMesh {
@@ -99,9 +99,9 @@ impl ChunkMesh {
 
         // add triangle data
         self.triangle_data.push(TriangleData {
-            normal: [normal.x as f32 / normal_sum, normal.y as f32 / normal_sum, normal.z as f32 / normal_sum],
+            normal: [normal.x as f32 / normal_sum, normal.y as f32 / normal_sum, normal.z as f32 / normal_sum, 0.],
             material: face_properties.material_id,
-            texture_indices: [texture_indices[0], texture_indices[1], texture_indices[2], 0],
+            texture_indices: [texture_indices[0], texture_indices[1], texture_indices[2]],
         });
     }
 
