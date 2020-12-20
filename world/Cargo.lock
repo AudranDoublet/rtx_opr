@@ -131,26 +131,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "glsl-layout"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a09fa28f366501404e78686df09026aa4a2a729e25707f230273d97ff9933bc"
-dependencies = [
- "glsl-layout-derive",
-]
-
-[[package]]
-name = "glsl-layout-derive"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "def9469f08de9930cae4c4e7d88b059cce0765a0ffdf6108ecc96568e801516d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "hermit-abi"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -491,7 +471,6 @@ version = "0.1.0"
 dependencies = [
  "dashmap",
  "flate2",
- "glsl-layout",
  "lazy_static",
  "nalgebra",
  "perlin",

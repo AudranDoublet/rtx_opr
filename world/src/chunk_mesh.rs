@@ -86,7 +86,7 @@ impl ChunkMesh {
 
         // add triangle vertices
         for (v, t) in &[(v1, t1), (v2, t2), (v3, t3)] {
-            let t = Vector3::new(texture_id, t.x, t.y);
+            let t = Vector3::new(t.x, t.y, texture_id);
 
             self.indices.push(
                 add_vertice(*v, &mut self.vertices, &mut self.vertices_map),

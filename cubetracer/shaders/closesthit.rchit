@@ -32,7 +32,14 @@ const float T_MIN = 0.01;
 const float T_MAX = 100.0;
 
 void main() {
+    // FIXME: maybe we should avoid deref 2 times and store the struct?? 
     vec3 normal = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].normal;
+    ivec3 texture_indices = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].texture_indices;
+
+    vec2 u = (blas_textures[gl_InstanceID].data[texture_indices.y] - blas_textures[gl_InstanceID].data[texture_indices.x]).xy;
+    vec2 v = (blas_textures[gl_InstanceID].data[texture_indices.z] - blas_textures[gl_InstanceID].data[texture_indices.x]).xy;
+    float z = blas_textures[gl_InstanceID].data[texture_indices.x].z;
+
     /*
   	// Interpolate and transform normal
 	vec3 barycentricCoords = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
@@ -43,7 +50,7 @@ void main() {
     */
 
     // hitValue =  * 0.8;
-    hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, vec3(attribs.x, attribs.y, 0), 0.).xyz;
+    hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, vec3((u+v)*attribs.xy, z), 0.).xyz;
     //hitValue = vec3(1);
 
 	shadowed = true;
