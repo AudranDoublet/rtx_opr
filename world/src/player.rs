@@ -338,7 +338,7 @@ impl Player {
                             if allowed {
                                 changed = true;
 
-                                world.set_block_at(pos, btype);
+                                world.set_block_at(pos, Block::Cactus);
                                 self.block_place_cooldown = BLOCK_PLACE_COOLDOWN;
                                 self._debug_light_type =
                                     (self._debug_light_type + 1) % Block::get_nb_lights();

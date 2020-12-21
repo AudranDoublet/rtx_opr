@@ -84,6 +84,7 @@ impl BlockRenderer {
 
         width_offset: i32,
         height: i32,
+        height_offset: i32,
 
         position: Vector3<i32>,
         up: Vector3<i32>,
@@ -96,9 +97,9 @@ impl BlockRenderer {
             position + up,
             position + right,
             // textures
-            Vector2::new(width_offset     , 0),
-            Vector2::new(width_offset     , height),
-            Vector2::new(10 - width_offset, 0),
+            Vector2::new(width_offset     , height_offset),
+            Vector2::new(width_offset     , height - height_offset),
+            Vector2::new(10 - width_offset, height_offset),
             // normal
             up.cross(&right),
         );
@@ -110,9 +111,9 @@ impl BlockRenderer {
             position + up,
             position + right,
             // textures
-            Vector2::new(10 - width_offset, height),
-            Vector2::new(width_offset     , height),
-            Vector2::new(10 - width_offset, 0),
+            Vector2::new(10 - width_offset, height - height_offset),
+            Vector2::new(width_offset     , height - height_offset),
+            Vector2::new(10 - width_offset, height_offset),
             // normal
             up.cross(&right),
         );
@@ -135,7 +136,7 @@ impl BlockRenderer {
                     let width_offset = (10 - width) / 2;
 
                     // up/down faces
-                    let (height, up, right, position) = if rel.y != 0 {
+                    let (height, height_offset, up, right, position) = if rel.y != 0 {
                         // compute starting corner of the face
                         let position = position * 10
                                             // up face: change y
@@ -144,7 +145,7 @@ impl BlockRenderer {
                                         + Vector3::z() * width_offset
                                         + Vector3::x() * width_offset;
 
-                        (*width, Vector3::z(), Vector3::x(), position)
+                        (*width, width_offset, Vector3::z(), Vector3::x(), position)
                     } else { // other faces
                         // direction of `right` vector (up vector is always (0, 1, 0))
                         let right = rel.cross(&Vector3::y()); 
@@ -156,7 +157,7 @@ impl BlockRenderer {
                         // add width offsets
                         let dpos = dpos - rel * width_offset + right * width_offset;
 
-                        (*height, Vector3::y(), right, position * 10 + dpos)
+                        (*height, 0, Vector3::y(), right, position * 10 + dpos)
                     };
 
                     self.generate_face(
@@ -164,6 +165,7 @@ impl BlockRenderer {
                         &faces[i],
                         width_offset,
                         height,
+                        height_offset,
                         position,
                         up * height,
                         right * *width,

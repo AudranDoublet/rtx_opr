@@ -193,7 +193,7 @@ impl Block {
     pub fn is_opaque(&self) -> bool {
         match self {
             Block::Air | Block::Water | Block::Snow => false,
-            Block::TallGrass => false,
+            Block::TallGrass | Block::Cactus => false,
             b if b.is_leaves() => false,
             b if b.is_flower() => false,
             _ => true,

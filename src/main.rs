@@ -1,5 +1,3 @@
-#![feature(clamp)]
-
 #[macro_use]
 extern crate clap;
 

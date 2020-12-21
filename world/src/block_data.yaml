@@ -32,7 +32,7 @@ classic_blocks:
         side: "cactus_side"
         top: "cactus_top"
         bottom: "cactus_bottom"
-        width: 9
+        width: 8
     Snow:
         side: "snow"
         height: 1
