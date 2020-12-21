@@ -4,7 +4,9 @@
 
 struct TriangleData {
     vec3 normal;
-    ivec3 texture_indices;
+    vec3 tex_orig;
+    vec3 tex_u;
+    vec3 tex_v;
     uint material;
 };
 
@@ -34,24 +36,12 @@ const float T_MAX = 100.0;
 void main() {
     // FIXME: maybe we should avoid deref 2 times and store the struct?? 
     vec3 normal = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].normal;
-    ivec3 texture_indices = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].texture_indices;
 
-    vec2 u = (blas_textures[gl_InstanceID].data[texture_indices.y] - blas_textures[gl_InstanceID].data[texture_indices.x]).xy;
-    vec2 v = (blas_textures[gl_InstanceID].data[texture_indices.z] - blas_textures[gl_InstanceID].data[texture_indices.x]).xy;
-    float z = blas_textures[gl_InstanceID].data[texture_indices.x].z;
+    vec3 orig = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_orig
+                    +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_u * attribs.x
+                    +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
 
-    /*
-  	// Interpolate and transform normal
-	vec3 barycentricCoords = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
-	vec4 ogNormal = vec4(normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z), 0.0);
-	vec3 normal = normalize((gl_ObjectToWorldNV * ogNormal).xyz);
-
-  	// Basic lighting
-    */
-
-    // hitValue =  * 0.8;
-    hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, vec3((u+v)*attribs.xy, z), 0.).xyz;
-    //hitValue = vec3(1);
+    hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, orig, 0.).xyz;
 
 	shadowed = true;
 

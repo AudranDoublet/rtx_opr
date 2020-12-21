@@ -106,12 +106,12 @@ impl BlockRenderer {
         mesh.add_triangle(
             face_properties,
             // positions
-            position + up,
             position + up + right,
+            position + up,
             position + right,
             // textures
-            Vector2::new(width_offset     , height),
             Vector2::new(10 - width_offset, height),
+            Vector2::new(width_offset     , height),
             Vector2::new(10 - width_offset, 0),
             // normal
             up.cross(&right),

@@ -25,14 +25,15 @@ fn add_vertice(v: Vector3<i32>, vertices: &mut Vec<[f32; 4]>, map: &mut HashMap<
 #[repr(C)]
 pub struct TriangleData {
     pub normal: [f32; 4],
-    pub texture_indices: [u32; 3],
+    pub tex_orig: [f32; 4],
+    pub tex_u: [f32; 4],
+    pub tex_v: [f32; 3],
     pub material: u32,
 }
 
 pub struct ChunkMesh {
     // only for build
     vertices_map: HashMap<Vector3<i32>, u32>,
-    textures_map: HashMap<Vector3<i32>, u32>,
 
     pub vertices: Vec<[f32; 4]>,
     pub indices: Vec<u32>,
@@ -45,10 +46,9 @@ impl ChunkMesh {
     pub fn new() -> ChunkMesh {
         ChunkMesh {
             vertices_map: HashMap::new(),
-            textures_map: HashMap::new(),
             vertices: Vec::new(),
             indices: Vec::new(),
-            texture_vertices: Vec::new(),
+            texture_vertices: vec![[0.0, 0.0, 0.0, 0.0]],
             triangle_data: Vec::new(),
         }
     }
@@ -80,20 +80,16 @@ impl ChunkMesh {
         normal: Vector3<i32>,
     ) {
         let normal_sum = normal.sum() as f32;
-        let texture_id = face_properties.texture_id as i32;
+        let texture_id = face_properties.texture_id as f32 * 10.;
 
-        let mut texture_indices = vec![];
+        let tex_origin = Vector3::new(t1.x as f32, 10. - t1.y as f32, texture_id) / 10.;
+        let tex_u = Vector3::new(t2.x as f32, 10. - t2.y as f32, texture_id) / 10. - tex_origin;
+        let tex_v = Vector3::new(t3.x as f32, 10. - t3.y as f32, texture_id) / 10. - tex_origin;
 
         // add triangle vertices
-        for (v, t) in &[(v1, t1), (v2, t2), (v3, t3)] {
-            let t = Vector3::new(t.x, t.y, texture_id);
-
+        for (v, _) in &[(v1, t1), (v2, t2), (v3, t3)] {
             self.indices.push(
                 add_vertice(*v, &mut self.vertices, &mut self.vertices_map),
-            );
-
-            texture_indices.push(
-                add_vertice(t, &mut self.texture_vertices, &mut self.textures_map),
             );
         }
 
@@ -101,7 +97,9 @@ impl ChunkMesh {
         self.triangle_data.push(TriangleData {
             normal: [normal.x as f32 / normal_sum, normal.y as f32 / normal_sum, normal.z as f32 / normal_sum, 0.],
             material: face_properties.material_id,
-            texture_indices: [texture_indices[0], texture_indices[1], texture_indices[2]],
+            tex_orig: [tex_origin.x, tex_origin.y, tex_origin.z, 0.0],
+            tex_u: [tex_u.x, tex_u.y, 0.0, 0.0],
+            tex_v: [tex_v.x, tex_v.y, 0.0],
         });
     }
 
