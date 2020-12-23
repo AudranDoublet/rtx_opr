@@ -45,23 +45,23 @@ void main() {
 
     hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, orig, lod).xyz;
 
-	shadowed = true;
+    shadowed = true;
 
-	// Cast new ray in light direction
-	vec3 origin = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
+    // Cast new ray in light direction
+    vec3 origin = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
 
-	traceNV(
-		topLevelAS, 
-		gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV | gl_RayFlagsSkipClosestHitShaderNV, 
-		CULL_MASK, 
-		1, 0, 1, 
-		origin, 
-		T_MIN, 
-		-scene.sunDirection, 
-		T_MAX, 
-		1);
+    traceNV(
+        topLevelAS, 
+        gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV | gl_RayFlagsSkipClosestHitShaderNV, 
+        CULL_MASK, 
+        1, 0, 1, 
+        origin, 
+        T_MIN, 
+        -scene.sunDirection, 
+        T_MAX, 
+        1);
 
-	if (shadowed) {
-		hitValue *= 0.3;
-	}
+    if (shadowed) {
+        hitValue *= 0.3;
+    }
 }

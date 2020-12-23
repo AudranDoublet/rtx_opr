@@ -6,6 +6,7 @@ use std::{path::Path, sync::Arc};
 pub enum ShaderType {
     Raygen,
     ClosestHit,
+    AnyHit,
     Miss,
 }
 
@@ -14,6 +15,7 @@ impl ShaderType {
         match self {
             ShaderType::Raygen => vk::ShaderStageFlags::RAYGEN_NV,
             ShaderType::ClosestHit => vk::ShaderStageFlags::CLOSEST_HIT_NV,
+            ShaderType::AnyHit => vk::ShaderStageFlags::ANY_HIT_NV,
             ShaderType::Miss => vk::ShaderStageFlags::MISS_NV,
         }
     }
@@ -22,6 +24,7 @@ impl ShaderType {
         match self {
             ShaderType::Raygen => vk::RayTracingShaderGroupTypeNV::GENERAL,
             ShaderType::ClosestHit => vk::RayTracingShaderGroupTypeNV::TRIANGLES_HIT_GROUP,
+            ShaderType::AnyHit => vk::RayTracingShaderGroupTypeNV::TRIANGLES_HIT_GROUP,
             ShaderType::Miss => vk::RayTracingShaderGroupTypeNV::GENERAL,
         }
     }
