@@ -41,7 +41,9 @@ void main() {
                     +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_u * attribs.x
                     +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
 
-    hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, orig, 0.).xyz;
+    float lod = gl_RayTmaxNV / 10.0;
+
+    hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, orig, lod).xyz;
 
 	shadowed = true;
 
