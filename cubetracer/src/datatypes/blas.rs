@@ -90,7 +90,7 @@ impl BlasVariable {
                     )
                     .build(),
             )
-            .flags(vk::GeometryFlagsNV::OPAQUE)
+            .flags(vk::GeometryFlagsNV::NO_DUPLICATE_ANY_HIT_INVOCATION)
             .build()
         ];
 

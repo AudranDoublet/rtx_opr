@@ -1,14 +1,9 @@
 #version 460
 #extension GL_NV_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_GOOGLE_include_directive : enable
 
-struct TriangleData {
-    vec3 normal;
-    vec3 tex_orig;
-    vec3 tex_u;
-    vec3 tex_v;
-    uint material;
-};
+#include "triangle_data.h"
 
 layout(location = 0) rayPayloadInNV vec3 hitValue;
 layout(location = 1) rayPayloadNV bool shadowed;

@@ -26,7 +26,7 @@ void main() {
     const float tmin = 0.1;
     const float tmax = 200.0;
 
-    traceNV(topLevelAS, gl_RayFlagsOpaqueNV, cullMask, 0, 0, 0, origin, tmin, direction, tmax, 0);
+    traceNV(topLevelAS, gl_RayFlagsNoneNV, cullMask, 0, 0, 0, origin, tmin, direction, tmax, 0);
 
     imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(hitValue, 0.0));
 }

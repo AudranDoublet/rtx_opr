@@ -293,11 +293,11 @@ impl RTXData {
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit],
             )
-            .real_shader(ShaderType::Raygen, "raygen.rgen.spv")
-            .real_shader(ShaderType::Miss, "miss.rmiss.spv")
-            .real_shader(ShaderType::Miss, "shadowmiss.rmiss.spv")
-            .real_shader(ShaderType::ClosestHit, "closesthit.rchit.spv")
-            .fake_shader(ShaderType::ClosestHit)
+            .general_shader(ShaderType::Raygen, "raygen.rgen.spv")
+            .general_shader(ShaderType::Miss, "miss.rmiss.spv")
+            .general_shader(ShaderType::Miss, "shadowmiss.rmiss.spv")
+            .hit_shaders(Some("closesthit.rchit.spv"), Some("anyhit.rahit.spv"))
+            .hit_shaders(None, None)
             .build(2);
 
         let mut rtx = Self {

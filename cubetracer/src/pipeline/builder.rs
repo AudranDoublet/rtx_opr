@@ -11,20 +11,39 @@ use crate::pipeline::*;
 
 use std::collections::HashMap;
 
+enum ShaderGroup {
+    Hit {
+        any_hit: Option<u32>,
+        closest_hit: Option<u32>,
+        intersection: Option<u32>,
+    },
+    General (u32),
+}
+
+impl ShaderGroup {
+    pub fn group(&self) -> vk::RayTracingShaderGroupTypeNV {
+        match self {
+            ShaderGroup::General (..) => vk::RayTracingShaderGroupTypeNV::GENERAL,
+            ShaderGroup::Hit {..} => vk::RayTracingShaderGroupTypeNV::TRIANGLES_HIT_GROUP,
+        }
+    }
+}
+
 trait BuilderWithType {
-    fn shader_with_type(self, i: u32, s_type: ShaderType) -> Self;
+    fn shader_with_type(self, s_type: &ShaderGroup) -> Self;
 }
 
 impl<'a> BuilderWithType for vk::RayTracingShaderGroupCreateInfoNVBuilder<'a> {
-    fn shader_with_type(self, i: u32, s_type: ShaderType) -> Self {
+    fn shader_with_type(self, s_type: &ShaderGroup) -> Self {
         match s_type {
-            ShaderType::ClosestHit => self
-                .closest_hit_shader(i)
+            ShaderGroup::Hit { any_hit, closest_hit, intersection } => self
                 .general_shader(vk::SHADER_UNUSED_NV)
-                .any_hit_shader(vk::SHADER_UNUSED_NV)
-                .intersection_shader(vk::SHADER_UNUSED_NV),
-            _ => self
-                .general_shader(i)
+                .closest_hit_shader(closest_hit.unwrap_or(vk::SHADER_UNUSED_NV))
+                .any_hit_shader(any_hit.unwrap_or(vk::SHADER_UNUSED_NV))
+                .intersection_shader(intersection.unwrap_or(vk::SHADER_UNUSED_NV)),
+
+            ShaderGroup::General (i) => self
+                .general_shader(*i)
                 .closest_hit_shader(vk::SHADER_UNUSED_NV)
                 .any_hit_shader(vk::SHADER_UNUSED_NV)
                 .intersection_shader(vk::SHADER_UNUSED_NV),
@@ -33,7 +52,6 @@ impl<'a> BuilderWithType for vk::RayTracingShaderGroupCreateInfoNVBuilder<'a> {
 }
 
 pub struct PipelineBuilder<'a> {
-    shader_group_id: u32,
     folder: String,
 
     context: Arc<Context>,
@@ -42,20 +60,21 @@ pub struct PipelineBuilder<'a> {
     variables: Vec<(vk::DescriptorType, &'a mut dyn DataType)>,
     descriptor_counts: HashMap<vk::DescriptorType, u32>,
     bindings: Vec<vk::DescriptorSetLayoutBinding>,
-    shaders: Vec<(u32, ShaderType, Option<ShaderModule>)>,
+
+    shaders: Vec<(ShaderType, ShaderModule)>,
+    shader_groups: Vec<ShaderGroup>,
 }
 
 impl<'a> PipelineBuilder<'a> {
     pub fn new(context: &Arc<Context>, folder: &str) -> PipelineBuilder<'a> {
         PipelineBuilder {
-            shader_group_id: 0,
-
             context: Arc::clone(context),
             folder: folder.to_string(),
 
             descriptor_counts: HashMap::new(),
             bindings: Vec::new(),
             shaders: Vec::new(),
+            shader_groups: Vec::new(),
             variables: Vec::new(),
 
             entry_point: CString::new("main").unwrap(),
@@ -66,16 +85,14 @@ impl<'a> PipelineBuilder<'a> {
     fn stages(&self) -> Vec<vk::PipelineShaderStageCreateInfo> {
         let mut stages = Vec::new();
 
-        for (_, shader_type, shader) in &self.shaders {
-            if let Some(shader) = shader {
-                stages.push(
-                    vk::PipelineShaderStageCreateInfo::builder()
-                        .stage(shader_type.stage())
-                        .module(shader.module())
-                        .name(&self.entry_point)
-                        .build(),
-                );
-            }
+        for (shader_type, shader) in &self.shaders {
+            stages.push(
+                vk::PipelineShaderStageCreateInfo::builder()
+                    .stage(shader_type.stage())
+                    .module(shader.module())
+                    .name(&self.entry_point)
+                    .build(),
+            );
         }
 
         stages
@@ -85,11 +102,11 @@ impl<'a> PipelineBuilder<'a> {
     fn groups(&self) -> Vec<vk::RayTracingShaderGroupCreateInfoNV> {
         let mut groups = Vec::new();
 
-        for (shader_group_id, shader_type, _) in &self.shaders {
+        for shader_group in &self.shader_groups {
             groups.push(
                 vk::RayTracingShaderGroupCreateInfoNV::builder()
-                    .ty(shader_type.group())
-                    .shader_with_type(*shader_group_id, *shader_type)
+                    .ty(shader_group.group())
+                    .shader_with_type(shader_group)
                     .build(),
             );
         }
@@ -126,27 +143,41 @@ impl<'a> PipelineBuilder<'a> {
         self
     }
 
-    /// load and crate a shader
-    pub fn real_shader(&mut self, shader_type: ShaderType, name: &str) -> &mut Self {
+    fn load_shader(&mut self, shader_type: ShaderType, name: &str) -> u32 {
         let shader = ShaderModule::new(
             Arc::clone(&self.context),
             format!("{}/{}", self.folder, name),
         );
 
-        self.shaders
-            .push((self.shader_group_id, shader_type, Some(shader)));
-        self.shader_group_id += 1;
+        self.shaders.push((shader_type, shader));
+        self.shaders.len() as u32 - 1
+    }
+
+    /// load and crate a shader
+    pub fn general_shader(&mut self, shader_type: ShaderType, name: &str) -> &mut Self {
+        let shader_id = self.load_shader(shader_type, name);
+
+        self.shader_groups.push(ShaderGroup::General(shader_id));
         self
     }
 
-    /// create a `fake` shader; the shader won't be called
-    pub fn fake_shader(&mut self, shader_type: ShaderType) -> &mut Self {
-        if self.shader_group_id == 0 {
-            panic!("can't create a fake shader when no other shader has been created");
-        }
+    pub fn hit_shaders(&mut self, closest_hit: Option<&str>, any_hit: Option<&str>) -> &mut Self {
+        let closest_hit = match closest_hit {
+            Some(name) => Some(self.load_shader(ShaderType::ClosestHit, name)),
+            None => Some(self.shaders.len() as u32 - 2)
+        };
 
-        self.shaders
-            .push((self.shader_group_id - 1, shader_type, None));
+        let any_hit = match any_hit {
+            Some(name) => Some(self.load_shader(ShaderType::AnyHit, name)),
+            None => None
+        };
+
+        self.shader_groups.push(ShaderGroup::Hit {
+            any_hit,
+            closest_hit,
+            intersection: None,
+        });
+
         self
     }
 
