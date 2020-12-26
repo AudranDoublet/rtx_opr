@@ -256,14 +256,14 @@ impl<'a> PipelineBuilder<'a> {
         };
 
         let shader_group_handle_size = rt_properties.shader_group_handle_size;
-        let stb_size = shader_group_handle_size * 5;
+        let stb_size = shader_group_handle_size * self.shader_groups.len() as u32;
 
         let mut shader_handles = Vec::new();
         shader_handles.resize(stb_size as _, 0u8);
         unsafe {
             self.context
                 .ray_tracing()
-                .get_ray_tracing_shader_group_handles(pipeline, 0, 5, &mut shader_handles)
+                .get_ray_tracing_shader_group_handles(pipeline, 0, self.shader_groups.len() as u32, &mut shader_handles)
                 .expect("Failed to get rt shader group handles")
         };
 
