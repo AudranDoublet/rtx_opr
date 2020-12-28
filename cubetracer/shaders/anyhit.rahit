@@ -19,12 +19,13 @@ layout (binding = 6, set = 0) buffer ChunkTextures {
 
 
 void main() {
-    /*
     vec3 orig = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_orig
                     +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_u * attribs.x
                     +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
 
     float lod = gl_RayTmaxNV / 10.0;
     float alpha = textureLod(texture_array, orig, lod).a;
-    */
+
+    if (alpha < 0.5)
+        ignoreIntersectionNV();
 }

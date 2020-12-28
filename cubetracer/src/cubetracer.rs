@@ -277,21 +277,21 @@ impl RTXData {
                 vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                 1,
                 texture_array,
-                &[ShaderType::ClosestHit],
+                &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
             .binding( // 5
                 DS_IDX_BLAS_DATA,
                 vk::DescriptorType::STORAGE_BUFFER,
                 max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
-                &[ShaderType::ClosestHit],
+                &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
             .binding( // 6
                 DS_IDX_BLAS_TEXTURES,
                 vk::DescriptorType::STORAGE_BUFFER,
                 max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
-                &[ShaderType::ClosestHit],
+                &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
             .general_shader(ShaderType::Raygen, "raygen.rgen.spv")
             .general_shader(ShaderType::Miss, "miss.rmiss.spv")
