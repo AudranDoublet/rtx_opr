@@ -23,4 +23,6 @@ pub struct RaytracerPipeline {
     pub descriptor_sets: Vec<vk::DescriptorSet>,
     pub desc_types: Vec<vk::DescriptorType>,
     pub context: Arc<Context>,
+    pub miss_offset: usize,
+    pub hit_offset: usize,
 }

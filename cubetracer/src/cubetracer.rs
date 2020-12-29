@@ -379,8 +379,8 @@ impl RTXData {
                 // Trace rays
                 let shader_group_handle_size = self.pipeline.rt_properties.shader_group_handle_size;
                 let raygen_offset = 0;
-                let miss_offset = shader_group_handle_size;
-                let hit_offset = 3 * shader_group_handle_size;
+                let miss_offset = self.pipeline.miss_offset as u32 * shader_group_handle_size;
+                let hit_offset = self.pipeline.hit_offset as u32 * shader_group_handle_size;
 
                 unsafe {
                     let sbt_buffer = *self.pipeline.shader_binding_table_buffer.buffer();

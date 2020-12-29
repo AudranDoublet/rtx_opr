@@ -2,7 +2,7 @@ use crate::context::Context;
 use ash::{version::DeviceV1_0, vk};
 use std::{path::Path, sync::Arc};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum ShaderType {
     Raygen,
     ClosestHit,

@@ -61,6 +61,9 @@ pub struct PipelineBuilder<'a> {
     descriptor_counts: HashMap<vk::DescriptorType, u32>,
     bindings: Vec<vk::DescriptorSetLayoutBinding>,
 
+    miss_offset: usize,
+    hit_offset: usize,
+
     shaders: Vec<(ShaderType, ShaderModule)>,
     shader_groups: Vec<ShaderGroup>,
 }
@@ -76,6 +79,9 @@ impl<'a> PipelineBuilder<'a> {
             shaders: Vec::new(),
             shader_groups: Vec::new(),
             variables: Vec::new(),
+
+            miss_offset: 0,
+            hit_offset: 0,
 
             entry_point: CString::new("main").unwrap(),
         }
@@ -155,6 +161,10 @@ impl<'a> PipelineBuilder<'a> {
 
     /// load and crate a shader
     pub fn general_shader(&mut self, shader_type: ShaderType, name: &str) -> &mut Self {
+        if shader_type == ShaderType::Miss && self.miss_offset == 0 {
+            self.miss_offset = self.shader_groups.len();
+        }
+
         let shader_id = self.load_shader(shader_type, name);
 
         self.shader_groups.push(ShaderGroup::General(shader_id));
@@ -162,6 +172,10 @@ impl<'a> PipelineBuilder<'a> {
     }
 
     pub fn hit_shaders(&mut self, closest_hit: Option<&str>, any_hit: Option<&str>) -> &mut Self {
+        if self.hit_offset == 0 {
+            self.hit_offset = self.shader_groups.len();
+        }
+
         let closest_hit = match closest_hit {
             Some(name) => Some(self.load_shader(ShaderType::ClosestHit, name)),
             None => Some(self.shaders.len() as u32 - 2)
@@ -325,6 +339,8 @@ impl<'a> PipelineBuilder<'a> {
             descriptor_sets,
             desc_types: self.variables.iter().map(|(a, _)| *a).collect(),
             context: Arc::clone(&self.context),
+            miss_offset: self.miss_offset,
+            hit_offset: self.hit_offset,
         }
     }
 }
