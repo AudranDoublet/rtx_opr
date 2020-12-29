@@ -123,7 +123,6 @@ impl<'a> PipelineBuilder<'a> {
     /// add a new memory binding for shaders
     pub fn binding(
         &mut self,
-        idx: u32,
         desc_type: vk::DescriptorType,
         descriptor_count: u32,
         variable: &'a mut dyn DataType,
@@ -136,7 +135,7 @@ impl<'a> PipelineBuilder<'a> {
 
         self.bindings.push(
             vk::DescriptorSetLayoutBinding::builder()
-                .binding(idx)
+                .binding(self.bindings.len() as u32)
                 .descriptor_type(desc_type)
                 .descriptor_count(descriptor_count)
                 .stage_flags(stage_flags)

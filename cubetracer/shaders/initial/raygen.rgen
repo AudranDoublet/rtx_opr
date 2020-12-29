@@ -1,5 +1,8 @@
 #version 460
 #extension GL_NV_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+
+#include "payload.h"
 
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 layout(binding = 1, set = 0, rgba8) uniform image2D image;
@@ -10,7 +13,11 @@ layout(binding = 2, set = 0) uniform Uniforms {
     vec3 origin;
 } camera;
 
-layout(location = 0) rayPayloadNV vec3 hitValue;
+layout(binding = 7, set = 0, rgba32f) uniform image2D normals;
+layout(binding = 8, set = 0, r32f) uniform image2D initial_distances;
+layout(binding = 9, set = 0, rgba32f) uniform image2D direct_illumination;
+
+layout(location = 0) rayPayloadNV InitialPayload payload;
 
 void main() {
     vec2 pos = vec2(gl_LaunchIDNV.xy) / vec2(gl_LaunchSizeNV.xy) - 0.5;
@@ -28,5 +35,15 @@ void main() {
 
     traceNV(topLevelAS, gl_RayFlagsNoneNV, cullMask, 0, 0, 0, origin, tmin, direction, tmax, 0);
 
-    imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(hitValue, 0.0));
+    const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
+
+    if (payload.hit) {
+        imageStore(normals, xy, vec4(payload.normal, 0.0));
+        imageStore(initial_distances, xy, vec4(payload.distance));
+    } else {
+        imageStore(normals, xy, vec4(0));
+        imageStore(initial_distances, xy, vec4(0.0));
+    }
+
+    imageStore(direct_illumination, xy, vec4(payload.illumination, 0.0));
 }

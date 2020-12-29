@@ -287,6 +287,36 @@ impl TextureVariable {
             info: Vec::new(),
         }
     }
+
+    pub fn from_swapchain_format(context: &Arc<Context>, swapchain: &Swapchain, format: vk::Format) -> TextureVariable {
+        let swapchain_props = swapchain.properties();
+
+        let params = ImageParameters {
+            mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            extent: swapchain_props.extent,
+            format,
+            usage: vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::STORAGE,
+            ..Default::default()
+        };
+        let image = ImageVariable::create(Arc::clone(context), params);
+        let view = image.create_view(vk::ImageViewType::TYPE_2D, vk::ImageAspectFlags::COLOR);
+
+        context.execute_one_time_commands(|ctx| {
+            image.cmd_transition_image_layout(
+                ctx,
+                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::GENERAL,
+            )
+        });
+
+        TextureVariable {
+            context: Arc::clone(context),
+            image,
+            view,
+            sampler: None,
+            info: Vec::new(),
+        }
+    }
 }
 
 impl DataType for TextureVariable {

@@ -1,9 +1,12 @@
 #version 460
 #extension GL_NV_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+
+#include "payload.h"
 
 #define PI 3.1415926535897932384626433832795
 
-layout(location = 0) rayPayloadInNV vec3 hitValue;
+layout(location = 0) rayPayloadInNV InitialPayload payload;
 
 const uint CST_SKY_NUM_SAMPLES = 16;
 const uint CST_SKY_NUM_SAMPLES_LIGHT = 8;
@@ -97,5 +100,6 @@ vec3 computeSkyLight(vec3 dir, const vec3 origin)
 
 void main() {
     // Cornflower blue ftw
-    hitValue = computeSkyLight(normalize(gl_WorldRayDirectionNV), gl_WorldRayOriginNV);
+    payload.hit = true;
+    payload.illumination = computeSkyLight(normalize(gl_WorldRayDirectionNV), gl_WorldRayOriginNV).xyz;
 }

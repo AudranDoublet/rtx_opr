@@ -1,0 +1,10 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+
+layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
+layout(binding = 1, set = 0, rgba8) uniform image2D image;
+
+layout(location = 0) rayPayloadNV vec3 hitValue;
+
+void main() {
+}

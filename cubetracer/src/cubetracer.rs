@@ -16,14 +16,6 @@ use std::collections::HashMap;
 const SHADER_FOLDER: &str = "cubetracer/shaders";
 const MAX_INSTANCE_BINDING: usize = 1024;
 
-const DS_IDX_ATLAS: u32 = 0;
-const DS_IDX_IMAGE: u32 = 1;
-const DS_IDX_UNI_CAMERA: u32 = 2;
-const DS_IDX_UNI_SCENE: u32 = 3;
-const DS_IDX_TEXTURE: u32 = 4;
-const DS_IDX_BLAS_DATA: u32 = 5;
-const DS_IDX_BLAS_TEXTURES: u32 = 6;
-
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
     camera: Camera,
@@ -205,6 +197,8 @@ pub struct RTXData {
     uniform_camera: UniformVariable,
     uniform_scene: UniformVariable,
 
+    cache: Vec<TextureVariable>,
+
     command_buffers: Vec<vk::CommandBuffer>,
 
     pipeline: RaytracerPipeline,
@@ -217,8 +211,8 @@ impl RTXData {
 
     pub fn update_blas_data(&mut self, data: &mut BufferVariableList, textures: &mut BufferVariableList) {
         UpdateFactory::new(&self.context)
-            .register(DS_IDX_BLAS_DATA, vk::DescriptorType::STORAGE_BUFFER, data)
-            .register(DS_IDX_BLAS_TEXTURES, vk::DescriptorType::STORAGE_BUFFER, textures)
+            .register(5, vk::DescriptorType::STORAGE_BUFFER, data)
+            .register(6, vk::DescriptorType::STORAGE_BUFFER, textures)
             .update(&mut self.pipeline);
     }
 }
@@ -234,6 +228,11 @@ impl RTXData {
         let mut output_texture = TextureVariable::from_swapchain(context, swapchain);
         let mut uniform_camera = UniformVariable::new(&context, &camera.uniform());
 
+        let mut cache_normals = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
+        let mut cache_initial_distances = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
+        let mut cache_direct_illuminations = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
+        let mut cache_shadows = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
+
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
 
         let mut uniform_scene = UniformVariable::new(
@@ -245,55 +244,74 @@ impl RTXData {
 
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .binding( // 0
-                DS_IDX_ATLAS,
                 vk::DescriptorType::ACCELERATION_STRUCTURE_NV,
                 1,
                 acceleration_structure,
                 &[ShaderType::Raygen, ShaderType::ClosestHit],
             )
             .binding( // 1
-                DS_IDX_IMAGE,
                 vk::DescriptorType::STORAGE_IMAGE,
                 1,
                 &mut output_texture,
                 &[ShaderType::Raygen],
             )
             .binding( // 2
-                DS_IDX_UNI_CAMERA,
                 vk::DescriptorType::UNIFORM_BUFFER,
                 1,
                 &mut uniform_camera,
                 &[ShaderType::Raygen],
             )
             .binding( // 3
-                DS_IDX_UNI_SCENE,
                 vk::DescriptorType::UNIFORM_BUFFER,
                 1,
                 &mut uniform_scene,
                 &[ShaderType::ClosestHit, ShaderType::Miss],
             )
             .binding( // 4
-                DS_IDX_TEXTURE,
                 vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                 1,
                 texture_array,
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
             .binding( // 5
-                DS_IDX_BLAS_DATA,
                 vk::DescriptorType::STORAGE_BUFFER,
                 max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
             .binding( // 6
-                DS_IDX_BLAS_TEXTURES,
                 vk::DescriptorType::STORAGE_BUFFER,
                 max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
+            .binding( // 7
+                vk::DescriptorType::STORAGE_IMAGE,
+                1,
+                &mut cache_normals,
+                &[ShaderType::Raygen],
+            )
+            .binding( // 8
+                vk::DescriptorType::STORAGE_IMAGE,
+                1,
+                &mut cache_initial_distances,
+                &[ShaderType::Raygen],
+            )
+            .binding( // 9
+                vk::DescriptorType::STORAGE_IMAGE,
+                1,
+                &mut cache_direct_illuminations,
+                &[ShaderType::Raygen],
+            )
+            .binding( // 10
+                vk::DescriptorType::STORAGE_IMAGE,
+                1,
+                &mut cache_shadows,
+                &[ShaderType::Raygen],
+            )
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
+            .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
+            .general_shader(ShaderType::Raygen, "reconstruct.rgen.spv")
             .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
             .hit_shaders(Some("initial/closesthit.rchit.spv"), Some("initial/anyhit.rahit.spv"))
@@ -307,6 +325,13 @@ impl RTXData {
             output_texture,
             uniform_camera,
             uniform_scene,
+
+            cache: vec![
+                cache_normals,
+                cache_initial_distances,
+                cache_direct_illuminations,
+                cache_shadows,
+            ],
 
             // pipeline
             pipeline,
@@ -378,16 +403,55 @@ impl RTXData {
 
                 // Trace rays
                 let shader_group_handle_size = self.pipeline.rt_properties.shader_group_handle_size;
-                let raygen_offset = 0;
                 let miss_offset = self.pipeline.miss_offset as u32 * shader_group_handle_size;
                 let hit_offset = self.pipeline.hit_offset as u32 * shader_group_handle_size;
 
                 unsafe {
                     let sbt_buffer = *self.pipeline.shader_binding_table_buffer.buffer();
+
+                    // initial rays
                     self.context.ray_tracing().cmd_trace_rays(
                         buffer,
                         sbt_buffer,
-                        raygen_offset,
+                        (0 * shader_group_handle_size).into(), // raygen offset
+                        sbt_buffer,
+                        miss_offset.into(),
+                        shader_group_handle_size.into(),
+                        sbt_buffer,
+                        hit_offset.into(),
+                        shader_group_handle_size.into(),
+                        vk::Buffer::null(),
+                        0,
+                        0,
+                        swapchain_props.extent.width,
+                        swapchain_props.extent.height,
+                        1,
+                    );
+
+                    // shadow rays
+                    self.context.ray_tracing().cmd_trace_rays(
+                        buffer,
+                        sbt_buffer,
+                        (1 * shader_group_handle_size).into(), // raygen offset
+                        sbt_buffer,
+                        miss_offset.into(),
+                        shader_group_handle_size.into(),
+                        sbt_buffer,
+                        hit_offset.into(),
+                        shader_group_handle_size.into(),
+                        vk::Buffer::null(),
+                        0,
+                        0,
+                        swapchain_props.extent.width,
+                        swapchain_props.extent.height,
+                        1,
+                    );
+
+                    // reconstruction. A compute shader may be better FIXME
+                    self.context.ray_tracing().cmd_trace_rays(
+                        buffer,
+                        sbt_buffer,
+                        (2 * shader_group_handle_size).into(), // raygen offset
                         sbt_buffer,
                         miss_offset.into(),
                         shader_group_handle_size.into(),

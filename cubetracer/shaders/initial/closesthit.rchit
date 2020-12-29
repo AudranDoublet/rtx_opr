@@ -4,9 +4,10 @@
 #extension GL_GOOGLE_include_directive : enable
 
 #include "../triangle_data.h"
+#include "payload.h"
 
-layout(location = 0) rayPayloadInNV vec3 hitValue;
-layout(location = 1) rayPayloadNV bool shadowed;
+layout(location = 0) rayPayloadInNV InitialPayload payload;
+//layout(location = 1) rayPayloadNV bool shadowed;
 
 hitAttributeNV vec3 attribs;
 
@@ -37,15 +38,17 @@ void main() {
                     +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
 
     float lod = gl_RayTmaxNV / 10.0;
+    vec3 illum = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, orig, lod).xyz;
 
-    hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, orig, lod).xyz;
-
-    shadowed = false;
+    payload.hit = true;
+    payload.normal = normal;
+    payload.distance = gl_RayTmaxNV;
+    payload.illumination = illum;
 
     // Cast new ray in light direction
-    vec3 origin = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
+    // vec3 origin = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
 
-/*
+    /*
     traceNV(
         topLevelAS, 
         gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV | gl_RayFlagsSkipClosestHitShaderNV, 
@@ -56,9 +59,8 @@ void main() {
         -scene.sunDirection, 
         T_MAX, 
         1);
-        */
 
-    if (shadowed) {
         hitValue *= 0.3;
     }
+    */
 }
