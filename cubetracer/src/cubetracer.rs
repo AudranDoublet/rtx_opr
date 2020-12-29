@@ -293,10 +293,10 @@ impl RTXData {
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
-            .general_shader(ShaderType::Raygen, "raygen.rgen.spv")
-            .general_shader(ShaderType::Miss, "miss.rmiss.spv")
-            .general_shader(ShaderType::Miss, "shadowmiss.rmiss.spv")
-            .hit_shaders(Some("closesthit.rchit.spv"), Some("anyhit.rahit.spv"))
+            .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
+            .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
+            .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
+            .hit_shaders(Some("initial/closesthit.rchit.spv"), Some("initial/anyhit.rahit.spv"))
             .hit_shaders(None, None)
             .build(2);
 

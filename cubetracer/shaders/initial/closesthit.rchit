@@ -3,7 +3,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
 
-#include "triangle_data.h"
+#include "../triangle_data.h"
 
 layout(location = 0) rayPayloadInNV vec3 hitValue;
 layout(location = 1) rayPayloadNV bool shadowed;
@@ -40,11 +40,12 @@ void main() {
 
     hitValue = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, orig, lod).xyz;
 
-    shadowed = true;
+    shadowed = false;
 
     // Cast new ray in light direction
     vec3 origin = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
 
+/*
     traceNV(
         topLevelAS, 
         gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV | gl_RayFlagsSkipClosestHitShaderNV, 
@@ -55,6 +56,7 @@ void main() {
         -scene.sunDirection, 
         T_MAX, 
         1);
+        */
 
     if (shadowed) {
         hitValue *= 0.3;
