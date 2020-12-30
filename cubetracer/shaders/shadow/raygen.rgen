@@ -2,9 +2,45 @@
 #extension GL_NV_ray_tracing : require
 
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
-layout(binding = 1, set = 0, rgba8) uniform image2D image;
+layout(binding = 3, set = 0) uniform Uniforms {
+    vec3 sunDirection;
+} scene;
 
-layout(location = 0) rayPayloadNV vec3 hitValue;
+layout(location = 0) rayPayloadNV bool shadowed;
+
+layout(binding = 8, set = 0, r32f) uniform image2D initial_distances;
+layout(binding = 10, set = 0, rgba32f) uniform image2D hit_positions;
+layout(binding = 11, set = 0, rgba32f) uniform image2D shadows;
 
 void main() {
+    const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
+    const vec3 origin = imageLoad(hit_positions, xy).xyz;
+
+    const uint cullMask = 0xff;
+    const float tmin = 0.01;
+    const float tmax = 200.0;
+
+    shadowed = true;
+
+    if (imageLoad(initial_distances, xy).x != 0.0) {
+        traceNV(
+            topLevelAS, 
+            gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV | gl_RayFlagsSkipClosestHitShaderNV, 
+            cullMask,
+            1, 0, 1, 
+            origin,
+            tmin, 
+            -scene.sunDirection,
+            tmax, 
+            0
+        );
+    } else {
+        shadowed = false;
+    }
+
+    if (shadowed) {
+        imageStore(shadows, xy, vec4(0.3)); //FIXME replace by 0
+    } else {
+        imageStore(shadows, xy, vec4(1.0));
+    }
 }

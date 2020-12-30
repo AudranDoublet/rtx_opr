@@ -16,6 +16,7 @@ layout(binding = 2, set = 0) uniform Uniforms {
 layout(binding = 7, set = 0, rgba32f) uniform image2D normals;
 layout(binding = 8, set = 0, r32f) uniform image2D initial_distances;
 layout(binding = 9, set = 0, rgba32f) uniform image2D direct_illumination;
+layout(binding = 10, set = 0, rgba32f) uniform image2D hit_positions;
 
 layout(location = 0) rayPayloadNV InitialPayload payload;
 
@@ -40,9 +41,11 @@ void main() {
     if (payload.hit) {
         imageStore(normals, xy, vec4(payload.normal, 0.0));
         imageStore(initial_distances, xy, vec4(payload.distance));
+        imageStore(hit_positions, xy, vec4(payload.hit_position, 0.0));
     } else {
         imageStore(normals, xy, vec4(0));
         imageStore(initial_distances, xy, vec4(0.0));
+        imageStore(hit_positions, xy, vec4(0));
     }
 
     imageStore(direct_illumination, xy, vec4(payload.illumination, 0.0));

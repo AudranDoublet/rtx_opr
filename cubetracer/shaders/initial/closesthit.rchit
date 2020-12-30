@@ -43,6 +43,7 @@ void main() {
     payload.hit = true;
     payload.normal = normal;
     payload.distance = gl_RayTmaxNV;
+    payload.hit_position = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
     payload.illumination = illum;
 
     // Cast new ray in light direction

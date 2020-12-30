@@ -231,6 +231,7 @@ impl RTXData {
         let mut cache_normals = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
         let mut cache_initial_distances = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
         let mut cache_direct_illuminations = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
+        let mut cache_hit_positions = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
         let mut cache_shadows = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
 
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
@@ -265,7 +266,7 @@ impl RTXData {
                 vk::DescriptorType::UNIFORM_BUFFER,
                 1,
                 &mut uniform_scene,
-                &[ShaderType::ClosestHit, ShaderType::Miss],
+                &[ShaderType::Raygen, ShaderType::ClosestHit, ShaderType::Miss],
             )
             .binding( // 4
                 vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
@@ -306,6 +307,12 @@ impl RTXData {
             .binding( // 10
                 vk::DescriptorType::STORAGE_IMAGE,
                 1,
+                &mut cache_hit_positions,
+                &[ShaderType::Raygen],
+            )
+            .binding( // 11
+                vk::DescriptorType::STORAGE_IMAGE,
+                1,
                 &mut cache_shadows,
                 &[ShaderType::Raygen],
             )
@@ -330,6 +337,7 @@ impl RTXData {
                 cache_normals,
                 cache_initial_distances,
                 cache_direct_illuminations,
+                cache_hit_positions,
                 cache_shadows,
             ],
 

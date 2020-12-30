@@ -100,6 +100,6 @@ vec3 computeSkyLight(vec3 dir, const vec3 origin)
 
 void main() {
     // Cornflower blue ftw
-    payload.hit = true;
+    payload.hit = false;
     payload.illumination = computeSkyLight(normalize(gl_WorldRayDirectionNV), gl_WorldRayOriginNV).xyz;
 }

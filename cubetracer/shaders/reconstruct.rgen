@@ -5,10 +5,13 @@ layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 layout(binding = 1, set = 0, rgba8) uniform image2D image;
 
 layout(binding = 9, set = 0, rgba32f) uniform image2D direct_illumination;
+layout(binding = 11, set = 0, rgba32f) uniform image2D shadows;
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
 
     const vec4 direct_illum = imageLoad(direct_illumination, xy);
-    imageStore(image, ivec2(gl_LaunchIDNV.xy), direct_illum);
+    const vec4 shadows = imageLoad(shadows, xy);
+
+    imageStore(image, ivec2(gl_LaunchIDNV.xy), direct_illum * shadows);
 }
