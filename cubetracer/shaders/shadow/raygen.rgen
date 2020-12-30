@@ -18,25 +18,25 @@ void main() {
 
     const uint cullMask = 0xff;
     const float tmin = 0.01;
-    const float tmax = 200.0;
+    float tmax = 200.0;
 
     shadowed = true;
 
-    if (imageLoad(initial_distances, xy).x != 0.0) {
-        traceNV(
-            topLevelAS, 
-            gl_RayFlagsTerminateOnFirstHitNV, 
-            cullMask,
-            1, 0, 1, 
-            origin,
-            tmin, 
-            -scene.sunDirection,
-            tmax, 
-            0
-        );
-    } else {
-        shadowed = false;
+    if (imageLoad(initial_distances, xy).x == 0.0) {
+        tmax = 0.01;
     }
+
+    traceNV(
+        topLevelAS, 
+        gl_RayFlagsTerminateOnFirstHitNV, 
+        cullMask,
+        1, 0, 1, 
+        origin,
+        tmin, 
+        -scene.sunDirection,
+        tmax, 
+        0
+    );
 
     if (shadowed) {
         imageStore(shadows, xy, vec4(0.3)); //FIXME replace by 0
