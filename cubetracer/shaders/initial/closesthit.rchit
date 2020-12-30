@@ -45,23 +45,4 @@ void main() {
     payload.distance = gl_RayTmaxNV;
     payload.hit_position = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
     payload.illumination = illum;
-
-    // Cast new ray in light direction
-    // vec3 origin = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
-
-    /*
-    traceNV(
-        topLevelAS, 
-        gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV | gl_RayFlagsSkipClosestHitShaderNV, 
-        CULL_MASK, 
-        1, 0, 1, 
-        origin, 
-        T_MIN, 
-        -scene.sunDirection, 
-        T_MAX, 
-        1);
-
-        hitValue *= 0.3;
-    }
-    */
 }

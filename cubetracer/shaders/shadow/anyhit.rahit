@@ -1,0 +1,30 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#include "../triangle_data.h"
+
+hitAttributeNV vec3 attribs;
+
+layout (binding = 4, set = 0) uniform sampler2DArray texture_array;
+
+layout (binding = 5, set = 0) buffer BlasTriangleData {
+    TriangleData data[];
+} blas_triangle_data[];
+
+layout (binding = 6, set = 0) buffer ChunkTextures {
+    vec3 data[];
+} blas_textures[];
+
+void main() {
+    vec3 orig = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_orig
+                    +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_u * attribs.x
+                    +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
+
+    float lod = gl_RayTmaxNV / 10.0;
+    float alpha = textureLod(texture_array, orig, lod).a;
+
+    if (alpha < 0.5)
+        ignoreIntersectionNV();
+}

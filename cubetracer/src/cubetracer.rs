@@ -322,7 +322,7 @@ impl RTXData {
             .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
             .hit_shaders(Some("initial/closesthit.rchit.spv"), Some("initial/anyhit.rahit.spv"))
-            .hit_shaders(None, None)
+            .hit_shaders(None, Some("shadow/anyhit.rahit.spv"))
             .build(2);
 
         let mut rtx = Self {

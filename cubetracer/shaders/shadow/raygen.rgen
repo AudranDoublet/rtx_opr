@@ -25,7 +25,7 @@ void main() {
     if (imageLoad(initial_distances, xy).x != 0.0) {
         traceNV(
             topLevelAS, 
-            gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsOpaqueNV | gl_RayFlagsSkipClosestHitShaderNV, 
+            gl_RayFlagsTerminateOnFirstHitNV, 
             cullMask,
             1, 0, 1, 
             origin,
