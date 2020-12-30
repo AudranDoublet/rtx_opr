@@ -24,6 +24,8 @@ fn add_vertice(v: Vector3<i32>, vertices: &mut Vec<[f32; 4]>, map: &mut HashMap<
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct TriangleData {
+    pub tangeant: [f32; 4],
+    pub bitangeant: [f32; 4],
     pub normal: [f32; 4],
     pub tex_orig: [f32; 4],
     pub tex_u: [f32; 4],
@@ -93,6 +95,25 @@ impl ChunkMesh {
             );
         }
 
+        let edge1 = nalgebra::convert::<_, Vector3<f32>>(v2 - v1) / 10.;
+        let edge2 = nalgebra::convert::<_, Vector3<f32>>(v3 - v1) / 10.;
+
+        let f = 1.0 / (tex_u.x * tex_v.y - tex_v.x * tex_u.y);
+
+        let tangeant = [
+            f * (tex_v.y * edge1.x - tex_u.y * edge2.x),
+            f * (tex_v.y * edge1.y - tex_u.y * edge2.y),
+            f * (tex_v.y * edge1.z - tex_u.y * edge2.z),
+            0.0,
+        ];
+
+        let bitangeant = [
+            f * (-tex_v.x * edge1.x + tex_u.x * edge2.x),
+            f * (-tex_v.x * edge1.y + tex_u.x * edge2.y),
+            f * (-tex_v.x * edge1.z + tex_u.x * edge2.z),
+            0.0,
+        ];
+
         // add triangle data
         self.triangle_data.push(TriangleData {
             normal: [normal.x as f32 / normal_sum, normal.y as f32 / normal_sum, normal.z as f32 / normal_sum, 0.],
@@ -100,6 +121,8 @@ impl ChunkMesh {
             tex_orig: [tex_origin.x, tex_origin.y, tex_origin.z, 0.0],
             tex_u: [tex_u.x, tex_u.y, 0.0, 0.0],
             tex_v: [tex_v.x, tex_v.y, 0.0],
+            tangeant,
+            bitangeant,
         });
     }
 
