@@ -31,11 +31,11 @@ const float T_MAX = 100.0;
 
 void main() {
     // FIXME: maybe we should avoid deref multiple times and store the struct?? 
-    const mat3 transform = (mat3(
+    const mat3 transform = mat3(
         blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tangeant,
         blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].bitangeant,
         blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].normal
-    ));
+    );
 
     const vec3 orig = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_orig
                     +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_u * attribs.x

@@ -1,6 +1,6 @@
 texture_path: data/ # all textures should be in this path
-texture_extension: .png # all textures should have the same extension
-texture_normal_extension: _n.png # all textures normals should have the same extension
+texture_extension: '' # all textures should have the same extension
+texture_normal_extension: _n # all textures normals should have the same extension
 texture_dimension: [512, 512] # if a texture doesn't match, it will be resized
 
 empty_blocks:
@@ -25,7 +25,7 @@ classic_blocks:
     Dirt:
         side: "dirt"
     Gravel:
-        side: "dirt"
+        side: "gravel"
     Sand:
         side: "sand"
     Cactus:

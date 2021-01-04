@@ -2,6 +2,8 @@ use std::collections::{HashSet, HashMap};
 use crate::*;
 use serde_derive::*;
 
+use std::path::Path;
+
 #[derive(Debug, Deserialize)]
 pub struct ClassicBlockConfig {
     side: String,
@@ -37,17 +39,27 @@ pub struct TextureList {
 }
 
 impl TextureList {
+    fn add_path(&mut self, path: String) {
+        let png = format!("{}.png", path);
+
+        if Path::new(&png).exists() {
+            self.paths.push(png);
+        } else {
+            self.paths.push(format!("{}.tga", path));
+        }
+    }
+
     pub fn texture(&mut self, config: &BlockConfig, texture: &str) -> usize {
         if !self.textures.contains_key(texture) {
             self.textures.insert(texture.to_string(), self.paths.len());
-            self.paths.push(format!(
+            self.add_path(format!(
                 "{}/{}{}",
                 config.texture_path,
                 texture,
                 config.texture_extension,
             ));
 
-            self.paths.push(format!(
+            self.add_path(format!(
                 "{}/{}{}",
                 config.texture_path,
                 texture,
