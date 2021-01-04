@@ -1,6 +1,7 @@
 texture_path: data/ # all textures should be in this path
 texture_extension: '' # all textures should have the same extension
 texture_normal_extension: _n # all textures normals should have the same extension
+texture_mer_extension: _mer # all textures mer should have the same extension
 texture_dimension: [512, 512] # if a texture doesn't match, it will be resized
 
 empty_blocks:

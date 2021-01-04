@@ -233,6 +233,7 @@ impl RTXData {
         let mut cache_direct_illuminations = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
         let mut cache_hit_positions = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
         let mut cache_shadows = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
+        let mut cache_mer = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
 
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
 
@@ -316,6 +317,12 @@ impl RTXData {
                 &mut cache_shadows,
                 &[ShaderType::Raygen],
             )
+            .binding( // 12
+                vk::DescriptorType::STORAGE_IMAGE,
+                1,
+                &mut cache_mer,
+                &[ShaderType::Raygen],
+            )
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "reconstruct.rgen.spv")
@@ -339,6 +346,7 @@ impl RTXData {
                 cache_direct_illuminations,
                 cache_hit_positions,
                 cache_shadows,
+                cache_mer,
             ],
 
             // pipeline

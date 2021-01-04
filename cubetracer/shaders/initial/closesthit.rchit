@@ -45,12 +45,13 @@ void main() {
 
     // normal deformation
     const vec3 normal = transform * (2 * textureLod(texture_array, orig + vec3(0, 0, 1), lod).xyz - vec3(1.0));
-
     const vec3 illum = max(dot(-scene.sunDirection, normal), 0.0) * textureLod(texture_array, orig, lod).xyz;
+    const vec3 coeffs = textureLod(texture_array, orig + vec3(0, 0, 2), lod).xyz;
 
     payload.hit = true;
     payload.normal = normal;
     payload.distance = gl_RayTmaxNV;
     payload.hit_position = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
     payload.illumination = illum;
+    payload.mer = coeffs;
 }

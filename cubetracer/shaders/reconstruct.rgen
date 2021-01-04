@@ -6,6 +6,7 @@ layout(binding = 1, set = 0, rgba8) uniform image2D image;
 
 layout(binding = 9, set = 0, rgba32f) uniform image2D direct_illumination;
 layout(binding = 11, set = 0, rgba32f) uniform image2D shadows;
+layout(binding = 12, set = 0, rgba32f) uniform image2D illum_coeffs;
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);

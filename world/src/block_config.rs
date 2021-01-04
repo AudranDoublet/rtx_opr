@@ -25,6 +25,7 @@ pub struct BlockConfig {
     texture_path: String,
     texture_extension: String,
     texture_normal_extension: String,
+    texture_mer_extension: String,
     texture_dimension: (usize, usize),
 
     empty_blocks: HashSet<String>,
@@ -64,6 +65,13 @@ impl TextureList {
                 config.texture_path,
                 texture,
                 config.texture_normal_extension,
+            ));
+
+            self.add_path(format!(
+                "{}/{}{}",
+                config.texture_path,
+                texture,
+                config.texture_mer_extension,
             ));
         }
 
