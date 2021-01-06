@@ -3,6 +3,7 @@ use crate::context::Context;
 use crate::datatypes::*;
 use crate::pipeline::*;
 use crate::window::*;
+use crate::descriptors::*;
 
 use world::{main_world, ChunkMesh};
 
@@ -201,6 +202,7 @@ pub struct RTXData {
 
     command_buffers: Vec<vk::CommandBuffer>,
 
+    descriptor_set: DescriptorSet,
     pipeline: RaytracerPipeline,
 }
 
@@ -244,7 +246,7 @@ impl RTXData {
             },
         );
 
-        let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
+        let descriptor_set = DescriptorSetBuilder::new(context)
             .binding( // 0
                 vk::DescriptorType::ACCELERATION_STRUCTURE_NV,
                 1,
@@ -322,7 +324,9 @@ impl RTXData {
                 1,
                 &mut cache_mer,
                 &[ShaderType::Raygen],
-            )
+            ).build();
+
+        let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "reconstruct.rgen.spv")
@@ -330,6 +334,7 @@ impl RTXData {
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
             .hit_shaders(Some("initial/closesthit.rchit.spv"), Some("initial/anyhit.rahit.spv"))
             .hit_shaders(None, Some("shadow/anyhit.rahit.spv"))
+            .descriptor_set(&descriptor_set)
             .build(2);
 
         let mut rtx = Self {
@@ -351,6 +356,7 @@ impl RTXData {
 
             // pipeline
             pipeline,
+            descriptor_set,
 
             command_buffers: Vec::new(),
         };
@@ -394,94 +400,17 @@ impl RTXData {
                         .expect("Failed to begin command buffer")
                 };
 
-                // Bind pipeline
-                unsafe {
-                    device.cmd_bind_pipeline(
-                        buffer,
-                        vk::PipelineBindPoint::RAY_TRACING_NV,
-                        self.pipeline.pipeline,
-                    )
-                };
-
-                // Bind descriptor set
-                unsafe {
-                    device.cmd_bind_descriptor_sets(
-                        buffer,
-                        vk::PipelineBindPoint::RAY_TRACING_NV,
-                        self.pipeline.pipeline_layout,
-                        0,
-                        &self.pipeline.descriptor_sets,
-                        &[],
-                    );
-                };
-
+                // FIXME: CALL BIIIIIIIIIIIIIIND (pipeline + descriptor)
                 let swapchain_props = swapchain.properties();
 
-                // Trace rays
-                let shader_group_handle_size = self.pipeline.rt_properties.shader_group_handle_size;
-                let miss_offset = self.pipeline.miss_offset as u32 * shader_group_handle_size;
-                let hit_offset = self.pipeline.hit_offset as u32 * shader_group_handle_size;
+                let width = swapchain_props.extent.width;
+                let height = swapchain_props.extent.height;
 
-                unsafe {
-                    let sbt_buffer = *self.pipeline.shader_binding_table_buffer.buffer();
+                self.pipeline.bind(&self.context, buffer);
 
-                    // initial rays
-                    self.context.ray_tracing().cmd_trace_rays(
-                        buffer,
-                        sbt_buffer,
-                        (0 * shader_group_handle_size).into(), // raygen offset
-                        sbt_buffer,
-                        miss_offset.into(),
-                        shader_group_handle_size.into(),
-                        sbt_buffer,
-                        hit_offset.into(),
-                        shader_group_handle_size.into(),
-                        vk::Buffer::null(),
-                        0,
-                        0,
-                        swapchain_props.extent.width,
-                        swapchain_props.extent.height,
-                        1,
-                    );
-
-                    // shadow rays
-                    self.context.ray_tracing().cmd_trace_rays(
-                        buffer,
-                        sbt_buffer,
-                        (1 * shader_group_handle_size).into(), // raygen offset
-                        sbt_buffer,
-                        miss_offset.into(),
-                        shader_group_handle_size.into(),
-                        sbt_buffer,
-                        hit_offset.into(),
-                        shader_group_handle_size.into(),
-                        vk::Buffer::null(),
-                        0,
-                        0,
-                        swapchain_props.extent.width,
-                        swapchain_props.extent.height,
-                        1,
-                    );
-
-                    // reconstruction. A compute shader may be better FIXME
-                    self.context.ray_tracing().cmd_trace_rays(
-                        buffer,
-                        sbt_buffer,
-                        (2 * shader_group_handle_size).into(), // raygen offset
-                        sbt_buffer,
-                        miss_offset.into(),
-                        shader_group_handle_size.into(),
-                        sbt_buffer,
-                        hit_offset.into(),
-                        shader_group_handle_size.into(),
-                        vk::Buffer::null(),
-                        0,
-                        0,
-                        swapchain_props.extent.width,
-                        swapchain_props.extent.height,
-                        1,
-                    );
-                };
+                self.pipeline.dispatch(buffer, width, height, 0);
+                self.pipeline.dispatch(buffer, width, height, 1);
+                self.pipeline.dispatch(buffer, width, height, 2);
 
                 // Copy output image to swapchain
                 {
@@ -559,10 +488,6 @@ impl Drop for RTXData {
         let device = self.context.device();
         unsafe {
             device.free_command_buffers(self.context.general_command_pool(), &self.command_buffers);
-            device.destroy_pipeline(self.pipeline.pipeline, None);
-            device.destroy_pipeline_layout(self.pipeline.pipeline_layout, None);
-            device.destroy_descriptor_pool(self.pipeline.descriptor_pool, None);
-            device.destroy_descriptor_set_layout(self.pipeline.descriptor_set_layout, None);
         }
     }
 }

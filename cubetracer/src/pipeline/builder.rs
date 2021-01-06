@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use crate::datatypes::*;
 use crate::pipeline::*;
+use crate::descriptors::*;
 
-use std::collections::HashMap;
 
 enum ShaderGroup {
     Hit {
@@ -51,15 +51,15 @@ impl<'a> BuilderWithType for vk::RayTracingShaderGroupCreateInfoNVBuilder<'a> {
     }
 }
 
-pub struct PipelineBuilder<'a> {
+pub struct PipelineBuilder {
     folder: String,
 
     context: Arc<Context>,
     entry_point: CString,
 
-    variables: Vec<(vk::DescriptorType, &'a mut dyn DataType)>,
-    descriptor_counts: HashMap<vk::DescriptorType, u32>,
-    bindings: Vec<vk::DescriptorSetLayoutBinding>,
+
+    descriptor_sets: Vec<vk::DescriptorSet>,
+    descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
 
     miss_offset: usize,
     hit_offset: usize,
@@ -68,23 +68,28 @@ pub struct PipelineBuilder<'a> {
     shader_groups: Vec<ShaderGroup>,
 }
 
-impl<'a> PipelineBuilder<'a> {
-    pub fn new(context: &Arc<Context>, folder: &str) -> PipelineBuilder<'a> {
+impl PipelineBuilder {
+    pub fn new(context: &Arc<Context>, folder: &str) -> PipelineBuilder {
         PipelineBuilder {
             context: Arc::clone(context),
             folder: folder.to_string(),
 
-            descriptor_counts: HashMap::new(),
-            bindings: Vec::new(),
             shaders: Vec::new(),
             shader_groups: Vec::new(),
-            variables: Vec::new(),
 
+            descriptor_set_layouts: Vec::new(),
+            descriptor_sets: Vec::new(),
             miss_offset: 0,
             hit_offset: 0,
 
             entry_point: CString::new("main").unwrap(),
         }
+    }
+
+    pub fn descriptor_set(&mut self, descriptor_set: &DescriptorSet) -> &mut Self {
+        self.descriptor_sets.push(descriptor_set.set);
+        self.descriptor_set_layouts.push(descriptor_set.layout);
+        self
     }
 
     /// retrieve created pipeline stages
@@ -118,34 +123,6 @@ impl<'a> PipelineBuilder<'a> {
         }
 
         groups
-    }
-
-    /// add a new memory binding for shaders
-    pub fn binding(
-        &mut self,
-        desc_type: vk::DescriptorType,
-        descriptor_count: u32,
-        variable: &'a mut dyn DataType,
-        stages: &[ShaderType],
-    ) -> &mut Self {
-        let stage_flags = stages
-            .iter()
-            .map(|s| s.stage())
-            .fold(vk::ShaderStageFlags::empty(), |a, b| a | b);
-
-        self.bindings.push(
-            vk::DescriptorSetLayoutBinding::builder()
-                .binding(self.bindings.len() as u32)
-                .descriptor_type(desc_type)
-                .descriptor_count(descriptor_count)
-                .stage_flags(stage_flags)
-                .build(),
-        );
-
-        *self.descriptor_counts.entry(desc_type).or_insert(0) += 1;
-        self.variables.push((desc_type, variable));
-
-        self
     }
 
     fn load_shader(&mut self, shader_type: ShaderType, name: &str) -> u32 {
@@ -194,46 +171,11 @@ impl<'a> PipelineBuilder<'a> {
         self
     }
 
-    fn create_descriptor_pool(&self) -> vk::DescriptorPool {
-        let pool_sizes = self
-            .descriptor_counts
-            .iter()
-            .map(|(desc, count)| {
-                vk::DescriptorPoolSize::builder()
-                    .ty(*desc)
-                    .descriptor_count(*count)
-                    .build()
-            })
-            .collect::<Vec<_>>();
-
-        let pool_create_info = vk::DescriptorPoolCreateInfo::builder()
-            .max_sets(1)
-            .pool_sizes(&pool_sizes);
-
-        unsafe {
-            self.context
-                .device()
-                .create_descriptor_pool(&pool_create_info, None)
-                .expect("Failed to create descriptor pool")
-        }
-    }
 
     pub fn build(&mut self, max_recursion_depth: u32) -> RaytracerPipeline {
         /////////// CREATE PIPELINE LAYOUT
-        let descriptor_set_layout = unsafe {
-            self.context
-                .device()
-                .create_descriptor_set_layout(
-                    &vk::DescriptorSetLayoutCreateInfo::builder().bindings(&self.bindings),
-                    None,
-                )
-                .expect("Failed to create descriptor set layout")
-        };
-
-        let descriptor_set_layouts = [descriptor_set_layout];
-
         let pipeline_layout_create_info =
-            vk::PipelineLayoutCreateInfo::builder().set_layouts(&descriptor_set_layouts);
+            vk::PipelineLayoutCreateInfo::builder().set_layouts(&self.descriptor_set_layouts);
         let pipeline_layout = unsafe {
             self.context
                 .device()
@@ -288,55 +230,12 @@ impl<'a> PipelineBuilder<'a> {
         )
         .0;
 
-        /////////// CREATE DESCRIPTORS
-        let descriptor_pool = self.create_descriptor_pool();
-        let device = self.context.device();
-
-        let descriptor_sets = {
-            let set_layouts = [descriptor_set_layout];
-            let allocate_info = vk::DescriptorSetAllocateInfo::builder()
-                .descriptor_pool(descriptor_pool)
-                .set_layouts(&set_layouts);
-            let sets = unsafe {
-                device
-                    .allocate_descriptor_sets(&allocate_info)
-                    .expect("Failed to allocate descriptor set")
-            };
-
-            let write_descriptor_sets = self
-                .variables
-                .iter_mut()
-                .enumerate()
-                .map(|(i, (desc_type, var))| {
-                    let mut info = var
-                        .write_descriptor_builder()
-                        .dst_set(sets[0])
-                        .dst_binding(i as u32)
-                        .descriptor_type(*desc_type)
-                        .build();
-
-                    if *desc_type == vk::DescriptorType::ACCELERATION_STRUCTURE_NV {
-                        info.descriptor_count = 1;
-                    }
-
-                    info
-                })
-                .collect::<Vec<_>>();
-
-            unsafe { device.update_descriptor_sets(&write_descriptor_sets, &[]) };
-
-            sets
-        };
-
         RaytracerPipeline {
             rt_properties,
             pipeline,
             pipeline_layout,
             shader_binding_table_buffer,
-            descriptor_set_layout,
-            descriptor_pool,
-            descriptor_sets,
-            desc_types: self.variables.iter().map(|(a, _)| *a).collect(),
+            descriptor_sets: self.descriptor_sets.clone(),
             context: Arc::clone(&self.context),
             miss_offset: self.miss_offset,
             hit_offset: self.hit_offset,
