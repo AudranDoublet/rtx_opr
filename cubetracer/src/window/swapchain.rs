@@ -168,6 +168,44 @@ impl Swapchain {
     pub fn images(&self) -> &[ImageVariable] {
         &self.images
     }
+
+    pub fn cmd_update_image(&self, buffer: vk::CommandBuffer, dst: usize, src: &ImageVariable) {
+        let swapchain_image = &self.images()[dst];
+
+        swapchain_image.cmd_transition_image_layout(
+            buffer,
+            vk::ImageLayout::UNDEFINED,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        );
+        src.cmd_transition_image_layout(
+            buffer,
+            vk::ImageLayout::GENERAL,
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+        );
+
+        swapchain_image.cmd_copy(
+            buffer,
+            &src,
+            vk::ImageSubresourceLayers {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                mip_level: 0,
+                base_array_layer: 0,
+                layer_count: 1,
+            }
+        );
+
+        // Transition layout
+        swapchain_image.cmd_transition_image_layout(
+            buffer,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            vk::ImageLayout::PRESENT_SRC_KHR,
+        );
+        src.cmd_transition_image_layout(
+            buffer,
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            vk::ImageLayout::GENERAL,
+        );
+    }
 }
 
 impl Swapchain {

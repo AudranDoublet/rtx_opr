@@ -25,6 +25,8 @@ pub struct Cubetracer {
 
     acceleration_structure: Option<TlasVariable>,
     texture_array: TextureVariable,
+    uniform_scene: UniformVariable,
+    uniform_camera: UniformVariable,
 
     local_instance_bindings: [InstanceBinding; MAX_INSTANCE_BINDING],
 }
@@ -53,10 +55,20 @@ impl Cubetracer {
         Cubetracer {
             chunks: HashMap::new(),
             rtx_data: None,
-            camera,
             acceleration_structure: None,
             local_instance_bindings,
             texture_array,
+            uniform_scene: UniformVariable::new(
+                &context,
+                &UniformScene {
+                    sun_direction: Vector3::new(0.5, 1.0, -0.5).normalize(),
+                },
+            ), 
+            uniform_camera: UniformVariable::new(
+                &context,
+                &camera.uniform(),
+            ), 
+            camera,
         }
     }
 
@@ -74,9 +86,10 @@ impl Cubetracer {
         let rtx_data = RTXData::new(
             context,
             swapchain,
-            &self.camera,
             &mut acceleration_structure,
             &mut self.texture_array,
+            &mut self.uniform_scene,
+            &mut self.uniform_camera,
         );
 
         self.acceleration_structure = Some(acceleration_structure);
@@ -158,14 +171,14 @@ impl Cubetracer {
                 );
             }
 
-            self.rtx_data.as_mut().unwrap().uniform_scene.set(
+            self.uniform_scene.set(
                 context,
                 &UniformScene {
                     sun_direction: self.camera.sun_direction(),
                 },
             );
 
-            self.rtx_data.as_mut().unwrap().uniform_camera.set(
+            self.uniform_camera.set(
                 context, &self.camera.uniform(),
             );
 
@@ -183,9 +196,10 @@ impl Cubetracer {
         self.rtx_data = Some(RTXData::new(
             context,
             swapchain,
-            &self.camera,
             self.acceleration_structure.as_mut().unwrap(),
             &mut self.texture_array,
+            &mut self.uniform_scene,
+            &mut self.uniform_camera,
         ));
     }
 }
@@ -195,9 +209,6 @@ pub struct RTXData {
     context: Arc<Context>,
 
     output_texture: TextureVariable,
-    uniform_camera: UniformVariable,
-    uniform_scene: UniformVariable,
-
     cache: Vec<TextureVariable>,
 
     command_buffers: Vec<vk::CommandBuffer>,
@@ -224,12 +235,12 @@ impl RTXData {
     pub fn new(
         context: &Arc<Context>,
         swapchain: &Swapchain,
-        camera: &Camera,
         acceleration_structure: &mut TlasVariable,
         texture_array: &mut TextureVariable,
+        uniform_scene: &mut UniformVariable,
+        uniform_camera: &mut UniformVariable,
     ) -> Self {
         let mut output_texture = TextureVariable::from_swapchain(context, swapchain);
-        let mut uniform_camera = UniformVariable::new(&context, &camera.uniform());
 
         let mut cache_normals = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
         let mut cache_initial_distances = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
@@ -239,13 +250,6 @@ impl RTXData {
         let mut cache_mer = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
 
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
-
-        let mut uniform_scene = UniformVariable::new(
-            &context,
-            &UniformScene {
-                sun_direction: Vector3::new(0.5, 1.0, -0.5).normalize(),
-            },
-        );
 
         let descriptor_set = DescriptorSetBuilder::new(context)
             .binding( // 0
@@ -263,13 +267,13 @@ impl RTXData {
             .binding( // 2
                 vk::DescriptorType::UNIFORM_BUFFER,
                 1,
-                &mut uniform_camera,
+                uniform_camera,
                 &[ShaderType::Raygen],
             )
             .binding( // 3
                 vk::DescriptorType::UNIFORM_BUFFER,
                 1,
-                &mut uniform_scene,
+                uniform_scene,
                 &[ShaderType::Raygen, ShaderType::ClosestHit, ShaderType::Miss],
             )
             .binding( // 4
@@ -347,8 +351,6 @@ impl RTXData {
 
             // variables
             output_texture,
-            uniform_camera,
-            uniform_scene,
 
             cache: vec![
                 cache_normals,
@@ -386,7 +388,7 @@ impl RTXData {
                     .allocate_command_buffers(&allocate_info)
                     .expect("Failed to allocate command buffers")
             };
-            self.command_buffers.extend_from_slice(&buffers);
+            self.command_buffers = buffers;
         };
 
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
@@ -397,7 +399,6 @@ impl RTXData {
             .enumerate()
             .for_each(|(index, buffer)| {
                 let buffer = *buffer;
-                let swapchain_image = &swapchain.images()[index];
 
                 // begin command buffer
                 unsafe {
@@ -411,74 +412,18 @@ impl RTXData {
                 let width = swapchain_props.extent.width;
                 let height = swapchain_props.extent.height;
 
+                // Initial ray
                 self.pipeline.bind(&self.context, buffer);
-
                 self.pipeline.dispatch(buffer, width, height, 0);
+
+                // Shadows
                 self.pipeline.dispatch(buffer, width, height, 1);
 
+                // Reconstruct
                 self.reconstruct_pipeline.bind(&self.context, buffer);
                 self.reconstruct_pipeline.dispatch(buffer, width, height);
 
-                // Copy output image to swapchain
-                {
-                    // transition layouts
-                    swapchain_image.cmd_transition_image_layout(
-                        buffer,
-                        vk::ImageLayout::UNDEFINED,
-                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                    );
-                    self.output_texture.image.cmd_transition_image_layout(
-                        buffer,
-                        vk::ImageLayout::GENERAL,
-                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    );
-
-                    // Copy image
-                    let image_copy_info = [vk::ImageCopy::builder()
-                        .src_subresource(vk::ImageSubresourceLayers {
-                            aspect_mask: vk::ImageAspectFlags::COLOR,
-                            mip_level: 0,
-                            base_array_layer: 0,
-                            layer_count: 1,
-                        })
-                        .src_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
-                        .dst_subresource(vk::ImageSubresourceLayers {
-                            aspect_mask: vk::ImageAspectFlags::COLOR,
-                            mip_level: 0,
-                            base_array_layer: 0,
-                            layer_count: 1,
-                        })
-                        .dst_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
-                        .extent(vk::Extent3D {
-                            width: swapchain_props.extent.width,
-                            height: swapchain_props.extent.height,
-                            depth: 1,
-                        })
-                        .build()];
-
-                    unsafe {
-                        device.cmd_copy_image(
-                            buffer,
-                            self.output_texture.image.image,
-                            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                            swapchain_image.image,
-                            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                            &image_copy_info,
-                        );
-                    };
-
-                    // Transition layout
-                    swapchain_image.cmd_transition_image_layout(
-                        buffer,
-                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                        vk::ImageLayout::PRESENT_SRC_KHR,
-                    );
-                    self.output_texture.image.cmd_transition_image_layout(
-                        buffer,
-                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        vk::ImageLayout::GENERAL,
-                    );
-                }
+                swapchain.cmd_update_image(buffer, index, &self.output_texture.image);
 
                 // End command buffer
                 unsafe {
