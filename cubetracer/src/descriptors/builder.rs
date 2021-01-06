@@ -39,6 +39,19 @@ impl<'a> DescriptorSetBuilder<'a> {
         self.binding_count(desc_type, 1, variable, stages)
     }
 
+    pub fn bindings(
+        &mut self,
+        desc_type: vk::DescriptorType,
+        variables: Vec<&'a mut dyn DataType>,
+        stages: &[ShaderType],
+    ) -> &mut Self {
+        for v in variables {
+            self.binding(desc_type, v, stages);
+        }
+
+        self
+    }
+
     pub fn binding_count(
         &mut self,
         desc_type: vk::DescriptorType,

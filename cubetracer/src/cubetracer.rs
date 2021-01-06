@@ -287,35 +287,17 @@ impl RTXData {
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
-            .binding( // 7
+            .bindings( // 7 - 12
                 vk::DescriptorType::STORAGE_IMAGE,
-                &mut cache_normals,
-                &[ShaderType::Raygen],
-            )
-            .binding( // 8
-                vk::DescriptorType::STORAGE_IMAGE,
-                &mut cache_initial_distances,
-                &[ShaderType::Raygen],
-            )
-            .binding( // 9
-                vk::DescriptorType::STORAGE_IMAGE,
-                &mut cache_direct_illuminations,
+                vec![
+                    &mut cache_normals,
+                    &mut cache_initial_distances,
+                    &mut cache_direct_illuminations,
+                    &mut cache_hit_positions,
+                    &mut cache_shadows,
+                    &mut cache_mer,
+                ],
                 &[ShaderType::Raygen, ShaderType::Compute],
-            )
-            .binding( // 10
-                vk::DescriptorType::STORAGE_IMAGE,
-                &mut cache_hit_positions,
-                &[ShaderType::Raygen],
-            )
-            .binding( // 11
-                vk::DescriptorType::STORAGE_IMAGE,
-                &mut cache_shadows,
-                &[ShaderType::Raygen, ShaderType::Compute],
-            )
-            .binding( // 12
-                vk::DescriptorType::STORAGE_IMAGE,
-                &mut cache_mer,
-                &[ShaderType::Raygen],
             ).build();
 
         ////// CREATE PIPELINES
