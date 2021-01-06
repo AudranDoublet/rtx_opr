@@ -7,5 +7,6 @@ pub mod mesh;
 pub mod pipeline;
 pub mod window;
 pub mod descriptors;
+pub mod barriers;
 
 pub use cubetracer::*;

@@ -4,6 +4,7 @@ use crate::datatypes::*;
 use crate::pipeline::*;
 use crate::window::*;
 use crate::descriptors::*;
+use crate::barriers::image_barrier;
 
 use world::{main_world, ChunkMesh};
 
@@ -333,9 +334,22 @@ impl RTXData {
                 // Shadows
                 pipeline.dispatch(buffer, width, height, 1);
 
+                image_barrier(context, buffer, &[
+                    cache_normals.image.image,
+                    cache_initial_distances.image.image,
+                    cache_direct_illuminations.image.image,
+                    cache_hit_positions.image.image,
+                    cache_shadows.image.image,
+                    cache_mer.image.image,
+                ]);
+
                 // Reconstruct
                 reconstruct_pipeline.bind(&context, buffer);
                 reconstruct_pipeline.dispatch(buffer, width, height);
+
+                image_barrier(context, buffer, &[
+                    output_texture.image.image,
+                ]);
 
                 swapchain.cmd_update_image(buffer, index, &output_texture.image);
             });
