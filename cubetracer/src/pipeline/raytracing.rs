@@ -7,8 +7,8 @@ use std::ffi::CString;
 use std::sync::Arc;
 
 use crate::datatypes::*;
-use crate::pipeline::*;
 use crate::descriptors::*;
+use crate::pipeline::*;
 
 enum ShaderGroup {
     Hit {
@@ -16,14 +16,14 @@ enum ShaderGroup {
         closest_hit: Option<u32>,
         intersection: Option<u32>,
     },
-    General (u32),
+    General(u32),
 }
 
 impl ShaderGroup {
     pub fn group(&self) -> vk::RayTracingShaderGroupTypeNV {
         match self {
-            ShaderGroup::General (..) => vk::RayTracingShaderGroupTypeNV::GENERAL,
-            ShaderGroup::Hit {..} => vk::RayTracingShaderGroupTypeNV::TRIANGLES_HIT_GROUP,
+            ShaderGroup::General(..) => vk::RayTracingShaderGroupTypeNV::GENERAL,
+            ShaderGroup::Hit { .. } => vk::RayTracingShaderGroupTypeNV::TRIANGLES_HIT_GROUP,
         }
     }
 }
@@ -35,13 +35,17 @@ trait BuilderWithType {
 impl<'a> BuilderWithType for vk::RayTracingShaderGroupCreateInfoNVBuilder<'a> {
     fn shader_with_type(self, s_type: &ShaderGroup) -> Self {
         match s_type {
-            ShaderGroup::Hit { any_hit, closest_hit, intersection } => self
+            ShaderGroup::Hit {
+                any_hit,
+                closest_hit,
+                intersection,
+            } => self
                 .general_shader(vk::SHADER_UNUSED_NV)
                 .closest_hit_shader(closest_hit.unwrap_or(vk::SHADER_UNUSED_NV))
                 .any_hit_shader(any_hit.unwrap_or(vk::SHADER_UNUSED_NV))
                 .intersection_shader(intersection.unwrap_or(vk::SHADER_UNUSED_NV)),
 
-            ShaderGroup::General (i) => self
+            ShaderGroup::General(i) => self
                 .general_shader(*i)
                 .closest_hit_shader(vk::SHADER_UNUSED_NV)
                 .any_hit_shader(vk::SHADER_UNUSED_NV)
@@ -55,7 +59,6 @@ pub struct PipelineBuilder {
 
     context: Arc<Context>,
     entry_point: CString,
-
 
     descriptor_sets: Vec<vk::DescriptorSet>,
     descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
@@ -154,12 +157,12 @@ impl PipelineBuilder {
 
         let closest_hit = match closest_hit {
             Some(name) => Some(self.load_shader(ShaderType::ClosestHit, name)),
-            None => Some(self.shaders.len() as u32 - 2)
+            None => Some(self.shaders.len() as u32 - 2),
         };
 
         let any_hit = match any_hit {
             Some(name) => Some(self.load_shader(ShaderType::AnyHit, name)),
-            None => None
+            None => None,
         };
 
         self.shader_groups.push(ShaderGroup::Hit {
@@ -170,7 +173,6 @@ impl PipelineBuilder {
 
         self
     }
-
 
     pub fn build(&mut self, max_recursion_depth: u32) -> RaytracerPipeline {
         /////////// CREATE PIPELINE LAYOUT
@@ -218,7 +220,12 @@ impl PipelineBuilder {
         unsafe {
             self.context
                 .ray_tracing()
-                .get_ray_tracing_shader_group_handles(pipeline, 0, self.shader_groups.len() as u32, &mut shader_handles)
+                .get_ray_tracing_shader_group_handles(
+                    pipeline,
+                    0,
+                    self.shader_groups.len() as u32,
+                    &mut shader_handles,
+                )
                 .expect("Failed to get rt shader group handles")
         };
 
@@ -282,7 +289,6 @@ impl RaytracerPipeline {
                 height,
                 1,
             );
-
         }
     }
 }
@@ -304,7 +310,6 @@ impl Pipeline for RaytracerPipeline {
         &self.descriptor_sets
     }
 }
-
 
 impl Drop for RaytracerPipeline {
     fn drop(&mut self) {

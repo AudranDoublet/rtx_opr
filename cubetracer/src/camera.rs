@@ -68,7 +68,8 @@ impl Camera {
         self.rotation.y = self
             .rotation
             .y
-            .max(-std::f32::consts::PI / 2.1).min(std::f32::consts::PI / 2.1);
+            .max(-std::f32::consts::PI / 2.1)
+            .min(std::f32::consts::PI / 2.1);
 
         self.update_axes();
     }

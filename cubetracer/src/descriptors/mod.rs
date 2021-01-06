@@ -12,10 +12,9 @@ use crate::datatypes::DataType;
 pub struct DescriptorSet {
     context: Arc<Context>,
     pub layout: vk::DescriptorSetLayout,
-    pub pool : vk::DescriptorPool,
-    pub set : vk::DescriptorSet,
+    pub pool: vk::DescriptorPool,
+    pub set: vk::DescriptorSet,
 }
-
 
 impl Drop for DescriptorSet {
     fn drop(&mut self) {
@@ -80,6 +79,5 @@ impl<'a> DescriptorUpdateFactory<'a> {
             .collect::<Vec<_>>();
 
         unsafe { device.update_descriptor_sets(&write_descriptor_sets, &[]) };
-
     }
 }

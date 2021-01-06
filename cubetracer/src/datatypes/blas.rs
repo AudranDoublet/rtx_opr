@@ -68,8 +68,7 @@ impl BlasVariable {
         vertex_stride: usize,
     ) -> BlasVariable {
         ///// Create geometries list
-        let geometries = vec![
-            vk::GeometryNV::builder()
+        let geometries = vec![vk::GeometryNV::builder()
             .geometry_type(vk::GeometryTypeNV::TRIANGLES)
             .geometry(
                 vk::GeometryDataNV::builder()
@@ -91,24 +90,18 @@ impl BlasVariable {
                     .build(),
             )
             .flags(vk::GeometryFlagsNV::NO_DUPLICATE_ANY_HIT_INVOCATION)
-            .build()
-        ];
+            .build()];
 
         let acceleration_structure_info = vk::AccelerationStructureInfoNV::builder()
             .ty(vk::AccelerationStructureTypeNV::BOTTOM_LEVEL)
             .geometries(&geometries)
             .build();
 
-        let acceleration_structure = AccelerationStructure::new(
-            Arc::clone(context), acceleration_structure_info
-        );
+        let acceleration_structure =
+            AccelerationStructure::new(Arc::clone(context), acceleration_structure_info);
 
         ///// Create instance
-        let transform = [
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.0,
-        ];
+        let transform = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
         let geometry_instance = GeometryInstance {
             transform,
@@ -155,17 +148,25 @@ impl BlasVariable {
         match self.is_build {
             true => None,
             false => Some(
-                self.acceleration_structure.get_memory_requirements(
-                    vk::AccelerationStructureMemoryRequirementsTypeNV::BUILD_SCRATCH,
-                ).memory_requirements.size
+                self.acceleration_structure
+                    .get_memory_requirements(
+                        vk::AccelerationStructureMemoryRequirementsTypeNV::BUILD_SCRATCH,
+                    )
+                    .memory_requirements
+                    .size,
             ),
         }
     }
 
-    pub fn build(&mut self, command_buffer: vk::CommandBuffer, scratch_buffer: &BufferVariable) -> bool {
+    pub fn build(
+        &mut self,
+        command_buffer: vk::CommandBuffer,
+        scratch_buffer: &BufferVariable,
+    ) -> bool {
         if !self.is_build {
             self.is_build = true;
-            self.acceleration_structure.cmd_build(command_buffer, scratch_buffer, None);
+            self.acceleration_structure
+                .cmd_build(command_buffer, scratch_buffer, None);
 
             true
         } else {

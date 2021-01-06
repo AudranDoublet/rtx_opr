@@ -66,9 +66,7 @@ pub unsafe fn create_surface<E: EntryV1_0, I: InstanceV1_0>(
     use ash::extensions::khr::XlibSurface;
     use winit::platform::unix::WindowExtUnix;
 
-    let x11_display = window
-        .xlib_display()
-        .expect("Failed to get xlib display");
+    let x11_display = window.xlib_display().expect("Failed to get xlib display");
     let x11_window = window.xlib_window().expect("Failed to get xlib window");
     let x11_create_info = vk::XlibSurfaceCreateInfoKHR::builder()
         .window(x11_window)

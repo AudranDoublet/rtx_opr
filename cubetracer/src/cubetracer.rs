@@ -1,18 +1,18 @@
+use crate::barriers::image_barrier;
 use crate::camera::*;
 use crate::context::Context;
 use crate::datatypes::*;
+use crate::descriptors::*;
 use crate::pipeline::*;
 use crate::window::*;
-use crate::descriptors::*;
-use crate::barriers::image_barrier;
 
 use world::{main_world, ChunkMesh};
 
 use nalgebra::{Vector2, Vector3};
 
 use ash::vk;
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 const SHADER_FOLDER: &str = "cubetracer/shaders";
 const MAX_INSTANCE_BINDING: usize = 1024;
@@ -43,9 +43,8 @@ impl Cubetracer {
         let textures_info = &main_world().textures;
         let (w, h) = textures_info.dimensions();
 
-        let texture_array = TextureVariable::texture_array2d(
-            context, w as u32, h as u32, textures_info.paths(),
-        );
+        let texture_array =
+            TextureVariable::texture_array2d(context, w as u32, h as u32, textures_info.paths());
 
         let local_instance_bindings = [InstanceBinding {
             indices: vk::Buffer::null(),
@@ -63,11 +62,8 @@ impl Cubetracer {
                 &UniformScene {
                     sun_direction: Vector3::new(0.5, 1.0, -0.5).normalize(),
                 },
-            ), 
-            uniform_camera: UniformVariable::new(
-                &context,
-                &camera.uniform(),
-            ), 
+            ),
+            uniform_camera: UniformVariable::new(&context, &camera.uniform()),
             camera,
         }
     }
@@ -77,18 +73,14 @@ impl Cubetracer {
         context: &Arc<Context>,
         swapchain: &Swapchain,
         name: BlasName,
-        blas: BlasVariable
+        blas: BlasVariable,
     ) {
         let mut acceleration_structure = TlasVariable::new();
         acceleration_structure.register(name, blas);
         acceleration_structure.build(context, &mut self.local_instance_bindings);
         self.acceleration_structure = Some(acceleration_structure);
 
-        let rtx_data = RTXData::new(
-            context,
-            swapchain,
-            self,
-        );
+        let rtx_data = RTXData::new(context, swapchain, self);
 
         self.rtx_data = Some(rtx_data);
     }
@@ -97,8 +89,9 @@ impl Cubetracer {
         &mut self,
         context: &Arc<Context>,
         swapchain: &Swapchain,
-        x: i32, y: i32,
-        chunk: ChunkMesh
+        x: i32,
+        y: i32,
+        chunk: ChunkMesh,
     ) {
         let name = BlasName::Chunk(x, y);
         self.chunks.insert(name, chunk);
@@ -108,32 +101,41 @@ impl Cubetracer {
             "blas_vertices".to_string(),
             context,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
-            &chunk.vertices
-        ).0;
+            &chunk.vertices,
+        )
+        .0;
 
         let indices = BufferVariable::device_buffer(
             "blas_indices".to_string(),
             context,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER,
-            &chunk.indices
-        ).0;
+            &chunk.indices,
+        )
+        .0;
 
         let triangle_data = BufferVariable::device_buffer(
             "blas_triangles_data".to_string(),
             context,
             vk::BufferUsageFlags::STORAGE_BUFFER,
-            &chunk.triangle_data
-        ).0;
+            &chunk.triangle_data,
+        )
+        .0;
 
         let textures = BufferVariable::device_buffer(
             "blas_textures".to_string(),
             context,
             vk::BufferUsageFlags::STORAGE_BUFFER,
-            &chunk.texture_vertices
-        ).0;
+            &chunk.texture_vertices,
+        )
+        .0;
 
         let blas = BlasVariable::from_geometry(
-            context, vertices, indices, triangle_data, textures, std::mem::size_of::<[f32; 4]>()
+            context,
+            vertices,
+            indices,
+            triangle_data,
+            textures,
+            std::mem::size_of::<[f32; 4]>(),
         );
 
         if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
@@ -141,7 +143,6 @@ impl Cubetracer {
         } else {
             self.begin(context, swapchain, name, blas);
         }
-
     }
 
     pub fn delete_chunk(&mut self, x: i32, y: i32) {
@@ -175,9 +176,7 @@ impl Cubetracer {
                 },
             );
 
-            self.uniform_camera.set(
-                context, &self.camera.uniform(),
-            );
+            self.uniform_camera.set(context, &self.camera.uniform());
 
             true
         } else {
@@ -190,11 +189,7 @@ impl Cubetracer {
     }
 
     pub fn resize(&mut self, context: &Arc<Context>, swapchain: &Swapchain) {
-        self.rtx_data = Some(RTXData::new(
-            context,
-            swapchain,
-            self,
-        ));
+        self.rtx_data = Some(RTXData::new(context, swapchain, self));
 
         if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
             self.rtx_data.as_mut().unwrap().update_blas_data(
@@ -224,7 +219,11 @@ impl RTXData {
         &self.command_buffers.buffers()
     }
 
-    pub fn update_blas_data(&mut self, data: &mut BufferVariableList, textures: &mut BufferVariableList) {
+    pub fn update_blas_data(
+        &mut self,
+        data: &mut BufferVariableList,
+        textures: &mut BufferVariableList,
+    ) {
         self.descriptor_sets[0]
             .update(&self.context)
             .register(4, vk::DescriptorType::STORAGE_BUFFER, data)
@@ -234,60 +233,85 @@ impl RTXData {
 }
 
 impl RTXData {
-    pub fn new(
-        context: &Arc<Context>,
-        swapchain: &Swapchain,
-        cubetracer: &mut Cubetracer,
-    ) -> Self {
+    pub fn new(context: &Arc<Context>, swapchain: &Swapchain, cubetracer: &mut Cubetracer) -> Self {
         ////// CREATE CACHES
         let mut output_texture = TextureVariable::from_swapchain(context, swapchain);
 
-        let mut cache_normals = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
-        let mut cache_initial_distances = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
-        let mut cache_direct_illuminations = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
-        let mut cache_hit_positions = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
-        let mut cache_shadows = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
-        let mut cache_mer = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
+        let mut cache_normals = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+        let mut cache_initial_distances =
+            TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
+        let mut cache_direct_illuminations = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+        let mut cache_hit_positions = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+        let mut cache_shadows = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+        let mut cache_mer = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
 
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
 
         ////// CREATE DESCRIPTOR SETS
         let descriptor_set = DescriptorSetBuilder::new(context)
-            .binding( // 0
+            .binding(
+                // 0
                 vk::DescriptorType::ACCELERATION_STRUCTURE_NV,
                 cubetracer.acceleration_structure.as_mut().unwrap(),
                 &[ShaderType::Raygen, ShaderType::ClosestHit],
             )
-            .binding( // 1
+            .binding(
+                // 1
                 vk::DescriptorType::UNIFORM_BUFFER,
                 &mut cubetracer.uniform_camera,
                 &[ShaderType::Raygen],
             )
-            .binding( // 2
+            .binding(
+                // 2
                 vk::DescriptorType::UNIFORM_BUFFER,
                 &mut cubetracer.uniform_scene,
                 &[ShaderType::Raygen, ShaderType::ClosestHit, ShaderType::Miss],
             )
-            .binding( // 3
+            .binding(
+                // 3
                 vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                 &mut cubetracer.texture_array,
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
-            .binding_count( // 4
+            .binding_count(
+                // 4
                 vk::DescriptorType::STORAGE_BUFFER,
                 max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
-            .binding_count( // 5
+            .binding_count(
+                // 5
                 vk::DescriptorType::STORAGE_BUFFER,
                 max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
-            ).build();
+            )
+            .build();
 
         let cache_descriptors = DescriptorSetBuilder::new(context)
-            .bindings( // 0 - 6
+            .bindings(
+                // 0 - 6
                 vk::DescriptorType::STORAGE_IMAGE,
                 vec![
                     &mut output_texture,
@@ -299,7 +323,8 @@ impl RTXData {
                     &mut cache_mer,
                 ],
                 &[ShaderType::Raygen, ShaderType::Compute],
-            ).build();
+            )
+            .build();
 
         ////// CREATE PIPELINES
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
@@ -307,7 +332,10 @@ impl RTXData {
             .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
             .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
-            .hit_shaders(Some("initial/closesthit.rchit.spv"), Some("initial/anyhit.rahit.spv"))
+            .hit_shaders(
+                Some("initial/closesthit.rchit.spv"),
+                Some("initial/anyhit.rahit.spv"),
+            )
             .hit_shaders(None, Some("shadow/anyhit.rahit.spv"))
             .descriptor_set(&descriptor_set)
             .descriptor_set(&cache_descriptors)
@@ -320,39 +348,40 @@ impl RTXData {
 
         ////// CREATE COMMANDS
         let command_buffers = CommandBuffers::new(context, swapchain);
-        command_buffers
-            .record(|index, buffer| {
-                let swapchain_props = swapchain.properties();
+        command_buffers.record(|index, buffer| {
+            let swapchain_props = swapchain.properties();
 
-                let width = swapchain_props.extent.width;
-                let height = swapchain_props.extent.height;
+            let width = swapchain_props.extent.width;
+            let height = swapchain_props.extent.height;
 
-                // Initial ray
-                pipeline.bind(&context, buffer);
-                pipeline.dispatch(buffer, width, height, 0);
+            // Initial ray
+            pipeline.bind(&context, buffer);
+            pipeline.dispatch(buffer, width, height, 0);
 
-                // Shadows
-                pipeline.dispatch(buffer, width, height, 1);
+            // Shadows
+            pipeline.dispatch(buffer, width, height, 1);
 
-                image_barrier(context, buffer, &[
+            image_barrier(
+                context,
+                buffer,
+                &[
                     cache_normals.image.image,
                     cache_initial_distances.image.image,
                     cache_direct_illuminations.image.image,
                     cache_hit_positions.image.image,
                     cache_shadows.image.image,
                     cache_mer.image.image,
-                ]);
+                ],
+            );
 
-                // Reconstruct
-                reconstruct_pipeline.bind(&context, buffer);
-                reconstruct_pipeline.dispatch(buffer, width, height);
+            // Reconstruct
+            reconstruct_pipeline.bind(&context, buffer);
+            reconstruct_pipeline.dispatch(buffer, width, height);
 
-                image_barrier(context, buffer, &[
-                    output_texture.image.image,
-                ]);
+            image_barrier(context, buffer, &[output_texture.image.image]);
 
-                swapchain.cmd_update_image(buffer, index, &output_texture.image);
-            });
+            swapchain.cmd_update_image(buffer, index, &output_texture.image);
+        });
 
         Self {
             context: Arc::clone(context),
@@ -368,10 +397,7 @@ impl RTXData {
                 cache_shadows,
                 cache_mer,
             ],
-            descriptor_sets: vec![
-                descriptor_set,
-                cache_descriptors,
-            ],
+            descriptor_sets: vec![descriptor_set, cache_descriptors],
 
             // pipeline
             pipeline,

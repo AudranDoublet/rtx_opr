@@ -122,8 +122,12 @@ impl BufferVariable {
     ) -> (BufferVariable, BufferVariable) {
         context.execute_one_time_commands(|command_buffer| {
             let size = (data.len() * size_of::<T>()) as vk::DeviceSize;
-            let staging_buffer =
-                Self::host_buffer(format!("{} host-copy", name), context, vk::BufferUsageFlags::TRANSFER_SRC, data);
+            let staging_buffer = Self::host_buffer(
+                format!("{} host-copy", name),
+                context,
+                vk::BufferUsageFlags::TRANSFER_SRC,
+                data,
+            );
 
             let buffer = Self::create(
                 name,
@@ -183,13 +187,14 @@ impl BufferVariable {
         };
     }
 
-    pub fn set_device<T: Copy>(
-        &mut self,
-        context: &Arc<Context>,
-        data: &[T],
-    ) {
+    pub fn set_device<T: Copy>(&mut self, context: &Arc<Context>, data: &[T]) {
         context.execute_one_time_commands(|command_buffer| {
-            let staging_buffer = Self::host_buffer(format!("{} host-copy set", self.name), context, vk::BufferUsageFlags::TRANSFER_SRC, data);
+            let staging_buffer = Self::host_buffer(
+                format!("{} host-copy set", self.name),
+                context,
+                vk::BufferUsageFlags::TRANSFER_SRC,
+                data,
+            );
             self.cmd_copy(command_buffer, &staging_buffer, staging_buffer.size);
         });
     }
@@ -258,12 +263,10 @@ impl BufferVariable {
 
 impl DataType for BufferVariable {
     fn write_descriptor_builder(&mut self) -> vk::WriteDescriptorSetBuilder {
-        self.info = vec![
-            vk::DescriptorBufferInfo::builder()
-                .buffer(self.buffer)
-                .range(vk::WHOLE_SIZE)
-                .build(),
-        ];
+        self.info = vec![vk::DescriptorBufferInfo::builder()
+            .buffer(self.buffer)
+            .range(vk::WHOLE_SIZE)
+            .build()];
 
         vk::WriteDescriptorSet::builder().buffer_info(&self.info)
     }

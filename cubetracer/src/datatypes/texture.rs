@@ -105,21 +105,15 @@ impl TextureVariable {
         paths: &Vec<String>,
     ) -> TextureVariable {
         let image = ImageVariable::array_from_paths(context, width, height, paths);
-        context.execute_one_time_commands(|cmd|
-            image.cmd_generate_mipmaps(cmd)
-        );
+        context.execute_one_time_commands(|cmd| image.cmd_generate_mipmaps(cmd));
 
         let view = image.create_view(
-            vk::ImageViewType::TYPE_2D_ARRAY, vk::ImageAspectFlags::COLOR,
+            vk::ImageViewType::TYPE_2D_ARRAY,
+            vk::ImageAspectFlags::COLOR,
         );
         let sampler = image.create_sampler(context);
 
-        TextureVariable::new(
-            Arc::clone(context),
-            image,
-            view,
-            Some(sampler),
-        )
+        TextureVariable::new(Arc::clone(context), image, view, Some(sampler))
     }
 
     pub fn cmd_from_rgba(
@@ -137,7 +131,7 @@ impl TextureVariable {
             "rgba_texture_buffer".to_string(),
             context,
             vk::BufferUsageFlags::TRANSFER_SRC,
-            data
+            data,
         );
 
         let image = ImageVariable::create(
@@ -288,7 +282,11 @@ impl TextureVariable {
         }
     }
 
-    pub fn from_swapchain_format(context: &Arc<Context>, swapchain: &Swapchain, format: vk::Format) -> TextureVariable {
+    pub fn from_swapchain_format(
+        context: &Arc<Context>,
+        swapchain: &Swapchain,
+        format: vk::Format,
+    ) -> TextureVariable {
         let swapchain_props = swapchain.properties();
 
         let params = ImageParameters {
@@ -321,19 +319,18 @@ impl TextureVariable {
 
 impl DataType for TextureVariable {
     fn write_descriptor_builder(&mut self) -> vk::WriteDescriptorSetBuilder {
-        self.info = vec![ 
-            {
-                let bld = vk::DescriptorImageInfo::builder()
-                    .image_view(self.view)
-                    .image_layout(vk::ImageLayout::GENERAL);
+        self.info = vec![{
+            let bld = vk::DescriptorImageInfo::builder()
+                .image_view(self.view)
+                .image_layout(vk::ImageLayout::GENERAL);
 
-                if let Some(sampler) = self.sampler {
-                    bld.sampler(sampler)
-                } else {
-                    bld
-                }.build()
+            if let Some(sampler) = self.sampler {
+                bld.sampler(sampler)
+            } else {
+                bld
             }
-        ];
+            .build()
+        }];
 
         vk::WriteDescriptorSet::builder().image_info(&self.info)
     }

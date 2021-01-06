@@ -5,10 +5,10 @@ use std::sync::Arc;
 
 use ash::vk;
 
-use crate::pipeline::ShaderType;
 use crate::context::Context;
 use crate::datatypes::*;
 use crate::descriptors::DescriptorSet;
+use crate::pipeline::ShaderType;
 
 pub struct DescriptorSetBuilder<'a> {
     context: Arc<Context>,
@@ -17,7 +17,6 @@ pub struct DescriptorSetBuilder<'a> {
     bindings: Vec<vk::DescriptorSetLayoutBinding>,
     variables: Vec<(vk::DescriptorType, &'a mut dyn DataType)>,
 }
-
 
 impl<'a> DescriptorSetBuilder<'a> {
     pub fn new(context: &Arc<Context>) -> Self {
@@ -137,7 +136,6 @@ impl<'a> DescriptorSetBuilder<'a> {
             set: descriptor_set,
         }
     }
-
 }
 
 impl<'a> DescriptorSetBuilder<'a> {

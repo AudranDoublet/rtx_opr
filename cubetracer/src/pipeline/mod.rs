@@ -1,22 +1,21 @@
+mod command_buffers;
+mod compute;
 mod raytracing;
 mod shader;
-mod compute;
-mod command_buffers;
 
-pub use raytracing::*;
-pub use compute::*;
-pub use shader::*;
 pub use command_buffers::*;
+pub use compute::*;
+pub use raytracing::*;
+pub use shader::*;
 
 use std::sync::Arc;
-
 
 use ash::version::DeviceV1_0;
 use ash::vk;
 
 use crate::context::Context;
 
-pub trait Pipeline : Sized {
+pub trait Pipeline: Sized {
     fn pipeline(&self) -> vk::Pipeline;
     fn pipeline_layout(&self) -> vk::PipelineLayout;
     fn bind_point(&self) -> vk::PipelineBindPoint;
@@ -27,11 +26,9 @@ pub trait Pipeline : Sized {
 
         // Bind pipeline
         unsafe {
-            context.device().cmd_bind_pipeline(
-                buffer,
-                bind_point,
-                self.pipeline(),
-            )
+            context
+                .device()
+                .cmd_bind_pipeline(buffer, bind_point, self.pipeline())
         };
 
         // Bind descriptor set

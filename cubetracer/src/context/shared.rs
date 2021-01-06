@@ -217,11 +217,11 @@ fn find_queue_families(
             graphics = Some(index);
         }
 
-        let present_support =
-            unsafe {
-                surface.get_physical_device_surface_support(device, index, surface_khr)
-                       .unwrap()
-            };
+        let present_support = unsafe {
+            surface
+                .get_physical_device_surface_support(device, index, surface_khr)
+                .unwrap()
+        };
         if present_support && present.is_none() {
             present = Some(index);
         }

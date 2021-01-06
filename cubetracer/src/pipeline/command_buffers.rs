@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
-use crate::window::*;
 use crate::context::*;
+use crate::window::*;
 
-use ash::vk;
 use ash::version::DeviceV1_0;
+use ash::vk;
 
 pub struct CommandBuffers {
     context: Arc<Context>,
-    command_buffers: Vec<vk::CommandBuffer>
+    command_buffers: Vec<vk::CommandBuffer>,
 }
 
 impl CommandBuffers {
@@ -39,7 +39,10 @@ impl CommandBuffers {
         &self.command_buffers
     }
 
-    pub fn record<F>(&self, func: F) where F: Fn(usize, vk::CommandBuffer) {
+    pub fn record<F>(&self, func: F)
+    where
+        F: Fn(usize, vk::CommandBuffer),
+    {
         let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
             .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE);
 

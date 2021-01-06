@@ -5,8 +5,8 @@ use crate::context::Context;
 use std::ffi::CString;
 use std::sync::Arc;
 
-use crate::pipeline::*;
 use crate::descriptors::*;
+use crate::pipeline::*;
 
 pub struct ComputePipelineBuilder {
     folder: String,
@@ -93,21 +93,15 @@ impl ComputePipelineBuilder {
         /////////// CREATE PIPELINE
         let stages = self.stages();
 
-        let pipeline_create_info = [
-            vk::ComputePipelineCreateInfo::builder()
+        let pipeline_create_info = [vk::ComputePipelineCreateInfo::builder()
             .stage(stages[0])
             .layout(pipeline_layout)
-            .build()
-        ];
+            .build()];
 
         let pipeline = unsafe {
             self.context
                 .device()
-                .create_compute_pipelines(
-                    vk::PipelineCache::null(),
-                    &pipeline_create_info,
-                    None,
-                )
+                .create_compute_pipelines(vk::PipelineCache::null(), &pipeline_create_info, None)
                 .expect("Failed to create compute pipeline")[0]
         };
 
@@ -130,12 +124,9 @@ pub struct ComputePipeline {
 impl ComputePipeline {
     pub fn dispatch(&self, buffer: vk::CommandBuffer, width: u32, height: u32) {
         unsafe {
-            self.context.device().cmd_dispatch(
-                buffer,
-                (width+15)/16,
-                (height+15)/16,
-                1,
-            );
+            self.context
+                .device()
+                .cmd_dispatch(buffer, (width + 15) / 16, (height + 15) / 16, 1);
         }
     }
 }
@@ -157,7 +148,6 @@ impl Pipeline for ComputePipeline {
         &self.descriptor_sets
     }
 }
-
 
 impl Drop for ComputePipeline {
     fn drop(&mut self) {

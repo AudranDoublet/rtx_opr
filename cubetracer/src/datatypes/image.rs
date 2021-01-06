@@ -114,12 +114,7 @@ impl ImageVariable {
         }
     }
 
-    pub fn from_path(
-        context: &Arc<Context>,
-        path: &str,
-        width: u32,
-        height: u32,
-    ) -> ImageVariable {
+    pub fn from_path(context: &Arc<Context>, path: &str, width: u32, height: u32) -> ImageVariable {
         let image = image::open(path)
             .expect(format!("can't load texture {}", path).as_str())
             .into_rgba8();
@@ -128,10 +123,7 @@ impl ImageVariable {
             image::imageops::resize(&image, width, height, image::imageops::FilterType::Gaussian);
 
         let params = ImageParameters {
-            extent: vk::Extent2D {
-                width,
-                height,
-            },
+            extent: vk::Extent2D { width, height },
             layers: 1,
             mip_levels: 1,
             mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
@@ -146,7 +138,7 @@ impl ImageVariable {
             "image_data".to_string(),
             context,
             vk::BufferUsageFlags::TRANSFER_SRC,
-            &rimage.into_raw()
+            &rimage.into_raw(),
         );
 
         let image = Self::create(Arc::clone(context), params);
@@ -157,10 +149,7 @@ impl ImageVariable {
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             );
 
-            image.cmd_copy_buffer(cmd, &buffer, vk::Extent2D {
-                width,
-                height,
-            });
+            image.cmd_copy_buffer(cmd, &buffer, vk::Extent2D { width, height });
             image.cmd_transition_image_layout(
                 cmd,
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
@@ -178,9 +167,9 @@ impl ImageVariable {
         paths: &Vec<String>,
     ) -> ImageVariable {
         let images = paths
-             .iter()
-             .map(|path| Self::from_path(context, path, width, height))
-             .collect();
+            .iter()
+            .map(|path| Self::from_path(context, path, width, height))
+            .collect();
 
         Self::create_image_array(context, width, height, images)
     }
@@ -196,10 +185,7 @@ impl ImageVariable {
         dbg!(mip_levels);
 
         let params = ImageParameters {
-            extent: vk::Extent2D {
-                width,
-                height,
-            },
+            extent: vk::Extent2D { width, height },
             layers: images.len() as u32,
             mip_levels,
             mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
@@ -213,41 +199,37 @@ impl ImageVariable {
             result.cmd_transition_image_layout(
                 cmd_buffer,
                 vk::ImageLayout::UNDEFINED,
-                vk::ImageLayout::TRANSFER_DST_OPTIMAL
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             );
         });
 
         for (i, image) in images.iter().enumerate() {
-            let regions = [
-                vk::ImageCopy::builder()
-                    .src_subresource(vk::ImageSubresourceLayers {
-                        aspect_mask: vk::ImageAspectFlags::COLOR,
-                        mip_level: 0,
-                        base_array_layer: 0,
-                        layer_count: 1,
-                    })
-                    .dst_subresource(vk::ImageSubresourceLayers {
-                        aspect_mask: vk::ImageAspectFlags::COLOR,
-                        mip_level: 0,
-                        base_array_layer: i as u32,
-                        layer_count: 1,
-                    })
-                    .dst_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
-                    .extent(image.extent)
-                    .build()
-            ];
+            let regions = [vk::ImageCopy::builder()
+                .src_subresource(vk::ImageSubresourceLayers {
+                    aspect_mask: vk::ImageAspectFlags::COLOR,
+                    mip_level: 0,
+                    base_array_layer: 0,
+                    layer_count: 1,
+                })
+                .dst_subresource(vk::ImageSubresourceLayers {
+                    aspect_mask: vk::ImageAspectFlags::COLOR,
+                    mip_level: 0,
+                    base_array_layer: i as u32,
+                    layer_count: 1,
+                })
+                .dst_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
+                .extent(image.extent)
+                .build()];
 
-            context.execute_one_time_commands(|cmd_buffer| {
-                unsafe {
-                    context.device().cmd_copy_image(
-                        cmd_buffer,
-                        image.image,
-                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                        result.image,
-                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                        &regions,
-                    );
-                }
+            context.execute_one_time_commands(|cmd_buffer| unsafe {
+                context.device().cmd_copy_image(
+                    cmd_buffer,
+                    image.image,
+                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                    result.image,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    &regions,
+                );
             });
         }
 
@@ -310,10 +292,7 @@ impl ImageVariable {
         }
     }
 
-    pub fn create_sampler(
-        &self,
-        context: &Arc<Context>,
-    ) -> vk::Sampler {
+    pub fn create_sampler(&self, context: &Arc<Context>) -> vk::Sampler {
         let info = vk::SamplerCreateInfo::builder()
             .mag_filter(vk::Filter::LINEAR)
             .min_filter(vk::Filter::LINEAR)
@@ -326,9 +305,10 @@ impl ImageVariable {
             .max_lod(self.mip_levels as f32)
             .build();
 
-
         unsafe {
-            context.device().create_sampler(&info, None)
+            context
+                .device()
+                .create_sampler(&info, None)
                 .expect("can't create sampler")
         }
     }

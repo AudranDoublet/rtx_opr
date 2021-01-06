@@ -1,5 +1,5 @@
-use ash::vk;
 use crate::datatypes::DataType;
+use ash::vk;
 
 pub struct BufferVariableList {
     buffers: Vec<vk::Buffer>,
@@ -15,9 +15,7 @@ impl BufferVariableList {
     }
 
     pub fn empty(size: usize) -> Self {
-        let buffers = (0..size)
-            .map(|_| vk::Buffer::null())
-            .collect();
+        let buffers = (0..size).map(|_| vk::Buffer::null()).collect();
 
         BufferVariableList {
             buffers,
@@ -28,13 +26,16 @@ impl BufferVariableList {
 
 impl DataType for BufferVariableList {
     fn write_descriptor_builder(&mut self) -> vk::WriteDescriptorSetBuilder {
-        self.infos = self.buffers.iter()
+        self.infos = self
+            .buffers
+            .iter()
             .map(|&var| {
                 vk::DescriptorBufferInfo::builder()
                     .buffer(var)
                     .range(vk::WHOLE_SIZE)
                     .build()
-            }).collect();
+            })
+            .collect();
 
         vk::WriteDescriptorSet::builder().buffer_info(&self.infos)
     }

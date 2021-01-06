@@ -191,7 +191,7 @@ impl Swapchain {
                 mip_level: 0,
                 base_array_layer: 0,
                 layer_count: 1,
-            }
+            },
         );
 
         // Transition layout
