@@ -1,5 +1,4 @@
 mod raytracing;
-mod update_factory;
 mod shader;
 mod compute;
 mod command_buffers;
@@ -7,7 +6,6 @@ mod command_buffers;
 pub use raytracing::*;
 pub use compute::*;
 pub use shader::*;
-pub use update_factory::*;
 pub use command_buffers::*;
 
 use std::sync::Arc;
@@ -18,7 +16,7 @@ use ash::vk;
 
 use crate::context::Context;
 
-pub trait Pipeline {
+pub trait Pipeline : Sized {
     fn pipeline(&self) -> vk::Pipeline;
     fn pipeline_layout(&self) -> vk::PipelineLayout;
     fn bind_point(&self) -> vk::PipelineBindPoint;

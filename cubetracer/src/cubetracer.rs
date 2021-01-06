@@ -224,10 +224,11 @@ impl RTXData {
     }
 
     pub fn update_blas_data(&mut self, data: &mut BufferVariableList, textures: &mut BufferVariableList) {
-        UpdateFactory::new(&self.context)
+        self.descriptor_sets[0]
+            .update(&self.context)
             .register(4, vk::DescriptorType::STORAGE_BUFFER, data)
             .register(5, vk::DescriptorType::STORAGE_BUFFER, textures)
-            .update(&mut self.pipeline);
+            .update();
     }
 }
 
