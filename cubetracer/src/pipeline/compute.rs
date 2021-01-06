@@ -132,8 +132,8 @@ impl ComputePipeline {
         unsafe {
             self.context.device().cmd_dispatch(
                 buffer,
-                width,
-                height,
+                (width+15)/16,
+                (height+15)/16,
                 1,
             );
         }
