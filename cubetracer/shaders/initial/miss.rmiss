@@ -19,7 +19,7 @@ const float CST_SKY_HR = 7994.0;
 const float CST_SKY_HM = 1200.0;
 const float CST_SUN_INTENSITY = 20.0;
 
-layout(binding = 3, set = 0) uniform Uniforms {
+layout(binding = 2, set = 0) uniform Uniforms {
     vec3 sunDirection;
 } scene;
 

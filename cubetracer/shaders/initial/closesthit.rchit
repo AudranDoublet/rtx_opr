@@ -12,15 +12,15 @@ layout(location = 0) rayPayloadInNV InitialPayload payload;
 hitAttributeNV vec3 attribs;
 
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
-layout(binding = 3, set = 0) uniform Uniforms {
+layout(binding = 2, set = 0) uniform Uniforms {
     vec3 sunDirection;
 } scene;
 
-layout (binding = 4, set = 0) uniform sampler2DArray texture_array;
-layout (binding = 5, set = 0) buffer BlasTriangleData {
+layout (binding = 3, set = 0) uniform sampler2DArray texture_array;
+layout (binding = 4, set = 0) buffer BlasTriangleData {
     TriangleData data[];
 } blas_triangle_data[];
-layout (binding = 6, set = 0) buffer ChunkTextures {
+layout (binding = 5, set = 0) buffer ChunkTextures {
     vec3 data[];
 } blas_textures[];
 

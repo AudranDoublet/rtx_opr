@@ -225,8 +225,8 @@ impl RTXData {
 
     pub fn update_blas_data(&mut self, data: &mut BufferVariableList, textures: &mut BufferVariableList) {
         UpdateFactory::new(&self.context)
-            .register(5, vk::DescriptorType::STORAGE_BUFFER, data)
-            .register(6, vk::DescriptorType::STORAGE_BUFFER, textures)
+            .register(4, vk::DescriptorType::STORAGE_BUFFER, data)
+            .register(5, vk::DescriptorType::STORAGE_BUFFER, textures)
             .update(&mut self.pipeline);
     }
 }
@@ -257,23 +257,24 @@ impl RTXData {
                 &[ShaderType::Raygen, ShaderType::ClosestHit],
             )
             .binding( // 1
-                vk::DescriptorType::STORAGE_IMAGE,
-                &mut output_texture,
-                &[ShaderType::Raygen, ShaderType::Compute],
-            )
-            .binding( // 2
                 vk::DescriptorType::UNIFORM_BUFFER,
                 &mut cubetracer.uniform_camera,
                 &[ShaderType::Raygen],
             )
-            .binding( // 3
+            .binding( // 2
                 vk::DescriptorType::UNIFORM_BUFFER,
                 &mut cubetracer.uniform_scene,
                 &[ShaderType::Raygen, ShaderType::ClosestHit, ShaderType::Miss],
             )
-            .binding( // 4
+            .binding( // 3
                 vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                 &mut cubetracer.texture_array,
+                &[ShaderType::ClosestHit, ShaderType::AnyHit],
+            )
+            .binding_count( // 4
+                vk::DescriptorType::STORAGE_BUFFER,
+                max_nb_chunks as u32,
+                &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
             .binding_count( // 5
@@ -281,16 +282,13 @@ impl RTXData {
                 max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
-            )
-            .binding_count( // 6
-                vk::DescriptorType::STORAGE_BUFFER,
-                max_nb_chunks as u32,
-                &mut BufferVariableList::empty(max_nb_chunks),
-                &[ShaderType::ClosestHit, ShaderType::AnyHit],
-            )
-            .bindings( // 7 - 12
+            ).build();
+
+        let cache_descriptors = DescriptorSetBuilder::new(context)
+            .bindings( // 0 - 6
                 vk::DescriptorType::STORAGE_IMAGE,
                 vec![
+                    &mut output_texture,
                     &mut cache_normals,
                     &mut cache_initial_distances,
                     &mut cache_direct_illuminations,
@@ -310,11 +308,12 @@ impl RTXData {
             .hit_shaders(Some("initial/closesthit.rchit.spv"), Some("initial/anyhit.rahit.spv"))
             .hit_shaders(None, Some("shadow/anyhit.rahit.spv"))
             .descriptor_set(&descriptor_set)
+            .descriptor_set(&cache_descriptors)
             .build(2);
 
         let reconstruct_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
             .shader("reconstruct.comp.spv")
-            .descriptor_set(&descriptor_set)
+            .descriptor_set(&cache_descriptors)
             .build();
 
         ////// CREATE COMMANDS
@@ -356,6 +355,7 @@ impl RTXData {
             ],
             descriptor_sets: vec![
                 descriptor_set,
+                cache_descriptors,
             ],
 
             // pipeline

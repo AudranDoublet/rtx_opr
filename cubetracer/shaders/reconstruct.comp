@@ -1,9 +1,9 @@
 #version 460
 
-layout(binding = 1, set = 0, rgba8) uniform image2D image;
+layout(binding = 0, set = 0, rgba8) uniform image2D image;
 
-layout(binding = 9, set = 0, rgba32f) uniform image2D direct_illumination;
-layout(binding = 11, set = 0, rgba32f) uniform image2D shadows;
+layout(binding = 3, set = 0, rgba32f) uniform image2D direct_illumination;
+layout(binding = 5, set = 0, rgba32f) uniform image2D shadows;
 
 void main() {
     const ivec2 xy = ivec2(gl_GlobalInvocationID.xy);

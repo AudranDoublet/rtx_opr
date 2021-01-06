@@ -5,19 +5,19 @@
 #include "payload.h"
 
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
-layout(binding = 1, set = 0, rgba8) uniform image2D image;
-layout(binding = 2, set = 0) uniform Uniforms {
+layout(binding = 1, set = 0) uniform Uniforms {
     vec3 forward;
     vec3 left;
     vec3 up;
     vec3 origin;
 } camera;
 
-layout(binding = 7, set = 0, rgba32f) uniform image2D normals;
-layout(binding = 8, set = 0, r32f) uniform image2D initial_distances;
-layout(binding = 9, set = 0, rgba32f) uniform image2D direct_illumination;
-layout(binding = 10, set = 0, rgba32f) uniform image2D hit_positions;
-layout(binding = 12, set = 0, rgba32f) uniform image2D illum_coeffs;
+layout(binding = 0, set = 1, rgba8) uniform image2D image;
+layout(binding = 1, set = 1, rgba32f) uniform image2D normals;
+layout(binding = 2, set = 1, r32f) uniform image2D initial_distances;
+layout(binding = 3, set = 1, rgba32f) uniform image2D direct_illumination;
+layout(binding = 4, set = 1, rgba32f) uniform image2D hit_positions;
+layout(binding = 6, set = 1, rgba32f) uniform image2D illum_coeffs;
 
 layout(location = 0) rayPayloadNV InitialPayload payload;
 
