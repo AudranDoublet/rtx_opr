@@ -204,6 +204,7 @@ pub struct RTXData {
 
     descriptor_set: DescriptorSet,
     pipeline: RaytracerPipeline,
+    reconstruct_pipeline: ComputePipeline,
 }
 
 impl RTXData {
@@ -257,7 +258,7 @@ impl RTXData {
                 vk::DescriptorType::STORAGE_IMAGE,
                 1,
                 &mut output_texture,
-                &[ShaderType::Raygen],
+                &[ShaderType::Raygen, ShaderType::Compute],
             )
             .binding( // 2
                 vk::DescriptorType::UNIFORM_BUFFER,
@@ -305,7 +306,7 @@ impl RTXData {
                 vk::DescriptorType::STORAGE_IMAGE,
                 1,
                 &mut cache_direct_illuminations,
-                &[ShaderType::Raygen],
+                &[ShaderType::Raygen, ShaderType::Compute],
             )
             .binding( // 10
                 vk::DescriptorType::STORAGE_IMAGE,
@@ -317,7 +318,7 @@ impl RTXData {
                 vk::DescriptorType::STORAGE_IMAGE,
                 1,
                 &mut cache_shadows,
-                &[ShaderType::Raygen],
+                &[ShaderType::Raygen, ShaderType::Compute],
             )
             .binding( // 12
                 vk::DescriptorType::STORAGE_IMAGE,
@@ -329,13 +330,17 @@ impl RTXData {
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
-            .general_shader(ShaderType::Raygen, "reconstruct.rgen.spv")
             .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
             .hit_shaders(Some("initial/closesthit.rchit.spv"), Some("initial/anyhit.rahit.spv"))
             .hit_shaders(None, Some("shadow/anyhit.rahit.spv"))
             .descriptor_set(&descriptor_set)
             .build(2);
+
+        let reconstruct_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
+            .shader("reconstruct.comp.spv")
+            .descriptor_set(&descriptor_set)
+            .build();
 
         let mut rtx = Self {
             context: Arc::clone(context),
@@ -356,6 +361,7 @@ impl RTXData {
 
             // pipeline
             pipeline,
+            reconstruct_pipeline,
             descriptor_set,
 
             command_buffers: Vec::new(),
@@ -400,7 +406,6 @@ impl RTXData {
                         .expect("Failed to begin command buffer")
                 };
 
-                // FIXME: CALL BIIIIIIIIIIIIIIND (pipeline + descriptor)
                 let swapchain_props = swapchain.properties();
 
                 let width = swapchain_props.extent.width;
@@ -410,7 +415,9 @@ impl RTXData {
 
                 self.pipeline.dispatch(buffer, width, height, 0);
                 self.pipeline.dispatch(buffer, width, height, 1);
-                self.pipeline.dispatch(buffer, width, height, 2);
+
+                self.reconstruct_pipeline.bind(&self.context, buffer);
+                self.reconstruct_pipeline.dispatch(buffer, width, height);
 
                 // Copy output image to swapchain
                 {

@@ -1,18 +1,15 @@
 #version 460
-#extension GL_NV_ray_tracing : require
 
-layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 layout(binding = 1, set = 0, rgba8) uniform image2D image;
 
 layout(binding = 9, set = 0, rgba32f) uniform image2D direct_illumination;
 layout(binding = 11, set = 0, rgba32f) uniform image2D shadows;
-layout(binding = 12, set = 0, rgba32f) uniform image2D illum_coeffs;
 
 void main() {
-    const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
+    const ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
 
     const vec4 direct_illum = imageLoad(direct_illumination, xy);
     const vec4 shadows = imageLoad(shadows, xy);
 
-    imageStore(image, ivec2(gl_LaunchIDNV.xy), direct_illum * shadows);
+    imageStore(image, xy, direct_illum * shadows);
 }
