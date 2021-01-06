@@ -2,11 +2,13 @@ mod raytracing;
 mod update_factory;
 mod shader;
 mod compute;
+mod command_buffers;
 
 pub use raytracing::*;
 pub use compute::*;
 pub use shader::*;
 pub use update_factory::*;
+pub use command_buffers::*;
 
 use std::sync::Arc;
 

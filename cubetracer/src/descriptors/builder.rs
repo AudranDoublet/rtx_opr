@@ -33,6 +33,15 @@ impl<'a> DescriptorSetBuilder<'a> {
     pub fn binding(
         &mut self,
         desc_type: vk::DescriptorType,
+        variable: &'a mut dyn DataType,
+        stages: &[ShaderType],
+    ) -> &mut Self {
+        self.binding_count(desc_type, 1, variable, stages)
+    }
+
+    pub fn binding_count(
+        &mut self,
+        desc_type: vk::DescriptorType,
         descriptor_count: u32,
         variable: &'a mut dyn DataType,
         stages: &[ShaderType],

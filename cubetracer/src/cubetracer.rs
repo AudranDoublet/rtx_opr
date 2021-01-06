@@ -9,7 +9,6 @@ use world::{main_world, ChunkMesh};
 
 use nalgebra::{Vector2, Vector3};
 
-use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::Arc;
 use std::collections::HashMap;
@@ -86,10 +85,7 @@ impl Cubetracer {
         let rtx_data = RTXData::new(
             context,
             swapchain,
-            &mut acceleration_structure,
-            &mut self.texture_array,
-            &mut self.uniform_scene,
-            &mut self.uniform_camera,
+            self,
         );
 
         self.acceleration_structure = Some(acceleration_structure);
@@ -196,10 +192,7 @@ impl Cubetracer {
         self.rtx_data = Some(RTXData::new(
             context,
             swapchain,
-            self.acceleration_structure.as_mut().unwrap(),
-            &mut self.texture_array,
-            &mut self.uniform_scene,
-            &mut self.uniform_camera,
+            self,
         ));
 
         if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
@@ -218,16 +211,16 @@ pub struct RTXData {
     output_texture: TextureVariable,
     cache: Vec<TextureVariable>,
 
-    command_buffers: Vec<vk::CommandBuffer>,
+    command_buffers: CommandBuffers,
 
-    descriptor_set: DescriptorSet,
+    descriptor_sets: Vec<DescriptorSet>,
     pipeline: RaytracerPipeline,
     reconstruct_pipeline: ComputePipeline,
 }
 
 impl RTXData {
     pub fn get_command_buffers(&self) -> &[vk::CommandBuffer] {
-        &self.command_buffers
+        &self.command_buffers.buffers()
     }
 
     pub fn update_blas_data(&mut self, data: &mut BufferVariableList, textures: &mut BufferVariableList) {
@@ -242,11 +235,9 @@ impl RTXData {
     pub fn new(
         context: &Arc<Context>,
         swapchain: &Swapchain,
-        acceleration_structure: &mut TlasVariable,
-        texture_array: &mut TextureVariable,
-        uniform_scene: &mut UniformVariable,
-        uniform_camera: &mut UniformVariable,
+        cubetracer: &mut Cubetracer,
     ) -> Self {
+        ////// CREATE CACHES
         let mut output_texture = TextureVariable::from_swapchain(context, swapchain);
 
         let mut cache_normals = TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32G32B32A32_SFLOAT);
@@ -258,38 +249,34 @@ impl RTXData {
 
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
 
+        ////// CREATE DESCRIPTOR SETS
         let descriptor_set = DescriptorSetBuilder::new(context)
             .binding( // 0
                 vk::DescriptorType::ACCELERATION_STRUCTURE_NV,
-                1,
-                acceleration_structure,
+                cubetracer.acceleration_structure.as_mut().unwrap(),
                 &[ShaderType::Raygen, ShaderType::ClosestHit],
             )
             .binding( // 1
                 vk::DescriptorType::STORAGE_IMAGE,
-                1,
                 &mut output_texture,
                 &[ShaderType::Raygen, ShaderType::Compute],
             )
             .binding( // 2
                 vk::DescriptorType::UNIFORM_BUFFER,
-                1,
-                uniform_camera,
+                &mut cubetracer.uniform_camera,
                 &[ShaderType::Raygen],
             )
             .binding( // 3
                 vk::DescriptorType::UNIFORM_BUFFER,
-                1,
-                uniform_scene,
+                &mut cubetracer.uniform_scene,
                 &[ShaderType::Raygen, ShaderType::ClosestHit, ShaderType::Miss],
             )
             .binding( // 4
                 vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                1,
-                texture_array,
+                &mut cubetracer.texture_array,
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
-            .binding( // 5
+            .binding_count( // 5
                 vk::DescriptorType::STORAGE_BUFFER,
                 max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
@@ -297,47 +284,41 @@ impl RTXData {
             )
             .binding( // 6
                 vk::DescriptorType::STORAGE_BUFFER,
-                max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
             .binding( // 7
                 vk::DescriptorType::STORAGE_IMAGE,
-                1,
                 &mut cache_normals,
                 &[ShaderType::Raygen],
             )
             .binding( // 8
                 vk::DescriptorType::STORAGE_IMAGE,
-                1,
                 &mut cache_initial_distances,
                 &[ShaderType::Raygen],
             )
             .binding( // 9
                 vk::DescriptorType::STORAGE_IMAGE,
-                1,
                 &mut cache_direct_illuminations,
                 &[ShaderType::Raygen, ShaderType::Compute],
             )
             .binding( // 10
                 vk::DescriptorType::STORAGE_IMAGE,
-                1,
                 &mut cache_hit_positions,
                 &[ShaderType::Raygen],
             )
             .binding( // 11
                 vk::DescriptorType::STORAGE_IMAGE,
-                1,
                 &mut cache_shadows,
                 &[ShaderType::Raygen, ShaderType::Compute],
             )
             .binding( // 12
                 vk::DescriptorType::STORAGE_IMAGE,
-                1,
                 &mut cache_mer,
                 &[ShaderType::Raygen],
             ).build();
 
+        ////// CREATE PIPELINES
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
@@ -353,7 +334,30 @@ impl RTXData {
             .descriptor_set(&descriptor_set)
             .build();
 
-        let mut rtx = Self {
+        ////// CREATE COMMANDS
+        let command_buffers = CommandBuffers::new(context, swapchain);
+        command_buffers
+            .record(|index, buffer| {
+                let swapchain_props = swapchain.properties();
+
+                let width = swapchain_props.extent.width;
+                let height = swapchain_props.extent.height;
+
+                // Initial ray
+                pipeline.bind(&context, buffer);
+                pipeline.dispatch(buffer, width, height, 0);
+
+                // Shadows
+                pipeline.dispatch(buffer, width, height, 1);
+
+                // Reconstruct
+                reconstruct_pipeline.bind(&context, buffer);
+                reconstruct_pipeline.dispatch(buffer, width, height);
+
+                swapchain.cmd_update_image(buffer, index, &output_texture.image);
+            });
+
+        Self {
             context: Arc::clone(context),
 
             // variables
@@ -367,86 +371,15 @@ impl RTXData {
                 cache_shadows,
                 cache_mer,
             ],
+            descriptor_sets: vec![
+                descriptor_set,
+            ],
 
             // pipeline
             pipeline,
             reconstruct_pipeline,
-            descriptor_set,
 
-            command_buffers: Vec::new(),
-        };
-        rtx.create_and_record_command_buffers(swapchain);
-
-        rtx
-    }
-
-    fn create_and_record_command_buffers(&mut self, swapchain: &Swapchain) {
-        let device = self.context.device();
-        let image_count = swapchain.image_count();
-
-        {
-            let allocate_info = vk::CommandBufferAllocateInfo::builder()
-                .command_pool(self.context.general_command_pool())
-                .level(vk::CommandBufferLevel::PRIMARY)
-                .command_buffer_count(image_count as _);
-
-            let buffers = unsafe {
-                device
-                    .allocate_command_buffers(&allocate_info)
-                    .expect("Failed to allocate command buffers")
-            };
-            self.command_buffers = buffers;
-        };
-
-        let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
-            .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE);
-
-        self.command_buffers
-            .iter()
-            .enumerate()
-            .for_each(|(index, buffer)| {
-                let buffer = *buffer;
-
-                // begin command buffer
-                unsafe {
-                    device
-                        .begin_command_buffer(buffer, &command_buffer_begin_info)
-                        .expect("Failed to begin command buffer")
-                };
-
-                let swapchain_props = swapchain.properties();
-
-                let width = swapchain_props.extent.width;
-                let height = swapchain_props.extent.height;
-
-                // Initial ray
-                self.pipeline.bind(&self.context, buffer);
-                self.pipeline.dispatch(buffer, width, height, 0);
-
-                // Shadows
-                self.pipeline.dispatch(buffer, width, height, 1);
-
-                // Reconstruct
-                self.reconstruct_pipeline.bind(&self.context, buffer);
-                self.reconstruct_pipeline.dispatch(buffer, width, height);
-
-                swapchain.cmd_update_image(buffer, index, &self.output_texture.image);
-
-                // End command buffer
-                unsafe {
-                    device
-                        .end_command_buffer(buffer)
-                        .expect("Failed to end command buffer")
-                };
-            });
-    }
-}
-
-impl Drop for RTXData {
-    fn drop(&mut self) {
-        let device = self.context.device();
-        unsafe {
-            device.free_command_buffers(self.context.general_command_pool(), &self.command_buffers);
+            command_buffers,
         }
     }
 }
