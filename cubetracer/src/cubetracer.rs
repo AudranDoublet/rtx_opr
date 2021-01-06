@@ -81,6 +81,7 @@ impl Cubetracer {
         let mut acceleration_structure = TlasVariable::new();
         acceleration_structure.register(name, blas);
         acceleration_structure.build(context, &mut self.local_instance_bindings);
+        self.acceleration_structure = Some(acceleration_structure);
 
         let rtx_data = RTXData::new(
             context,
@@ -88,7 +89,6 @@ impl Cubetracer {
             self,
         );
 
-        self.acceleration_structure = Some(acceleration_structure);
         self.rtx_data = Some(rtx_data);
     }
 
@@ -282,8 +282,9 @@ impl RTXData {
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
-            .binding( // 6
+            .binding_count( // 6
                 vk::DescriptorType::STORAGE_BUFFER,
+                max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )

@@ -73,7 +73,7 @@ impl<'a> DescriptorSetBuilder<'a> {
                 .build(),
         );
 
-        *self.descriptor_counts.entry(desc_type).or_insert(0) += 1;
+        *self.descriptor_counts.entry(desc_type).or_insert(0) += descriptor_count;
         self.variables.push((desc_type, variable));
 
         self
