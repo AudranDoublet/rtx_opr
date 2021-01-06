@@ -201,6 +201,13 @@ impl Cubetracer {
             &mut self.uniform_scene,
             &mut self.uniform_camera,
         ));
+
+        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
+            self.rtx_data.as_mut().unwrap().update_blas_data(
+                &mut acceleration_structure.get_blas_data(),
+                &mut acceleration_structure.get_blas_textures(),
+            );
+        }
     }
 }
 
