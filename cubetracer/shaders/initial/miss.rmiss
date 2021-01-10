@@ -19,9 +19,9 @@ const float CST_SKY_HR = 7994.0;
 const float CST_SKY_HM = 1200.0;
 const float CST_SUN_INTENSITY = 20.0;
 
-layout(binding = 2, set = 0) uniform Uniforms {
-    vec3 sunDirection;
-} scene;
+#define G_UNIFORM_SET 0
+#include "../global_uniforms.h"
+#undef G_UNIFORM_SET
 
 bool rayAtmosphereIntersect(const vec3 orig, const vec3 dir, const float radius, out float tmin, out float tmax) {
     float tca = -dot(orig, dir);
@@ -54,7 +54,7 @@ vec3 computeSkyLight(vec3 dir, const vec3 origin)
     float tCurrent = tmin;
 
     float opticalDepthR = 0, opticalDepthM = 0;
-    float mu = dot(dir, -scene.sunDirection); // mu in the paper which is the cosine of the angle between the sun direction and the ray direction
+    float mu = dot(dir, -UNI_SCENE.sunDirection); // mu in the paper which is the cosine of the angle between the sun direction and the ray direction
     float phaseR = 3.f / (16.f * PI) * (1 + mu * mu);
     float g = 0.76f;
     float phaseM = 3.f / (8.f * PI) * ((1.f - g * g) * (1.f + mu * mu)) / ((2.f + g * g) * pow(1.f + g * g - 2.f * g * mu, 1.5f));
@@ -71,13 +71,13 @@ vec3 computeSkyLight(vec3 dir, const vec3 origin)
 
         // light optical depth
         float t0Light, t1Light;
-        rayAtmosphereIntersect(samplePosition, -scene.sunDirection, CST_SKY_ATMOSPHERE_RADIUS, t0Light, t1Light);
+        rayAtmosphereIntersect(samplePosition, -UNI_SCENE.sunDirection, CST_SKY_ATMOSPHERE_RADIUS, t0Light, t1Light);
         float segmentLengthLight = t1Light / CST_SKY_NUM_SAMPLES_LIGHT, tCurrentLight = 0;
         float opticalDepthLightR = 0, opticalDepthLightM = 0;
 
         int j;
         for (j = 0; j < CST_SKY_NUM_SAMPLES_LIGHT; ++j) {
-            vec3 samplePositionLight = samplePosition + (tCurrentLight + segmentLengthLight * 0.5f) * (-scene.sunDirection);
+            vec3 samplePositionLight = samplePosition + (tCurrentLight + segmentLengthLight * 0.5f) * (-UNI_SCENE.sunDirection);
             float heightLight = length(samplePositionLight) - CST_SKY_EARTH_RADIUS;
             if (heightLight < 0) break;
             opticalDepthLightR += exp(-heightLight / CST_SKY_HR) * segmentLengthLight;

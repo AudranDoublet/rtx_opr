@@ -3,28 +3,22 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
 
+
+#define G_UNIFORM_SET 0
+#include "../global_uniforms.h"
+#undef G_UNIFORM_SET
+
 #include "../triangle_data.h"
 
 hitAttributeNV vec3 attribs;
 
-layout (binding = 3, set = 0) uniform sampler2DArray texture_array;
-
-layout (binding = 4, set = 0) buffer BlasTriangleData {
-    TriangleData data[];
-} blas_triangle_data[];
-
-layout (binding = 5, set = 0) buffer ChunkTextures {
-    vec3 data[];
-} blas_textures[];
-
-
 void main() {
-    vec3 orig = blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_orig
-                    +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_u * attribs.x
-                    +  blas_triangle_data[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
+    vec3 orig = BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_orig
+                    +  BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_u * attribs.x
+                    +  BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
 
     float lod = gl_RayTmaxNV / 10.0;
-    float alpha = textureLod(texture_array, orig, lod).a;
+    float alpha = textureLod(UNI_TEXTURE_ARRAY, orig, lod).a;
 
     if (alpha < 0.5)
         ignoreIntersectionNV();
