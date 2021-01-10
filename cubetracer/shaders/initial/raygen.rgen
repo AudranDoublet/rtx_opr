@@ -4,6 +4,10 @@
 
 #include "payload.h"
 
+#define G_CACHE_SET 1
+#include "../global_caches.h"
+#undef G_CACHE_SET
+
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 layout(binding = 1, set = 0) uniform Uniforms {
     vec3 forward;
@@ -11,13 +15,6 @@ layout(binding = 1, set = 0) uniform Uniforms {
     vec3 up;
     vec3 origin;
 } camera;
-
-layout(binding = 0, set = 1, rgba8) uniform image2D image;
-layout(binding = 1, set = 1, rgba32f) uniform image2D normals;
-layout(binding = 2, set = 1, r32f) uniform image2D initial_distances;
-layout(binding = 3, set = 1, rgba32f) uniform image2D direct_illumination;
-layout(binding = 4, set = 1, rgba32f) uniform image2D hit_positions;
-layout(binding = 6, set = 1, rgba32f) uniform image2D illum_coeffs;
 
 layout(location = 0) rayPayloadNV InitialPayload payload;
 
@@ -40,16 +37,16 @@ void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
 
     if (payload.hit) {
-        imageStore(normals, xy, vec4(payload.normal, 0.0));
-        imageStore(initial_distances, xy, vec4(payload.distance));
-        imageStore(hit_positions, xy, vec4(payload.hit_position, 0.0));
-        imageStore(illum_coeffs, xy, vec4(payload.mer, 0.0));
+        imageStore(CACHE_NORMALS, xy, vec4(payload.normal, 0.0));
+        imageStore(CACHE_INIT_DISTANCES, xy, vec4(payload.distance));
+        imageStore(CACHE_HIT_POSITION, xy, vec4(payload.hit_position, 0.0));
+        imageStore(CACHE_ILLUM_COEFFS, xy, vec4(payload.mer, 0.0));
     } else {
-        imageStore(normals, xy, vec4(0));
-        imageStore(initial_distances, xy, vec4(0.0));
-        imageStore(hit_positions, xy, vec4(0));
-        imageStore(illum_coeffs, xy, vec4(0));
+        imageStore(CACHE_NORMALS, xy, vec4(0));
+        imageStore(CACHE_INIT_DISTANCES, xy, vec4(0.0));
+        imageStore(CACHE_HIT_POSITION, xy, vec4(0));
+        imageStore(CACHE_ILLUM_COEFFS, xy, vec4(0));
     }
 
-    imageStore(direct_illumination, xy, vec4(payload.illumination, 0.0));
+    imageStore(CACHE_DIRECT_ILLUM, xy, vec4(payload.illumination, 0.0));
 }

@@ -1,18 +1,18 @@
 #version 460
 
+#extension GL_GOOGLE_include_directive : enable
+
+#define G_CACHE_SET 0
+#include "global_caches.h"
+#undef G_CACHE_SET
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
-
-layout(binding = 0, set = 0, rgba8) uniform image2D image;
-
-layout(binding = 3, set = 0, rgba32f) uniform image2D direct_illumination;
-layout(binding = 5, set = 0, rgba32f) uniform image2D shadows;
 
 void main() {
     const ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
 
-    const vec4 direct_illum = imageLoad(direct_illumination, xy);
-    const vec4 shadows = imageLoad(shadows, xy);
+    const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
+    const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
 
-    imageStore(image, xy, direct_illum * shadows);
+    imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows);
 }
