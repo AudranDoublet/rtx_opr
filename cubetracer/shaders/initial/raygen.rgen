@@ -5,9 +5,11 @@
 #include "payload.h"
 
 
+#define G_UNIFORM_INC_NV
 #define G_UNIFORM_SET 0
 #include "../global_uniforms.h"
 #undef G_UNIFORM_SET
+#undef G_UNIFORM_INC_NV
 
 #define G_CACHE_SET 1
 #include "../global_caches.h"
@@ -16,14 +18,11 @@
 layout(location = 0) rayPayloadNV InitialPayload payload;
 
 void main() {
+    const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
     vec2 pos = vec2(gl_LaunchIDNV.xy) / vec2(gl_LaunchSizeNV.xy) - 0.5;
 
-    const vec3 origin = UNI_CAMERA.origin;
-    const vec3 direction = normalize(
-        UNI_CAMERA.forward
-        - pos.x * UNI_CAMERA.left
-        + pos.y * UNI_CAMERA.up
-    );
+    const vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
+    const vec3 direction = imageLoad(CACHE_DIRECTION, xy).xyz;
 
     const uint cullMask = 0xff;
     const float tmin = 0.1;
@@ -31,17 +30,16 @@ void main() {
 
     traceNV(UNI_TLAS, gl_RayFlagsNoneNV, cullMask, 0, 0, 0, origin, tmin, direction, tmax, 0);
 
-    const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
 
     if (payload.hit) {
         imageStore(CACHE_NORMALS, xy, vec4(payload.normal, 0.0));
         imageStore(CACHE_INIT_DISTANCES, xy, vec4(payload.distance));
-        imageStore(CACHE_HIT_POSITION, xy, vec4(payload.hit_position, 0.0));
+        imageStore(CACHE_ORIGIN, xy, vec4(payload.hit_position, 0.0));
         imageStore(CACHE_ILLUM_COEFFS, xy, vec4(payload.mer, 0.0));
     } else {
         imageStore(CACHE_NORMALS, xy, vec4(0));
         imageStore(CACHE_INIT_DISTANCES, xy, vec4(0.0));
-        imageStore(CACHE_HIT_POSITION, xy, vec4(0));
+        imageStore(CACHE_ORIGIN, xy, vec4(0));
         imageStore(CACHE_ILLUM_COEFFS, xy, vec4(0));
     }
 

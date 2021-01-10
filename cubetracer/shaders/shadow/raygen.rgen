@@ -17,7 +17,7 @@ layout(binding = 2, set = 1, r32f) uniform image2D initial_distances;
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
-    const vec3 origin = imageLoad(CACHE_HIT_POSITION, xy).xyz;
+    const vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
 
     const uint cullMask = 0xff;
     const float tmin = 0.01;

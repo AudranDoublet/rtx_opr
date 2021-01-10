@@ -1,0 +1,29 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+
+#define G_UNIFORM_SET 0
+#include "global_uniforms.h"
+#undef G_UNIFORM_SET
+
+#define G_CACHE_SET 1
+#include "global_caches.h"
+#undef G_CACHE_SET
+
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main() {
+    const ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
+    // FIXME: imageSize(CACHE_RESULT_IMAGE) is just a hack to get the compute shader dispatch size, should find
+    //        a proper way
+    const vec2 xy_normalized = vec2(xy) / imageSize(CACHE_RESULT_IMAGE) - 0.5;
+
+    const vec3 direction = normalize(
+        UNI_CAMERA.forward
+        - xy_normalized.x * UNI_CAMERA.left
+        + xy_normalized.y * UNI_CAMERA.up
+    );
+
+    imageStore(CACHE_DIRECTION, xy, vec4(direction, 0.0));
+    imageStore(CACHE_ORIGIN,    xy, vec4(UNI_CAMERA.origin, 0.0));
+}

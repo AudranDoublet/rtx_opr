@@ -210,6 +210,8 @@ pub struct RTXData {
     command_buffers: CommandBuffers,
 
     descriptor_sets: Vec<DescriptorSet>,
+
+    pipeline_init_direct_illum: ComputePipeline,
     pipeline: RaytracerPipeline,
     reconstruct_pipeline: ComputePipeline,
 }
@@ -249,7 +251,7 @@ impl RTXData {
             swapchain,
             vk::Format::R32G32B32A32_SFLOAT,
         );
-        let mut cache_hit_positions = TextureVariable::from_swapchain_format(
+        let mut cache_origin = TextureVariable::from_swapchain_format(
             context,
             swapchain,
             vk::Format::R32G32B32A32_SFLOAT,
@@ -260,6 +262,11 @@ impl RTXData {
             vk::Format::R32G32B32A32_SFLOAT,
         );
         let mut cache_mer = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+        let mut cache_directions = TextureVariable::from_swapchain_format(
             context,
             swapchain,
             vk::Format::R32G32B32A32_SFLOAT,
@@ -279,7 +286,7 @@ impl RTXData {
                 // 1
                 vk::DescriptorType::UNIFORM_BUFFER,
                 &mut cubetracer.uniform_camera,
-                &[ShaderType::Raygen],
+                &[ShaderType::Raygen, ShaderType::Compute],
             )
             .binding(
                 // 2
@@ -311,21 +318,21 @@ impl RTXData {
 
         let cache_descriptors = DescriptorSetBuilder::new(context)
             .bindings(
-                // 0 - 6
+                // 0 - 7
                 vk::DescriptorType::STORAGE_IMAGE,
                 vec![
                     &mut output_texture,
                     &mut cache_normals,
                     &mut cache_initial_distances,
                     &mut cache_direct_illuminations,
-                    &mut cache_hit_positions,
+                    &mut cache_origin,
                     &mut cache_shadows,
                     &mut cache_mer,
+                    &mut cache_directions,
                 ],
                 &[ShaderType::Raygen, ShaderType::Compute],
             )
             .build();
-
         ////// CREATE PIPELINES
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
@@ -346,6 +353,12 @@ impl RTXData {
             .descriptor_set(&cache_descriptors)
             .build();
 
+        let pipeline_init_direct_illum = ComputePipelineBuilder::new(context, SHADER_FOLDER)
+            .shader("direct_illum.comp.spv")
+            .descriptor_set(&descriptor_set)
+            .descriptor_set(&cache_descriptors)
+            .build();
+
         ////// CREATE COMMANDS
         let command_buffers = CommandBuffers::new(context, swapchain);
         command_buffers.record(|index, buffer| {
@@ -353,6 +366,18 @@ impl RTXData {
 
             let width = swapchain_props.extent.width;
             let height = swapchain_props.extent.height;
+
+            pipeline_init_direct_illum.bind(&context, buffer);
+            pipeline_init_direct_illum.dispatch(buffer, width, height);
+
+            image_barrier(
+                context,
+                buffer,
+                &[
+                    cache_origin.image.image,
+                    cache_directions.image.image,
+                ],
+            );
 
             // Initial ray
             pipeline.bind(&context, buffer);
@@ -368,7 +393,7 @@ impl RTXData {
                     cache_normals.image.image,
                     cache_initial_distances.image.image,
                     cache_direct_illuminations.image.image,
-                    cache_hit_positions.image.image,
+                    cache_origin.image.image,
                     cache_shadows.image.image,
                     cache_mer.image.image,
                 ],
@@ -393,13 +418,14 @@ impl RTXData {
                 cache_normals,
                 cache_initial_distances,
                 cache_direct_illuminations,
-                cache_hit_positions,
+                cache_origin,
                 cache_shadows,
                 cache_mer,
+                cache_directions,
             ],
             descriptor_sets: vec![descriptor_set, cache_descriptors],
 
-            // pipeline
+            pipeline_init_direct_illum,
             pipeline,
             reconstruct_pipeline,
 
