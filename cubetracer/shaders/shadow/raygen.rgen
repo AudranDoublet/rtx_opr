@@ -42,7 +42,7 @@ void main() {
     );
 
     if (shadowed) {
-        imageStore(CACHE_SHADOWS, xy, vec4(0.3)); //FIXME replace by 0
+        imageStore(CACHE_SHADOWS, xy, vec4(0.));
     } else {
         imageStore(CACHE_SHADOWS, xy, vec4(1.0));
     }

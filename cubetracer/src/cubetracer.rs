@@ -211,7 +211,6 @@ pub struct RTXData {
 
     descriptor_sets: Vec<DescriptorSet>,
 
-    pipeline_init_direct_illum: ComputePipeline,
     pipeline: RaytracerPipeline,
     reconstruct_pipeline: ComputePipeline,
 }
@@ -266,7 +265,17 @@ impl RTXData {
             swapchain,
             vk::Format::R32G32B32A32_SFLOAT,
         );
-        let mut cache_directions = TextureVariable::from_swapchain_format(
+        let mut cache_pt_origins = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+        let mut cache_pt_normals = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+        let mut cache_pt_illum = TextureVariable::from_swapchain_format(
             context,
             swapchain,
             vk::Format::R32G32B32A32_SFLOAT,
@@ -328,7 +337,9 @@ impl RTXData {
                     &mut cache_origin,
                     &mut cache_shadows,
                     &mut cache_mer,
-                    &mut cache_directions,
+                    &mut cache_pt_origins,
+                    &mut cache_pt_normals,
+                    &mut cache_pt_illum,
                 ],
                 &[ShaderType::Raygen, ShaderType::Compute],
             )
@@ -337,8 +348,12 @@ impl RTXData {
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
+            .general_shader(ShaderType::Raygen, "path_tracing/raygen.rgen.spv")
+
             .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
+            .general_shader(ShaderType::Miss, "path_tracing/miss.rmiss.spv")
+
             .hit_shaders(
                 Some("initial/closesthit.rchit.spv"),
                 Some("initial/anyhit.rahit.spv"),
@@ -346,16 +361,10 @@ impl RTXData {
             .hit_shaders(None, Some("shadow/anyhit.rahit.spv"))
             .descriptor_set(&descriptor_set)
             .descriptor_set(&cache_descriptors)
-            .build(2);
+            .build(3);
 
         let reconstruct_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
             .shader("reconstruct.comp.spv")
-            .descriptor_set(&cache_descriptors)
-            .build();
-
-        let pipeline_init_direct_illum = ComputePipelineBuilder::new(context, SHADER_FOLDER)
-            .shader("direct_illum.comp.spv")
-            .descriptor_set(&descriptor_set)
             .descriptor_set(&cache_descriptors)
             .build();
 
@@ -367,35 +376,51 @@ impl RTXData {
             let width = swapchain_props.extent.width;
             let height = swapchain_props.extent.height;
 
-            pipeline_init_direct_illum.bind(&context, buffer);
-            pipeline_init_direct_illum.dispatch(buffer, width, height);
-
-            image_barrier(
-                context,
-                buffer,
-                &[
-                    cache_origin.image.image,
-                    cache_directions.image.image,
-                ],
-            );
-
             // Initial ray
             pipeline.bind(&context, buffer);
             pipeline.dispatch(buffer, width, height, 0);
+
+            image_barrier(
+                &context,
+                buffer,
+                &[
+                    // general buffers
+                    cache_normals.image.image,
+                    cache_initial_distances.image.image,
+                    cache_origin.image.image,
+                    cache_mer.image.image,
+                    cache_direct_illuminations.image.image,
+
+                    // path tracing buffers, FIXME: should just init them with a copy
+                    cache_pt_normals.image.image,
+                    cache_pt_origins.image.image,
+                    cache_pt_illum.image.image,
+                ],
+            );
+
+            // Path tracing with _ bouncing rays
+            for _ in 0..1 {
+                pipeline.dispatch(buffer, width, height, 2);
+
+                image_barrier(
+                    &context,
+                    buffer,
+                    &[
+                        cache_pt_normals.image.image,
+                        cache_pt_origins.image.image,
+                        cache_pt_illum.image.image,
+                    ],
+                );
+            }
 
             // Shadows
             pipeline.dispatch(buffer, width, height, 1);
 
             image_barrier(
-                context,
+                &context,
                 buffer,
                 &[
-                    cache_normals.image.image,
-                    cache_initial_distances.image.image,
-                    cache_direct_illuminations.image.image,
-                    cache_origin.image.image,
                     cache_shadows.image.image,
-                    cache_mer.image.image,
                 ],
             );
 
@@ -421,11 +446,13 @@ impl RTXData {
                 cache_origin,
                 cache_shadows,
                 cache_mer,
-                cache_directions,
+
+                cache_pt_origins,
+                cache_pt_normals,
+                cache_pt_illum
             ],
             descriptor_sets: vec![descriptor_set, cache_descriptors],
 
-            pipeline_init_direct_illum,
             pipeline,
             reconstruct_pipeline,
 

@@ -1,0 +1,77 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+
+#include "../rng.h"
+#include "../payload.h"
+#include "../constants.h"
+
+#define G_UNIFORM_INC_NV
+#define G_UNIFORM_SET 0
+#include "../global_uniforms.h"
+#undef G_UNIFORM_SET
+#undef G_UNIFORM_INC_NV
+
+#define G_CACHE_SET 1
+#include "../global_caches.h"
+#undef G_CACHE_SET
+
+layout(location = 0) rayPayloadNV InitialPayload payload;
+
+vec3 generate_rnd_direction(vec3 normal, vec2 uv) {
+    const vec3 dir_sphere = sample_cos_hemisphere(uv);
+    const mat3 basis = construct_ONB_frisvad(normal);
+    return normalize(basis * dir_sphere);
+}
+
+void main() {
+    const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
+
+
+    vec3 normal;
+    float pt_bounce_contrib;
+    //unpack normal and bounce contrib
+    {
+        vec4 normal_and_bounce_contrib = imageLoad(CACHE_PT_NORMALS, xy);
+
+        normal = normal_and_bounce_contrib.rgb;
+        if (normal_and_bounce_contrib.rgb == vec3(0.))
+            return;
+
+        pt_bounce_contrib = normal_and_bounce_contrib.a;
+        if (pt_bounce_contrib <= C_PT_MIN_CONTRIB)
+            return;
+    }
+
+    // generate ray
+    const vec3 origin = imageLoad(CACHE_PT_ORIGINS, xy).xyz;
+    // imageStore(CACHE_PT_ILLUM, xy, vec4(noise(origin.xy/7), noise(origin.yz/11), noise(origin.xz/29), 0.0));
+
+    const vec2 uv = vec2(
+        noise(xy.x * normal.xz + normal.y + origin.xy),
+        noise(xy.y * normal.xy - normal.z + origin.xz)
+    );
+    const vec3 direction = generate_rnd_direction(normal, uv);
+
+
+    const uint cullMask = 0xff;
+    const float tmin = 0.1;
+    const float tmax = 50.0;
+    traceNV(UNI_TLAS, gl_RayFlagsNoneNV, cullMask, 0, 0, 0, origin, tmin, direction, tmax, 0);
+
+    if (payload.hit) {
+        vec3 pt_illum = imageLoad(CACHE_PT_ILLUM, xy).rgb;
+
+        pt_bounce_contrib *= dot(normal, direction) / (1.5); // FIXME: should replace by correct formula
+        pt_illum += pt_bounce_contrib * payload.illumination; // FIXME: multiply by BRDF (reflectance/PI)
+
+        // store illum
+        imageStore(CACHE_PT_ILLUM, xy, vec4(pt_illum, 0.0));
+
+        // store data for further bounces
+        imageStore(CACHE_PT_NORMALS, xy, vec4(normal, pt_bounce_contrib));
+        imageStore(CACHE_PT_ORIGINS, xy, vec4(payload.hit_position, 0.0));
+    } else {
+        imageStore(CACHE_PT_NORMALS, xy, vec4(0.0));
+    }
+}

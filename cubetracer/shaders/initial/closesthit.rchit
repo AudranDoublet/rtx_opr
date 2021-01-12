@@ -4,7 +4,7 @@
 #extension GL_GOOGLE_include_directive : enable
 
 #include "../triangle_data.h"
-#include "payload.h"
+#include "../payload.h"
 
 layout(location = 0) rayPayloadInNV InitialPayload payload;
 //layout(location = 1) rayPayloadNV bool shadowed;
@@ -24,10 +24,6 @@ layout (binding = 5, set = 0) buffer ChunkTextures {
     vec3 data[];
 } blas_textures[];
 
-
-const uint CULL_MASK = 0xff;
-const float T_MIN = 0.01;
-const float T_MAX = 100.0;
 
 void main() {
     // FIXME: maybe we should avoid deref multiple times and store the struct?? 

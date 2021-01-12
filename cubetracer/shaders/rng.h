@@ -1,25 +1,34 @@
 #ifndef  _RNG_H_
 #define  _RNG_H_
 
-uint static_rng_seed = 0;
+#extension GL_GOOGLE_include_directive : enable
+#include "constants.h"
 
-// source: https://nvpro-samples.github.io/vk_raytracing_tutorial/vkrt_tuto_jitter_cam.md.htm#environmentsetup/randomfunctions
-// Generate a random unsigned int in [0, 2^24) given the previous RNG state
-// using the Numerical Recipes linear congruential generator
-uint lcg(inout uint prev)
-{
-    uint LCG_A = 1664525u;
-    uint LCG_C = 1013904223u;
-    prev       = (LCG_A * prev + LCG_C);
-    return prev & 0x00FFFFFF;
+// source: https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
+float rand(vec2 n) { 
+	return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
 }
 
-// Generate a random float in [0, 1) given the previous RNG state
-float rnd(inout uint prev)
-{
-    return (float(lcg(prev)) / float(0x01000000));
+float noise(vec2 p){
+	vec2 ip = floor(p);
+	vec2 u = fract(p);
+	u = u*u*(3.0-2.0*u);
+	
+	float res = mix(
+		mix(rand(ip),rand(ip+vec2(1.0,0.0)),u.x),
+		mix(rand(ip+vec2(0.0,1.0)),rand(ip+vec2(1.0,1.0)),u.x),u.y);
+	return res*res;
 }
 
+
+vec3 sample_cos_hemisphere(vec2 uv)
+{
+    float theta = 2.0 * C_PI * uv.x;
+    float r = sqrt(uv.y);
+
+    vec2 disk = vec2(cos(theta), sin(theta)) * r;
+    return vec3(disk.x, sqrt(max(0.0, 1.0 - dot(disk, disk))), disk.y);
+}
 
 // source: https://github.com/NVIDIA/Q2RTX/blob/master/src/refresh/vkpt/shader/utils.glsl
 mat3 construct_ONB_frisvad(vec3 normal)
@@ -37,15 +46,6 @@ mat3 construct_ONB_frisvad(vec3 normal)
         ret[2] = vec3(b, 1.0f - normal.y * normal.y * a, -normal.y);
     }
     return ret;
-}
-
-vec3 sample_cos_hemisphere(vec2 uv)
-{
-    float theta = 2.0 * m_pi * uv.x;
-    float r = sqrt(uv.y);
-
-    vec2 disk = vec2(cos(theta), sin(theta)) * r;
-    return vec3(disk.x, sqrt(max(0.0, 1.0 - dot(disk, disk))), disk.y);
 }
 
 #endif // _RNG_H_
