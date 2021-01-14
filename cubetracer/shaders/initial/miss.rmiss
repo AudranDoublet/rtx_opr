@@ -3,9 +3,9 @@
 #extension GL_GOOGLE_include_directive : enable
 
 #include "../constants.h"
-#include "../payload.h"
+#include "../payloads.h"
 
-layout(location = 0) rayPayloadInNV InitialPayload PAYLOAD_GENERAL;
+layout(location = PAYLOAD_IDX_GENERAL) rayPayloadInNV InitialPayload PAYLOAD_GENERAL;
 
 const uint CST_SKY_NUM_SAMPLES = 16;
 const uint CST_SKY_NUM_SAMPLES_LIGHT = 8;

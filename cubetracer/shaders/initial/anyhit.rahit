@@ -8,8 +8,6 @@
 #include "../global_uniforms.h"
 #undef G_UNIFORM_SET
 
-#include "../triangle_data.h"
-
 hitAttributeNV vec3 attribs;
 
 void main() {

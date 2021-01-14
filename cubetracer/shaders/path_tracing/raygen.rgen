@@ -15,8 +15,8 @@
 #include "../global_caches.h"
 #undef G_CACHE_SET
 
-#include "../payload.h"
-layout(location = 0) rayPayloadNV InitialPayload PAYLOAD_GENERAL;
+#include "../payloads.h"
+layout(location = PAYLOAD_IDX_GENERAL) rayPayloadNV InitialPayload PAYLOAD_GENERAL;
 
 vec3 generate_rnd_direction(vec3 normal, vec2 uv) {
     const vec3 dir_sphere = sample_cos_hemisphere(uv);
@@ -56,7 +56,13 @@ void main() {
     const uint cullMask = 0xff;
     const float tmin = 0.1;
     const float tmax = 50.0;
-    traceNV(UNI_TLAS, gl_RayFlagsNoneNV, cullMask, 0, 0, 0, origin, tmin, direction, tmax, 0);
+    traceNV(
+        UNI_TLAS, 
+        gl_RayFlagsNoneNV, cullMask, 
+        0, 0, 0, 
+        origin, tmin, direction, tmax, 
+        PAYLOAD_IDX_GENERAL
+    );
 
     if (PAYLOAD_GENERAL.hit) {
         vec3 pt_illum = imageLoad(CACHE_PT_ILLUM, xy).rgb;

@@ -1,8 +1,11 @@
 #version 460
 #extension GL_NV_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
 
-layout(location = 0) rayPayloadInNV bool shadowed;
+#include "../payloads.h"
+
+layout(location = PAYLOAD_IDX_SHADOWED) rayPayloadInNV bool PAYLOAD_SHADOWED;
 
 void main() {
-    shadowed = false;
+    PAYLOAD_SHADOWED = false;
 }

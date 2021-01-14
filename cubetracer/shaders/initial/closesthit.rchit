@@ -9,8 +9,8 @@
 #include "../global_uniforms.h"
 #undef G_UNIFORM_SET
 
-#include "../payload.h"
-layout(location = 0) rayPayloadInNV InitialPayload PAYLOAD_GENERAL;
+#include "../payloads.h"
+layout(location = PAYLOAD_IDX_GENERAL) rayPayloadInNV InitialPayload PAYLOAD_GENERAL;
 
 hitAttributeNV vec3 attribs;
 

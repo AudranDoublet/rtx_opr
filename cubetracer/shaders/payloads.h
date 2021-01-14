@@ -10,5 +10,7 @@ struct InitialPayload {
     vec3 mer;
 };
 
+#define PAYLOAD_IDX_GENERAL  0
+#define PAYLOAD_IDX_SHADOWED 1
 
 #endif // _PAYLOADS_H

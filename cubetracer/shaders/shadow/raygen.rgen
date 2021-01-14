@@ -2,18 +2,18 @@
 #extension GL_NV_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 
+#define G_UNIFORM_INC_NV
+#define G_UNIFORM_SET 0
+#include "../global_uniforms.h"
+#undef G_UNIFORM_SET
+#undef G_UNIFORM_INC_NV
+
+#include "../payloads.h"
 #define G_CACHE_SET 1
 #include "../global_caches.h"
 #undef G_CACHE_SET
 
-layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
-layout(binding = 2, set = 0) uniform Uniforms {
-    vec3 sunDirection;
-} scene;
-
-layout(location = 0) rayPayloadNV bool shadowed;
-
-layout(binding = 2, set = 1, r32f) uniform image2D initial_distances;
+layout(location = PAYLOAD_IDX_SHADOWED) rayPayloadNV bool PAYLOAD_SHADOWED;
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
@@ -23,25 +23,25 @@ void main() {
     const float tmin = 0.01;
     float tmax = 200.0;
 
-    shadowed = true;
+    PAYLOAD_SHADOWED = true;
 
     if (imageLoad(CACHE_INIT_DISTANCES, xy).x == 0.0) {
         tmax = 0.01;
     }
 
     traceNV(
-        topLevelAS, 
+        UNI_TLAS, 
         gl_RayFlagsTerminateOnFirstHitNV, 
         cullMask,
         1, 0, 1, 
         origin,
         tmin, 
-        -scene.sunDirection,
+        -UNI_SCENE.sunDirection,
         tmax, 
-        0
+        PAYLOAD_IDX_SHADOWED
     );
 
-    if (shadowed) {
+    if (PAYLOAD_SHADOWED) {
         imageStore(CACHE_SHADOWS, xy, vec4(0.));
     } else {
         imageStore(CACHE_SHADOWS, xy, vec4(1.0));
