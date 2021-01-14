@@ -2,11 +2,10 @@
 #extension GL_NV_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 
+#include "../constants.h"
 #include "../payload.h"
 
-#define PI 3.1415926535897932384626433832795
-
-layout(location = 0) rayPayloadInNV InitialPayload payload;
+layout(location = 0) rayPayloadInNV InitialPayload PAYLOAD_GENERAL;
 
 const uint CST_SKY_NUM_SAMPLES = 16;
 const uint CST_SKY_NUM_SAMPLES_LIGHT = 8;
@@ -55,9 +54,9 @@ vec3 computeSkyLight(vec3 dir, const vec3 origin)
 
     float opticalDepthR = 0, opticalDepthM = 0;
     float mu = dot(dir, -UNI_SCENE.sunDirection); // mu in the paper which is the cosine of the angle between the sun direction and the ray direction
-    float phaseR = 3.f / (16.f * PI) * (1 + mu * mu);
+    float phaseR = 3.f / (16.f * C_PI) * (1 + mu * mu);
     float g = 0.76f;
-    float phaseM = 3.f / (8.f * PI) * ((1.f - g * g) * (1.f + mu * mu)) / ((2.f + g * g) * pow(1.f + g * g - 2.f * g * mu, 1.5f));
+    float phaseM = 3.f / (8.f * C_PI) * ((1.f - g * g) * (1.f + mu * mu)) / ((2.f + g * g) * pow(1.f + g * g - 2.f * g * mu, 1.5f));
 
     for (int i = 0; i < CST_SKY_NUM_SAMPLES; i++) {
         vec3 samplePosition = orig + (tCurrent + segmentLength * 0.5f) * dir;
@@ -100,6 +99,6 @@ vec3 computeSkyLight(vec3 dir, const vec3 origin)
 
 void main() {
     // Cornflower blue ftw
-    payload.hit = false;
-    payload.illumination = computeSkyLight(normalize(gl_WorldRayDirectionNV), gl_WorldRayOriginNV).xyz;
+    PAYLOAD_GENERAL.hit = false;
+    PAYLOAD_GENERAL.illumination = computeSkyLight(normalize(gl_WorldRayDirectionNV), gl_WorldRayOriginNV).xyz;
 }

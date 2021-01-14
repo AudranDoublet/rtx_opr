@@ -1,5 +1,5 @@
-#ifndef  _PAYLOAD_H_
-#define  _PAYLOAD_H_
+#ifndef  _PAYLOADS_H_
+#define  _PAYLOADS_H_
 
 struct InitialPayload {
     bool hit;
@@ -10,4 +10,5 @@ struct InitialPayload {
     vec3 mer;
 };
 
-#endif // _PAYLOAD_H
+
+#endif // _PAYLOADS_H

@@ -4,8 +4,8 @@
 
 #include "../payload.h"
 
-layout(location = 0) rayPayloadInNV InitialPayload payload;
+layout(location = 0) rayPayloadNV InitialPayload PAYLOAD_GENERAL;
 
 void main() {
-    payload.hit = false;
+    PAYLOAD_GENERAL.hit = false;
 }

@@ -3,7 +3,6 @@
 #extension GL_GOOGLE_include_directive : enable
 
 #include "../rng.h"
-#include "../payload.h"
 #include "../constants.h"
 
 #define G_UNIFORM_INC_NV
@@ -16,7 +15,8 @@
 #include "../global_caches.h"
 #undef G_CACHE_SET
 
-layout(location = 0) rayPayloadNV InitialPayload payload;
+#include "../payload.h"
+layout(location = 0) rayPayloadNV InitialPayload PAYLOAD_GENERAL;
 
 vec3 generate_rnd_direction(vec3 normal, vec2 uv) {
     const vec3 dir_sphere = sample_cos_hemisphere(uv);
@@ -45,11 +45,10 @@ void main() {
 
     // generate ray
     const vec3 origin = imageLoad(CACHE_PT_ORIGINS, xy).xyz;
-    // imageStore(CACHE_PT_ILLUM, xy, vec4(noise(origin.xy/7), noise(origin.yz/11), noise(origin.xz/29), 0.0));
 
     const vec2 uv = vec2(
-        noise(xy.x * normal.xz + normal.y + origin.xy),
-        noise(xy.y * normal.xy - normal.z + origin.xz)
+        noise(xy.x * normal.xz + normal.y + 7.0  * origin.xy),
+        noise(xy.y * normal.xy - normal.z + 29.0 * origin.xz)
     );
     const vec3 direction = generate_rnd_direction(normal, uv);
 
@@ -59,18 +58,18 @@ void main() {
     const float tmax = 50.0;
     traceNV(UNI_TLAS, gl_RayFlagsNoneNV, cullMask, 0, 0, 0, origin, tmin, direction, tmax, 0);
 
-    if (payload.hit) {
+    if (PAYLOAD_GENERAL.hit) {
         vec3 pt_illum = imageLoad(CACHE_PT_ILLUM, xy).rgb;
 
-        pt_bounce_contrib *= dot(normal, direction) / (1.5); // FIXME: should replace by correct formula
-        pt_illum += pt_bounce_contrib * payload.illumination; // FIXME: multiply by BRDF (reflectance/PI)
+        pt_bounce_contrib *= dot(normal, direction); // FIXME: should replace by correct formula
+        pt_illum += 2. * pt_bounce_contrib * PAYLOAD_GENERAL.illumination; // FIXME: multiply by BRDF (reflectance/PI)
 
         // store illum
         imageStore(CACHE_PT_ILLUM, xy, vec4(pt_illum, 0.0));
 
         // store data for further bounces
         imageStore(CACHE_PT_NORMALS, xy, vec4(normal, pt_bounce_contrib));
-        imageStore(CACHE_PT_ORIGINS, xy, vec4(payload.hit_position, 0.0));
+        imageStore(CACHE_PT_ORIGINS, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
     } else {
         imageStore(CACHE_PT_NORMALS, xy, vec4(0.0));
     }

@@ -16,5 +16,4 @@ void main() {
     const vec4 pt_illum = imageLoad(CACHE_PT_ILLUM, xy);
 
     imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows + pt_illum);
-    // imageStore(CACHE_RESULT_IMAGE, xy, (pt_illum) * shadows);
 }

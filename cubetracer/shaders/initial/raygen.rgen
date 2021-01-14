@@ -4,7 +4,6 @@
 
 #include "../payload.h"
 
-
 #define G_UNIFORM_INC_NV
 #define G_UNIFORM_SET 0
 #include "../global_uniforms.h"
@@ -15,7 +14,7 @@
 #include "../global_caches.h"
 #undef G_CACHE_SET
 
-layout(location = 0) rayPayloadNV InitialPayload payload;
+layout(location = 0) rayPayloadNV InitialPayload PAYLOAD_GENERAL;
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
@@ -34,16 +33,16 @@ void main() {
 
     traceNV(UNI_TLAS, gl_RayFlagsNoneNV, cullMask, 0, 0, 0, origin, tmin, direction, tmax, 0);
 
-    if (payload.hit) {
-        imageStore(CACHE_NORMALS, xy, vec4(payload.normal, 0.0));
-        imageStore(CACHE_INIT_DISTANCES, xy, vec4(payload.distance));
-        imageStore(CACHE_ORIGIN, xy, vec4(payload.hit_position, 0.0));
-        imageStore(CACHE_ILLUM_COEFFS, xy, vec4(payload.mer, 0.0));
+    if (PAYLOAD_GENERAL.hit) {
+        imageStore(CACHE_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, 0.0));
+        imageStore(CACHE_INIT_DISTANCES, xy, vec4(PAYLOAD_GENERAL.distance));
+        imageStore(CACHE_ORIGIN, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
+        imageStore(CACHE_ILLUM_COEFFS, xy, vec4(PAYLOAD_GENERAL.mer, 0.0));
 
 
         // FIXME: this is for debugging only, better to simply copy other caches
-        imageStore(CACHE_PT_NORMALS, xy, vec4(payload.normal, 1.0));
-        imageStore(CACHE_PT_ORIGINS, xy, vec4(payload.hit_position, 0.0));
+        imageStore(CACHE_PT_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, 1.0));
+        imageStore(CACHE_PT_ORIGINS, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
         imageStore(CACHE_PT_ILLUM, xy, vec4(0.0));
     } else {
         imageStore(CACHE_NORMALS, xy, vec4(0));
@@ -56,5 +55,5 @@ void main() {
         imageStore(CACHE_PT_ILLUM, xy, vec4(0.0));
     }
 
-    imageStore(CACHE_DIRECT_ILLUM, xy, vec4(payload.illumination, 0.0));
+    imageStore(CACHE_DIRECT_ILLUM, xy, vec4(PAYLOAD_GENERAL.illumination, 0.0));
 }
