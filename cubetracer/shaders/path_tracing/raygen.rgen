@@ -16,7 +16,8 @@
 #undef G_CACHE_SET
 
 #include "../payloads.h"
-layout(location = PAYLOAD_IDX_GENERAL) rayPayloadNV InitialPayload PAYLOAD_GENERAL;
+layout(location = PAYLOAD_IDX_GENERAL)  rayPayloadNV InitialPayload PAYLOAD_GENERAL;
+layout(location = PAYLOAD_IDX_SHADOWED) rayPayloadNV bool           PAYLOAD_SHADOWED;
 
 vec3 generate_rnd_direction(vec3 normal, vec2 uv) {
     const vec3 dir_sphere = sample_cos_hemisphere(uv);
@@ -57,25 +58,41 @@ void main() {
     const float tmin = 0.1;
     const float tmax = 50.0;
     traceNV(
-        UNI_TLAS, 
-        gl_RayFlagsNoneNV, cullMask, 
-        0, 0, 0, 
-        origin, tmin, direction, tmax, 
+        UNI_TLAS,
+        gl_RayFlagsNoneNV, cullMask,
+        0, 0, 2,
+        origin, tmin, direction, tmax,
         PAYLOAD_IDX_GENERAL
     );
 
     if (PAYLOAD_GENERAL.hit) {
         vec3 pt_illum = imageLoad(CACHE_PT_ILLUM, xy).rgb;
+        PAYLOAD_SHADOWED = false;
 
-        pt_bounce_contrib *= dot(normal, direction); // FIXME: should replace by correct formula
-        pt_illum += 2. * pt_bounce_contrib * PAYLOAD_GENERAL.illumination; // FIXME: multiply by BRDF (reflectance/PI)
+        traceNV(
+            UNI_TLAS,
+            gl_RayFlagsTerminateOnFirstHitNV, cullMask,
+            1, 0, 1,
+            PAYLOAD_GENERAL.hit_position, tmin, -UNI_SCENE.sunDirection, tmax,
+            PAYLOAD_IDX_SHADOWED
+        );
 
-        // store illum
-        imageStore(CACHE_PT_ILLUM, xy, vec4(pt_illum, 0.0));
+        // if (PAYLOAD_SHADOWED) {
+            // imageStore(CACHE_PT_ILLUM, xy, vec4(0.0));
+        // } else
+        {
+            float lighting = PAYLOAD_SHADOWED ? 0.0 : 1.0;
 
-        // store data for further bounces
-        imageStore(CACHE_PT_NORMALS, xy, vec4(normal, pt_bounce_contrib));
-        imageStore(CACHE_PT_ORIGINS, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
+            pt_bounce_contrib *= dot(normal, direction); // FIXME: should replace by correct formula
+            pt_illum += 2. * lighting * pt_bounce_contrib * PAYLOAD_GENERAL.illumination; // FIXME: multiply by BRDF (reflectance/PI)
+
+            // store illum
+            imageStore(CACHE_PT_ILLUM, xy, vec4(pt_illum, 0.0));
+
+            // store data for further bounces
+            imageStore(CACHE_PT_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, pt_bounce_contrib));
+            imageStore(CACHE_PT_ORIGINS, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
+        }
     } else {
         imageStore(CACHE_PT_NORMALS, xy, vec4(0.0));
     }

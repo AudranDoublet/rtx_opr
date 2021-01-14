@@ -358,7 +358,7 @@ impl RTXData {
                 Some("initial/closesthit.rchit.spv"),
                 Some("initial/anyhit.rahit.spv"),
             )
-            .hit_shaders(None, Some("shadow/anyhit.rahit.spv"))
+            .hit_shaders(None, Some("initial/anyhit.rahit.spv"))
             .descriptor_set(&descriptor_set)
             .descriptor_set(&cache_descriptors)
             .build(3);
@@ -390,7 +390,6 @@ impl RTXData {
                     cache_origin.image.image,
                     cache_mer.image.image,
                     cache_direct_illuminations.image.image,
-
                     // path tracing buffers, FIXME: should just init them with a copy
                     cache_pt_normals.image.image,
                     cache_pt_origins.image.image,
@@ -406,9 +405,9 @@ impl RTXData {
                     &context,
                     buffer,
                     &[
-                        cache_pt_normals.image.image,
-                        cache_pt_origins.image.image,
-                        cache_pt_illum.image.image,
+                    cache_pt_normals.image.image,
+                    cache_pt_origins.image.image,
+                    cache_pt_illum.image.image,
                     ],
                 );
             }
@@ -416,13 +415,7 @@ impl RTXData {
             // Shadows
             pipeline.dispatch(buffer, width, height, 1);
 
-            image_barrier(
-                &context,
-                buffer,
-                &[
-                    cache_shadows.image.image,
-                ],
-            );
+            image_barrier(&context, buffer, &[cache_shadows.image.image]);
 
             // Reconstruct
             reconstruct_pipeline.bind(&context, buffer);
@@ -446,10 +439,9 @@ impl RTXData {
                 cache_origin,
                 cache_shadows,
                 cache_mer,
-
                 cache_pt_origins,
                 cache_pt_normals,
-                cache_pt_illum
+                cache_pt_illum,
             ],
             descriptor_sets: vec![descriptor_set, cache_descriptors],
 

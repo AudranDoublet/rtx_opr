@@ -215,6 +215,7 @@ impl PipelineBuilder {
         let shader_group_handle_size = rt_properties.shader_group_handle_size;
         let stb_size = shader_group_handle_size * self.shader_groups.len() as u32;
 
+
         let mut shader_handles = Vec::new();
         shader_handles.resize(stb_size as _, 0u8);
         unsafe {
@@ -271,23 +272,27 @@ impl RaytracerPipeline {
         unsafe {
             let sbt_buffer = *self.shader_binding_table_buffer.buffer();
 
-            // initial rays
             self.context.ray_tracing().cmd_trace_rays(
-                buffer,
-                sbt_buffer,
-                (id_raygen * shader_group_handle_size).into(), // raygen offset
-                sbt_buffer,
-                miss_offset.into(),
-                shader_group_handle_size.into(),
-                sbt_buffer,
-                hit_offset.into(),
-                shader_group_handle_size.into(),
-                vk::Buffer::null(),
-                0,
-                0,
-                width,
-                height,
-                1,
+                buffer,                                        // command_buffer: vk::CommandBuffer
+
+                sbt_buffer, // raygen_shader_binding_table_buffer: vk::Buffer
+                (id_raygen * shader_group_handle_size).into(), // raygen_shader_binding_offset: vk::DeviceSize
+
+                sbt_buffer,         // miss_shader_binding_table_buffer: vk::Buffer
+                miss_offset.into(), // miss_shader_binding_offset: vk::DeviceSize
+                shader_group_handle_size.into(), // miss_shader_binding_stride: vk::DeviceSize
+
+                sbt_buffer,         // hit_shader_binding_table_buffer: vk::Buffer,
+                hit_offset.into(),  // hit_shader_binding_offset: vk::DeviceSize
+                shader_group_handle_size.into(), // hit_shader_binding_stride: vk::DeviceSize
+
+                vk::Buffer::null(), // callable_shader_binding_table_buffer: vk::Buffer
+                0,                  // callable_shader_binding_offset: vk::DeviceSize
+                0,                  // callable_shader_binding_stride: vk::DeviceSize
+
+                width,              // width: u32
+                height,             // height: u32
+                1,                  // depth: u32
             );
         }
     }

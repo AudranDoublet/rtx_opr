@@ -30,14 +30,14 @@ void main() {
     }
 
     traceNV(
-        UNI_TLAS, 
-        gl_RayFlagsTerminateOnFirstHitNV, 
+        UNI_TLAS,
+        gl_RayFlagsTerminateOnFirstHitNV,
         cullMask,
-        1, 0, 1, 
+        1, 0, 1,
         origin,
-        tmin, 
+        tmin,
         -UNI_SCENE.sunDirection,
-        tmax, 
+        tmax,
         PAYLOAD_IDX_SHADOWED
     );
 
