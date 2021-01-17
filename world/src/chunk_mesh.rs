@@ -81,7 +81,7 @@ impl ChunkMesh {
         t1: Vector2<i32>, t2: Vector2<i32>, t3: Vector2<i32>,
         normal: Vector3<i32>,
     ) {
-        let normal_sum = normal.sum() as f32;
+        let normal_sum = normal.abs().sum() as f32;
         let texture_id = face_properties.texture_id as f32 * 10.;
 
         let tex_origin = Vector3::new(t1.x as f32, 10. - t1.y as f32, texture_id) / 10.;

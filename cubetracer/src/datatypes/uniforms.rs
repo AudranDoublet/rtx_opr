@@ -17,6 +17,7 @@ pub struct UniformCamera {
 #[repr(C)]
 pub struct UniformScene {
     pub sun_direction: Vector3<f32>,
+    pub rendered_buffer: u32,
 }
 
 pub struct UniformVariable {

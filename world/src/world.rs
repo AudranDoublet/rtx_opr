@@ -130,10 +130,38 @@ impl World {
         }
     }
 
+    fn update_chunk(&mut self, x: i32, y: i32) {
+        if let Some(chunk) = self.chunk_mut(x, y) {
+            let chunk = unsafe { Rc::get_mut_unchecked(chunk) };
+            chunk.set_modified();
+        }
+    }
+
     pub fn set_block_at(&mut self, position: Vector3<i32>, block: Block) {
         if let Some(chunk) = self.chunk_mut_at(position) {
+            let chunk_pos = chunk.position();
+
+            let position = Vector3::new(
+                position.x - chunk_pos.x,
+                position.y,
+                position.z - chunk_pos.y,
+            );
+
             let chunk = unsafe { Rc::get_mut_unchecked(chunk) };
-            chunk.set_block(position.x, position.y, position.z, block)
+            chunk.set_block_at_chunk(position.x, position.y, position.z, block);
+
+            if position.x == 0 {
+                self.update_chunk(chunk_pos.x - 1, chunk_pos.y);
+            }
+            if position.x == 15 {
+                self.update_chunk(chunk_pos.x + 1, chunk_pos.y);
+            }
+            if position.z == 0 {
+                self.update_chunk(chunk_pos.x, chunk_pos.y - 1);
+            }
+            if position.z == 15 {
+                self.update_chunk(chunk_pos.x, chunk_pos.y + 1);
+            }
         }
     }
 

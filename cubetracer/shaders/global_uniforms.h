@@ -13,9 +13,12 @@ layout(set=G_UNIFORM_SET, binding = 1) uniform SCamera{
     vec3 up;
     vec3 origin;
 } UNI_CAMERA;
+
 layout(set=G_UNIFORM_SET, binding = 2) uniform SScene {
     vec3 sunDirection;
+    uint rendered_buffer;
 } UNI_SCENE;
+
 layout (set=G_UNIFORM_SET, binding = 3) uniform sampler2DArray UNI_TEXTURE_ARRAY;
 layout (set=G_UNIFORM_SET, binding = 4) buffer BlasTriangleData {
     TriangleData data[];

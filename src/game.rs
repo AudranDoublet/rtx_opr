@@ -278,6 +278,22 @@ impl BaseApp {
                             self.tracer.camera().sun_light_cycle(delta_time);
                         }
 
+                        if self.input_handler.is_pressed(KeyCode::Key1) {
+                            self.tracer.set_rendered_buffer(0);
+                        }
+                        if self.input_handler.is_pressed(KeyCode::Key2) {
+                            self.tracer.set_rendered_buffer(1);
+                        }
+                        if self.input_handler.is_pressed(KeyCode::Key3) {
+                            self.tracer.set_rendered_buffer(2);
+                        }
+                        if self.input_handler.is_pressed(KeyCode::Key4) {
+                            self.tracer.set_rendered_buffer(3);
+                        }
+                        if self.input_handler.is_pressed(KeyCode::Key5) {
+                            self.tracer.set_rendered_buffer(4);
+                        }
+
                         // --- Update States ---
                         self.player.update(
                             main_world(),

@@ -2,18 +2,46 @@
 
 #extension GL_GOOGLE_include_directive : enable
 
-#define G_CACHE_SET 0
+#define G_UNIFORM_SET 0
+#define G_CACHE_SET 1
+
+#include "global_uniforms.h"
 #include "global_caches.h"
-#undef G_CACHE_SET
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 void main() {
     const ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
 
-    const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
-    const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
-    const vec4 pt_illum = imageLoad(CACHE_PT_ILLUM, xy);
+    if (UNI_SCENE.rendered_buffer == 0)
+    {
+        const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
+        const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
+        const vec4 pt_illum = imageLoad(CACHE_PT_ILLUM, xy);
 
-    imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows + pt_illum);
+        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows + pt_illum);
+    }
+    else if (UNI_SCENE.rendered_buffer == 1)
+    {
+        const vec4 normal = (imageLoad(CACHE_NORMALS, xy) + vec4(1.0)) / 2.0;
+        imageStore(CACHE_RESULT_IMAGE, xy, normal / 2);
+    }
+    else if (UNI_SCENE.rendered_buffer == 2)
+    {
+        const vec4 pt_illum = imageLoad(CACHE_PT_ILLUM, xy);
+        imageStore(CACHE_RESULT_IMAGE, xy, pt_illum);
+    }
+    else if (UNI_SCENE.rendered_buffer == 3)
+    {
+        const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
+        const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
+
+        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows);
+    }
+    else if (UNI_SCENE.rendered_buffer == 4)
+    {
+        const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
+
+        imageStore(CACHE_RESULT_IMAGE, xy, shadows);
+    }
 }

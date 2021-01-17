@@ -28,21 +28,13 @@ vec3 generate_rnd_direction(vec3 normal, vec2 uv) {
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
 
+    vec4 normal_and_bounce_contrib = imageLoad(CACHE_PT_NORMALS, xy);
 
-    vec3 normal;
-    float pt_bounce_contrib;
-    //unpack normal and bounce contrib
-    {
-        vec4 normal_and_bounce_contrib = imageLoad(CACHE_PT_NORMALS, xy);
+    vec3 normal = -normal_and_bounce_contrib.rgb;
+    float pt_bounce_contrib = normal_and_bounce_contrib.a;
 
-        normal = normal_and_bounce_contrib.rgb;
-        if (normal_and_bounce_contrib.rgb == vec3(0.))
-            return;
-
-        pt_bounce_contrib = normal_and_bounce_contrib.a;
-        if (pt_bounce_contrib <= C_PT_MIN_CONTRIB)
-            return;
-    }
+    if (pt_bounce_contrib <= C_PT_MIN_CONTRIB)
+        return;
 
     // generate ray
     const vec3 origin = imageLoad(CACHE_PT_ORIGINS, xy).xyz;
@@ -53,15 +45,12 @@ void main() {
     );
     const vec3 direction = generate_rnd_direction(normal, uv);
 
-
     const uint cullMask = 0xff;
-    const float tmin = 0.1;
-    const float tmax = 50.0;
     traceNV(
         UNI_TLAS,
         gl_RayFlagsNoneNV, cullMask,
         0, 0, 2,
-        origin, tmin, direction, tmax,
+        origin, 0.01, direction, 10.0,
         PAYLOAD_IDX_GENERAL
     );
 
@@ -72,7 +61,7 @@ void main() {
             UNI_TLAS,
             gl_RayFlagsTerminateOnFirstHitNV, cullMask,
             1, 0, 1,
-            PAYLOAD_GENERAL.hit_position, tmin, -UNI_SCENE.sunDirection, tmax,
+            PAYLOAD_GENERAL.hit_position, 0.0001, -UNI_SCENE.sunDirection, 200.0,
             PAYLOAD_IDX_SHADOWED
         );
 
@@ -83,7 +72,7 @@ void main() {
             float lighting = PAYLOAD_SHADOWED ? 0.0 : 1.0;
 
             vec3 pt_illum = imageLoad(CACHE_PT_ILLUM, xy).rgb;
-            pt_bounce_contrib *= dot(normal, direction); // FIXME: should replace by correct formula
+            pt_bounce_contrib *= max(dot(normal, direction), 0.0); // FIXME: should replace by correct formula
             pt_illum += 2. * lighting * pt_bounce_contrib * PAYLOAD_GENERAL.illumination; // FIXME: multiply by BRDF (reflectance/PI)
 
             // store illum

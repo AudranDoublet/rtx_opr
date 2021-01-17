@@ -166,6 +166,10 @@ impl Chunk {
         self.grass_color[pos + 2] = color.z / 255.;
     }
 
+    pub fn set_modified(&mut self) {
+        self.modified = true;
+    }
+
     pub fn block_at_chunk(&self, x: i32, y: i32, z: i32) -> Block {
         if y < 0 || y >= MAX_HEIGHT {
             Block::Air

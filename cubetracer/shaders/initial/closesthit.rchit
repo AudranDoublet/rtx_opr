@@ -19,7 +19,7 @@ void main() {
     const mat3 transform = mat3(
         BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tangeant,
         BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].bitangeant,
-        BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].normal
+    BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].normal
     );
 
     const vec3 orig =  BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_orig
@@ -38,5 +38,11 @@ void main() {
     PAYLOAD_GENERAL.distance = gl_RayTmaxNV;
     PAYLOAD_GENERAL.hit_position = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
     PAYLOAD_GENERAL.illumination = illum;
+
+    if (dot(BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].normal, -UNI_SCENE.sunDirection) < 0.0)
+    {
+        PAYLOAD_GENERAL.illumination = vec3(0.0);
+    }
+
     PAYLOAD_GENERAL.mer = coeffs;
 }

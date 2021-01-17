@@ -18,15 +18,16 @@ layout(location = PAYLOAD_IDX_SHADOWED) rayPayloadNV bool PAYLOAD_SHADOWED;
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
     const vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
+    const vec3 normal = imageLoad(CACHE_NORMALS, xy).xyz;
 
     const uint cullMask = 0xff;
-    const float tmin = 0.01;
+    const float tmin = 0.0001;
     float tmax = 200.0;
 
     PAYLOAD_SHADOWED = true;
 
     if (imageLoad(CACHE_INIT_DISTANCES, xy).x == 0.0) {
-        tmax = 0.01;
+        tmax = 0.0001;
     }
 
     traceNV(

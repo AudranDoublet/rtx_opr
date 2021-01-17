@@ -29,6 +29,7 @@ pub struct Cubetracer {
     uniform_camera: UniformVariable,
 
     local_instance_bindings: [InstanceBinding; MAX_INSTANCE_BINDING],
+    rendered_buffer: u32,
 }
 
 impl Cubetracer {
@@ -61,11 +62,17 @@ impl Cubetracer {
                 &context,
                 &UniformScene {
                     sun_direction: Vector3::new(0.5, 1.0, -0.5).normalize(),
+                    rendered_buffer: 0,
                 },
             ),
             uniform_camera: UniformVariable::new(&context, &camera.uniform()),
             camera,
+            rendered_buffer: 0,
         }
+    }
+
+    pub fn set_rendered_buffer(&mut self, buffer: u32) {
+        self.rendered_buffer = buffer;
     }
 
     fn begin(
@@ -173,6 +180,7 @@ impl Cubetracer {
                 context,
                 &UniformScene {
                     sun_direction: self.camera.sun_direction(),
+                    rendered_buffer: self.rendered_buffer,
                 },
             );
 
@@ -212,6 +220,7 @@ pub struct RTXData {
     descriptor_sets: Vec<DescriptorSet>,
 
     pipeline: RaytracerPipeline,
+    pipeline_reflection: RaytracerPipeline,
     reconstruct_pipeline: ComputePipeline,
 }
 
@@ -301,7 +310,7 @@ impl RTXData {
                 // 2
                 vk::DescriptorType::UNIFORM_BUFFER,
                 &mut cubetracer.uniform_scene,
-                &[ShaderType::Raygen, ShaderType::ClosestHit, ShaderType::Miss],
+                &[ShaderType::Raygen, ShaderType::ClosestHit, ShaderType::Miss, ShaderType::Compute],
             )
             .binding(
                 // 3
@@ -344,6 +353,7 @@ impl RTXData {
                 &[ShaderType::Raygen, ShaderType::Compute],
             )
             .build();
+
         ////// CREATE PIPELINES
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
@@ -363,8 +373,24 @@ impl RTXData {
             .descriptor_set(&cache_descriptors)
             .build(3);
 
+        let pipeline_reflection = PipelineBuilder::new(context, SHADER_FOLDER)
+            .general_shader(ShaderType::Raygen, "path_tracing/raygen.rgen.spv")
+            .general_shader(ShaderType::Miss, "path_tracing/miss.rmiss.spv")
+            .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
+
+            .hit_shaders(
+                Some("initial/closesthit.rchit.spv"),
+                Some("initial/anyhit.rahit.spv"),
+            )
+            .hit_shaders(None, Some("initial/anyhit.rahit.spv"))
+
+            .descriptor_set(&descriptor_set)
+            .descriptor_set(&cache_descriptors)
+            .build(3);
+
         let reconstruct_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
             .shader("reconstruct.comp.spv")
+            .descriptor_set(&descriptor_set) //FIXME only uniforms
             .descriptor_set(&cache_descriptors)
             .build();
 
@@ -397,6 +423,9 @@ impl RTXData {
                 ],
             );
 
+            // Shadows
+            pipeline.dispatch(buffer, width, height, 1);
+
             // Path tracing with _ bouncing rays
             for _ in 0..1 {
                 pipeline.dispatch(buffer, width, height, 2);
@@ -411,10 +440,6 @@ impl RTXData {
                     ],
                 );
             }
-
-            // Shadows
-            pipeline.dispatch(buffer, width, height, 1);
-
             image_barrier(&context, buffer, &[cache_shadows.image.image]);
 
             // Reconstruct
@@ -446,6 +471,7 @@ impl RTXData {
             descriptor_sets: vec![descriptor_set, cache_descriptors],
 
             pipeline,
+            pipeline_reflection,
             reconstruct_pipeline,
 
             command_buffers,
