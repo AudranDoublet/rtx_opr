@@ -137,15 +137,18 @@ impl BlockRenderer {
 
                     // up/down faces
                     let (height, height_offset, up, right, position) = if rel.y != 0 {
+                        let z = -rel.cross(&Vector3::x());
+
                         // compute starting corner of the face
                         let position = position * 10
                                             // up face: change y
                                         + Vector3::new(0, rel.y.max(0), 0) * *height
                                             // width offsets
-                                        + Vector3::z() * width_offset
-                                        + Vector3::x() * width_offset;
+                                        + z * width_offset
+                                        + Vector3::x() * width_offset
+                                        + Vector3::new(0, 0, -z.z.min(0)) * 10;
 
-                        (*width, width_offset, Vector3::z(), Vector3::x(), position)
+                        (*width, width_offset, z, Vector3::x(), position)
                     } else { // other faces
                         // direction of `right` vector (up vector is always (0, 1, 0))
                         let right = rel.cross(&Vector3::y()); 

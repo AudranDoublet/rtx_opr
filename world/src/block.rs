@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::AABB;
 use nalgebra::Vector3;
 
+#[derive(Debug)]
 #[repr(u32)]
 pub enum BlockFace {
     Up,
