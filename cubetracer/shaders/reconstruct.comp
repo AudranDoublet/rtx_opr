@@ -60,7 +60,7 @@ void main() {
             float a = noise(origin.xz);
             float b = noise(origin.zx);
 
-            color = vec3(a, b, 0.5+(cos(a) + sin(b))/4);
+            color = vec3(a, b, 0.5+(cos(2*C_PI*origin.x) + sin(2*C_PI*origin.z))/4);
         }
 
         imageStore(CACHE_RESULT_IMAGE, xy, vec4(color, 0.0));
