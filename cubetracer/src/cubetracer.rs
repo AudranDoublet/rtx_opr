@@ -185,6 +185,7 @@ impl Cubetracer {
             );
 
             self.uniform_camera.set(context, &self.camera.uniform());
+            self.camera.store_previous_view();
 
             true
         } else {

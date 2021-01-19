@@ -1,9 +1,9 @@
 use crate::datatypes::UniformCamera;
 
-use nalgebra::{Vector2, Vector3, Vector4};
+use nalgebra::{Vector2, Vector3, Vector4, Matrix4};
 
-fn vec3to4(v: Vector3<f32>) -> Vector4<f32> {
-    Vector4::new(v.x, v.y, v.z, 0.0)
+fn vec3to4(v: Vector3<f32>, last: f32) -> Vector4<f32> {
+    Vector4::new(v.x, v.y, v.z, last)
 }
 
 impl Camera {
@@ -12,10 +12,11 @@ impl Camera {
         let (forward, left, up) = self.get_virtual_screen_axes_scaled();
 
         UniformCamera {
-            forward: vec3to4(forward),
-            left: vec3to4(left),
-            up: vec3to4(up),
-            origin: vec3to4(origin),
+            forward: vec3to4(forward, 0.0),
+            left: vec3to4(left, 0.0),
+            up: vec3to4(up, 0.0),
+            origin: vec3to4(origin, 0.0),
+            previous_view_matrix: self.previous_view_matrix,
         }
     }
 }
@@ -30,6 +31,8 @@ pub struct Camera {
     left: Vector3<f32>,
 
     rotation: Vector2<f32>,
+
+    previous_view_matrix: Matrix4<f32>,
 
     aspect_ratio: f32,
     sun_direction: Vector3<f32>,
@@ -51,6 +54,19 @@ impl Camera {
         (self.forward, self.left * scales.x, self.up * scales.y)
     }
 
+    pub fn store_previous_view(&mut self) {
+        self.previous_view_matrix = self.view_matrix()
+    }
+
+    pub fn view_matrix(&self) -> Matrix4<f32> {
+        Matrix4::from_columns(&[
+            vec3to4(self.right(), 0.0),
+            vec3to4(self.up(), 0.0),
+            vec3to4(self.forward(), 0.0),
+            vec3to4(self.origin, 1.0),
+        ]).try_inverse().unwrap()
+    }
+
     pub fn forward(&self) -> Vector3<f32> {
         self.forward
     }
@@ -61,6 +77,10 @@ impl Camera {
 
     pub fn left(&self) -> Vector3<f32> {
         self.left
+    }
+
+    pub fn right(&self) -> Vector3<f32> {
+        -self.left
     }
 
     pub fn reorient(&mut self, x: f32, y: f32) {
@@ -142,6 +162,7 @@ impl Camera {
             virtual_screen_size: compute_virtual_screen_size(fov, aspect_ratio),
             sun_direction: Vector3::new(-0.7, -1.5, -1.1),
             light_cycle: 0.0,
+            previous_view_matrix: Matrix4::identity(),
         };
 
         camera.update_axes();

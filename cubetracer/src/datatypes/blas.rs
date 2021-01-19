@@ -47,7 +47,7 @@ pub struct GeometryInstanceData {
 }
 
 pub struct BlasVariable {
-    is_build: bool,
+    pub is_build: bool,
     acceleration_structure: AccelerationStructure,
     instance_data: GeometryInstanceData,
 

@@ -12,6 +12,7 @@ layout(set=G_UNIFORM_SET, binding = 1) uniform SCamera{
     vec3 left;
     vec3 up;
     vec3 origin;
+    mat4 previous_view_matrix;
 } UNI_CAMERA;
 
 layout(set=G_UNIFORM_SET, binding = 2) uniform SScene {
