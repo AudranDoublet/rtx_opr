@@ -5,6 +5,7 @@
 #define G_UNIFORM_SET 0
 #define G_CACHE_SET 1
 
+#include "rng.h"
 #include "global_uniforms.h"
 #include "global_caches.h"
 
@@ -43,5 +44,25 @@ void main() {
         const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
 
         imageStore(CACHE_RESULT_IMAGE, xy, shadows);
+    }
+    else if (UNI_SCENE.rendered_buffer == 5)
+    {
+        vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
+        vec3 normal = imageLoad(CACHE_NORMALS, xy).xyz;
+        vec3 color = vec3(0);
+
+        if (normal != vec3(0)) {
+
+            origin /= vec3(16, 1, 16);
+            origin = floor(origin);
+            origin *= C_PI;
+
+            float a = noise(origin.xz);
+            float b = noise(origin.zx);
+
+            color = vec3(a, b, 0.5+(cos(a) + sin(b))/4);
+        }
+
+        imageStore(CACHE_RESULT_IMAGE, xy, vec4(color, 0.0));
     }
 }
