@@ -150,6 +150,8 @@ impl World {
             let chunk = unsafe { Rc::get_mut_unchecked(chunk) };
             chunk.set_block_at_chunk(position.x, position.y, position.z, block);
 
+            let chunk_pos = chunk.coords();
+
             if position.x == 0 {
                 self.update_chunk(chunk_pos.x - 1, chunk_pos.y);
             }
