@@ -30,8 +30,8 @@ void main() {
 
     vec4 normal_and_bounce_contrib = imageLoad(CACHE_PT_NORMALS, xy);
 
-    vec3 normal = -normal_and_bounce_contrib.rgb;
-    float pt_bounce_contrib = normal_and_bounce_contrib.a;
+    vec3 normal = normal_and_bounce_contrib.xyz;
+    float pt_bounce_contrib = normal_and_bounce_contrib.w;
 
     if (pt_bounce_contrib <= C_PT_MIN_CONTRIB)
         return;
@@ -50,7 +50,7 @@ void main() {
         UNI_TLAS,
         gl_RayFlagsNoneNV, cullMask,
         0, 0, 2,
-        origin, 0.01, direction, 10.0,
+        origin, 0, direction, 10.0,
         PAYLOAD_IDX_GENERAL
     );
 
@@ -61,27 +61,22 @@ void main() {
             UNI_TLAS,
             gl_RayFlagsTerminateOnFirstHitNV, cullMask,
             1, 0, 1,
-            PAYLOAD_GENERAL.hit_position, 0.0001, -UNI_SCENE.sunDirection, 200.0,
+            PAYLOAD_GENERAL.hit_position, 0, -UNI_SCENE.sunDirection, 100.0,
             PAYLOAD_IDX_SHADOWED
         );
 
-        // if (PAYLOAD_SHADOWED) {
-            // imageStore(CACHE_PT_ILLUM, xy, vec4(0.0));
-        // } else
-        {
-            vec3 pt_illum = imageLoad(CACHE_PT_ILLUM, xy).rgb;
-            float lighting = PAYLOAD_SHADOWED ? 0.0 : 1.0;
+        vec3 pt_illum = imageLoad(CACHE_PT_ILLUM, xy).rgb;
+        float lighting = PAYLOAD_SHADOWED ? 0.0 : 1.0;
 
-            pt_bounce_contrib *= max(dot(normal, direction), 0.0); // FIXME: should replace by correct formula
-            pt_illum += 2. * lighting * pt_bounce_contrib * PAYLOAD_GENERAL.illumination; // FIXME: multiply by BRDF (reflectance/PI)
+        pt_bounce_contrib *= max(dot(normal, direction), 0.0); // FIXME: should replace by correct formula
+        pt_illum += 2. * lighting * pt_bounce_contrib * PAYLOAD_GENERAL.illumination; // FIXME: multiply by BRDF (reflectance/PI)
 
-            // store illum
-            imageStore(CACHE_PT_ILLUM, xy, vec4(pt_illum, 0.0));
+        // store illum
+        imageStore(CACHE_PT_ILLUM, xy, vec4(pt_illum, 0.0));
 
-            // store data for further bounces
-            imageStore(CACHE_PT_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, pt_bounce_contrib));
-            imageStore(CACHE_PT_ORIGINS, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
-        }
+        // store data for further bounces
+        imageStore(CACHE_PT_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, pt_bounce_contrib));
+        imageStore(CACHE_PT_ORIGINS, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
     } else {
         imageStore(CACHE_PT_NORMALS, xy, vec4(0.0));
     }
