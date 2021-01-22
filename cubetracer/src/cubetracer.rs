@@ -275,6 +275,11 @@ impl RTXData {
             vk::Format::R32G32B32A32_SFLOAT,
         );
 
+        let mut cache_prev_initial_distances = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
         let mut cache_prev_history_length =
             TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
         let mut cache_prev_moments = TextureVariable::from_swapchain_format(
@@ -354,6 +359,7 @@ impl RTXData {
                     &mut cache_pt_origins,
                     &mut cache_pt_normals,
                     &mut cache_pt_illum,
+                    &mut cache_prev_initial_distances,
                     &mut cache_prev_history_length,
                     &mut cache_prev_moments,
                     &mut cache_new_history_length,
@@ -477,6 +483,7 @@ impl RTXData {
                 cache_pt_origins,
                 cache_pt_normals,
                 cache_pt_illum,
+                cache_prev_initial_distances,
                 cache_prev_history_length,
                 cache_prev_moments,
                 cache_new_history_length,

@@ -29,8 +29,12 @@ vec2 basic_reprojection(const vec3 origin) {
 //// check if a given reprojection seems to be valid
 //// (same object, similar depth/normal, ...)
 //// FIXME
-bool is_reprojection_valid() {
-    return false;
+bool is_reprojection_valid(const ivec2 screen_size, const ivec2 prev_xy) {
+    if (prev_xy.x < 0 || prev_xy.y < 0 || prev_xy.x >= screen_size.x || prev_xy.y >= screen_size.y) {
+        return false;
+    }
+
+    return true;
 }
 
 float luminance(const vec4 rgb) {
@@ -58,7 +62,7 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
         for (int sampleIdx = 0; sampleIdx < 4; sampleIdx++)
         {
             ivec2 loc = ivec2(prev) + offsets[sampleIdx];
-            valid_arr[sampleIdx] = is_reprojection_valid(); //FIXME
+            valid_arr[sampleIdx] = is_reprojection_valid(screen_size, loc); //FIXME
             valid = valid && valid_arr[sampleIdx];
         }
 
@@ -108,7 +112,7 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
                 {
                     ivec2 loc = ivec2(prev) + ivec2(xx, yy);
 
-                    if (is_reprojection_valid()) //FIXME
+                    if (is_reprojection_valid(screen_size, loc)) //FIXME
                     {
                         prevDiffuse += imageLoad(CACHE_DENOISE_PREV_DIFFUSE, loc);
                         prevMoments += imageLoad(CACHE_DENOISE_PREV_MOMENTS, loc);
