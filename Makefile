@@ -2,6 +2,7 @@ SRC=\
 	./cubetracer/shaders/initial/miss.rmiss \
 	./cubetracer/shaders/initial/raygen.rgen \
 	./cubetracer/shaders/initial/anyhit.rahit \
+	./cubetracer/shaders/initial/closesthit.rchit \
 	./cubetracer/shaders/shadow/miss.rmiss \
 	./cubetracer/shaders/shadow/raygen.rgen \
 	./cubetracer/shaders/shadow/anyhit.rahit \

@@ -7,6 +7,8 @@ use crate::datatypes::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+const MAX_GEOMETRIES_IN_TLAS: u32 = 65536;
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct InstanceBinding {
@@ -78,6 +80,8 @@ impl TlasVariable {
 
         self.modified = false;
 
+        let len = self.blas_map.len();
+
         let data = self
             .blas_map
             .iter()
@@ -88,14 +92,10 @@ impl TlasVariable {
             bindings[i] = v.bindings();
         });
 
-        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
-            acceleration_structure
-                .acceleration_structure_info
-                .instance_count = data.len() as u32;
-        } else {
+        if self.acceleration_structure.is_none() { 
             let acceleration_structure_info = vk::AccelerationStructureInfoNV::builder()
                 .ty(vk::AccelerationStructureTypeNV::TOP_LEVEL)
-                .instance_count(data.len() as u32)
+                .instance_count(MAX_GEOMETRIES_IN_TLAS)
                 .build();
 
             self.acceleration_structure = Some(AccelerationStructure::new(
@@ -111,18 +111,20 @@ impl TlasVariable {
             ];
         }
 
+        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
+            acceleration_structure
+                .acceleration_structure_info
+                .instance_count = data.len() as u32;
+        }
+
         // Build instance buffer (list & informations of each BLAS)
-        let instance_buffer = if data.len() == 0 {
-            BufferVariable::null("null_instance_buffer_tlas".to_string(), context)
-        } else {
-            BufferVariable::device_buffer(
+        let instance_buffer = BufferVariable::device_buffer(
                 "instance_buffer_tlas".to_string(),
                 context,
                 vk::BufferUsageFlags::RAY_TRACING_NV,
                 &data,
             )
-            .0
-        };
+            .0;
 
         // create scratch buffer === size is maximum size needed to build the TLAS or one of the BLAS
         let scratch_buffer_size = self
@@ -165,7 +167,11 @@ impl TlasVariable {
                 .build()];
 
             // Build bottom AS
-            self.blas_map.iter_mut().for_each(|(_, blas)| {
+            self.blas_map.iter_mut().for_each(|(name, blas)| {
+                if len == 5 {
+                    dbg!(name);
+                }
+
                 if blas.build(command_buffer, &scratch_buffer) {
                     // memory barrier if we build the BLAS
                     unsafe {
