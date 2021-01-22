@@ -275,6 +275,26 @@ impl RTXData {
             vk::Format::R32G32B32A32_SFLOAT,
         );
 
+        let mut cache_prev_history_length =
+            TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
+        let mut cache_prev_moments = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+        let mut cache_new_history_length =
+            TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
+        let mut cache_new_moments = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+        let mut cache_prev_diffuse = TextureVariable::from_swapchain_format(
+            context,
+            swapchain,
+            vk::Format::R32G32B32A32_SFLOAT,
+        );
+
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
 
         ////// CREATE DESCRIPTOR SETS
@@ -334,6 +354,11 @@ impl RTXData {
                     &mut cache_pt_origins,
                     &mut cache_pt_normals,
                     &mut cache_pt_illum,
+                    &mut cache_prev_history_length,
+                    &mut cache_prev_moments,
+                    &mut cache_new_history_length,
+                    &mut cache_new_moments,
+                    &mut cache_prev_diffuse,
                 ],
                 &[ShaderType::Raygen, ShaderType::Compute],
             )
@@ -452,6 +477,11 @@ impl RTXData {
                 cache_pt_origins,
                 cache_pt_normals,
                 cache_pt_illum,
+                cache_prev_history_length,
+                cache_prev_moments,
+                cache_new_history_length,
+                cache_new_moments,
+                cache_prev_diffuse,
             ],
             descriptor_sets: vec![descriptor_set, cache_descriptors],
 
