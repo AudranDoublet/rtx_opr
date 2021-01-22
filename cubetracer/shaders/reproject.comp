@@ -1,0 +1,177 @@
+/**
+ * This shader is part of SVGF denoising pipeline. It implements the temporal filtering,
+ *  by doing an accumulation of the different pathtraced buffers between each frames.
+ */
+
+#version 460
+
+#extension GL_GOOGLE_include_directive : enable
+
+#define G_UNIFORM_SET 0
+#define G_CACHE_SET 1
+
+#include "global_uniforms.h"
+#include "global_caches.h"
+
+//FIXME from uniforms ?
+const float gAlpha = 0.2;
+const float gMomentsAlpha = 0.2;
+
+//// reproject hit point in previous frame space using its projection/view matrix
+//// (similar to rasterization techniques)
+vec2 basic_reprojection(const vec3 origin) {
+    vec4 viewspace_position = UNI_CAMERA.previous_view_matrix * vec4(origin, 1);
+    vec2 ndc = viewspace_position.xy / viewspace_position.z;
+
+    return ndc;
+}
+
+//// check if a given reprojection seems to be valid
+//// (same object, similar depth/normal, ...)
+//// FIXME
+bool is_reprojection_valid() {
+    return false;
+}
+
+float luminance(const vec4 rgb) {
+    return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+}
+
+vec4 lerp(const vec4 a, const vec4 b, float t) {
+    return a * (1 - t) + b * t;
+}
+
+bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMoments, out float historyLength) {
+    const ivec2 screen_size = imageSize(CACHE_ORIGIN);
+
+    // if an object has been hit this tick
+    if (imageLoad(CACHE_INIT_DISTANCES, xy).x != 0.0) {
+        vec2 prev = screen_size * basic_reprojection(imageLoad(CACHE_ORIGIN, xy).xyz);
+        vec2 prev_frac = prev - floor(prev);
+
+        ivec2 offsets[4] = { ivec2(0, 0), ivec2(1, 0), ivec2(0, 1), ivec2(1, 1) };
+
+        // STEP 1: check reprojection validity of pixels surrounding the points
+        bool valid = false;
+        bool valid_arr[4];
+
+        for (int sampleIdx = 0; sampleIdx < 4; sampleIdx++)
+        {
+            ivec2 loc = ivec2(prev) + offsets[sampleIdx];
+            valid_arr[sampleIdx] = is_reprojection_valid(); //FIXME
+            valid = valid && valid_arr[sampleIdx];
+        }
+
+        // STEP 2: if we found at least one valid pixel, try to approximate the
+        // previous value using a bilinear interpolation
+        if (valid) {
+            // bilinear weights
+            float w[4] = { (1 - prev_frac.x) * (1 - prev_frac.y), 
+                                prev_frac.x  * (1 - prev_frac.y), 
+                           (1 - prev_frac.x) *      prev_frac.y,
+                                prev_frac.x  *      prev_frac.y };
+            float sumw = 0;
+            prevDiffuse = vec4(0);
+            prevMoments = vec4(0);
+
+            // perform the actual bilinear interpolation
+            for (int sampleIdx = 0; sampleIdx < 4; sampleIdx++)
+            {
+                ivec2 loc = ivec2(prev) + offsets[sampleIdx];
+
+                if (valid_arr[sampleIdx])
+                {
+                    prevDiffuse  += w[sampleIdx] * imageLoad(CACHE_DENOISE_PREV_DIFFUSE, loc);
+                    prevMoments += w[sampleIdx] * imageLoad(CACHE_DENOISE_PREV_MOMENTS, loc);
+                    sumw        += w[sampleIdx];
+                }
+            }
+
+            // redistribute weights in case not all taps were used
+            if (sumw >= 0.01) {
+                prevDiffuse   = prevDiffuse / sumw;
+            } else {
+                prevDiffuse   = vec4(0);
+                valid = false;
+            }
+        }
+
+        // STEP 3: if surrounding pixels wern't valid, try to do a bilateral filter with more pixels
+        if (!valid) {
+            float cnt = 0.0;
+
+            // this code performs a binary descision for each tap of the cross-bilateral filter
+            const int radius = 1;
+            for (int yy = -radius; yy <= radius; yy++)
+            {
+                for (int xx = -radius; xx <= radius; xx++)
+                {
+                    ivec2 loc = ivec2(prev) + ivec2(xx, yy);
+
+                    if (is_reprojection_valid()) //FIXME
+                    {
+                        prevDiffuse += imageLoad(CACHE_DENOISE_PREV_DIFFUSE, loc);
+                        prevMoments += imageLoad(CACHE_DENOISE_PREV_MOMENTS, loc);
+                        cnt += 1.0;
+                    }
+                }
+            }
+
+            if (cnt > 0.0) {
+                valid = true;
+                prevDiffuse /= cnt;
+                prevMoments /= cnt;
+            }
+        }
+
+        // STEP 4: if we found valid samples (through the bilinear or the bilateral filter)
+        if (valid) {
+            historyLength = imageLoad(CACHE_DENOISE_PREV_HISTORY_LENGTH, ivec2(prev)).x;
+            return true;
+        } else {
+            historyLength = 0.0;
+            prevDiffuse = vec4(0.0);
+            prevMoments = vec4(0.0);
+
+            return false;
+        }
+    }
+}
+
+void main() {
+    const ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
+
+    // new data
+    vec4 diffuse = imageLoad(CACHE_PT_ILLUM, xy);
+
+    // previous data
+    vec4 prevDiffuse;
+    vec4 prevMoments;
+    float historyLength;
+    bool success = load_previous_data(xy, prevDiffuse, prevMoments, historyLength);
+
+    historyLength = min(32.0, historyLength + 1.0);
+
+    const float alpha = max(gAlpha, 1.0 / historyLength);
+    const float momentsAlpha = max(gMomentsAlpha, 1.0 / historyLength);
+
+    // compute new moment
+    vec4 moments;
+    moments.r = luminance(diffuse);
+    moments.g = 0.0; //FIXME other buffer
+    moments.b = moments.r * moments.r;
+    moments.a = moments.g * moments.g;
+
+    moments = lerp(prevMoments, moments, momentsAlpha);
+
+    // compute variance
+    vec2 variance = max(vec2(0), moments.ga - moments.rb * moments.rb);
+
+    // compute new diffuse
+    diffuse = lerp(prevDiffuse, diffuse, alpha);
+    diffuse.a = variance.r;
+
+    imageStore(CACHE_DENOISE_NEW_MOMENTS, xy, moments);
+    imageStore(CACHE_DENOISE_NEW_HISTORY_LENGTH, xy, vec4(historyLength));
+    imageStore(CACHE_PT_ILLUM, xy, diffuse);
+}

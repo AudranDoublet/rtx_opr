@@ -133,6 +133,10 @@ impl BlockRenderer {
                         }
                     }
 
+                    if (position + rel).y < 0 {
+                        continue;
+                    }
+
                     let width_offset = (10 - width) / 2;
 
                     // up/down faces

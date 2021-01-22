@@ -34,7 +34,9 @@ pub struct Camera {
 
     previous_view_matrix: Matrix4<f32>,
 
+    fov: f32,
     aspect_ratio: f32,
+
     sun_direction: Vector3<f32>,
 
     light_cycle: f32,
@@ -55,16 +57,34 @@ impl Camera {
     }
 
     pub fn store_previous_view(&mut self) {
-        self.previous_view_matrix = self.view_matrix()
+        self.previous_view_matrix = self.projection_matrix() * self.view_matrix()
     }
 
     pub fn view_matrix(&self) -> Matrix4<f32> {
+        let (forward, left, up) = self.get_virtual_screen_axes_scaled();
+
         Matrix4::from_columns(&[
-            vec3to4(self.right(), 0.0),
-            vec3to4(self.up(), 0.0),
-            vec3to4(self.forward(), 0.0),
+            vec3to4(-left, 0.0),
+            vec3to4(up, 0.0),
+            vec3to4(forward, 0.0),
             vec3to4(self.origin, 1.0),
         ]).try_inverse().unwrap()
+    }
+
+    pub fn projection_matrix(&self) -> Matrix4<f32> {
+        //FIXME not hardcoded ?
+        let far = 200.0;
+        let near = 0.01;
+
+        let r = self.aspect_ratio;
+        let t = 1.0 / (self.fov / 2.0).tan();
+
+        Matrix4::new(
+            t / r, 0.0 ,                          0.0, 0.0,
+            0.0  ,  t  ,                          0.0, 0.0,
+            0.0  ,  0.0, -(far + near) / (far - near), -1.0,
+            0.0  ,  0.0, -2.0*far*near / (far - near), 0.0,
+        )
     }
 
     pub fn forward(&self) -> Vector3<f32> {
@@ -139,6 +159,7 @@ impl Camera {
 
     pub fn set_fov(&mut self, fov: f32) {
         Self::assert_fov_valid(fov);
+        self.fov = fov;
         self.virtual_screen_size = compute_virtual_screen_size(fov, self.aspect_ratio);
     }
 
@@ -158,7 +179,10 @@ impl Camera {
             up: Vector3::new(0.0, 0.0, 0.0),
             forward: Vector3::new(0.0, 0.0, 0.0),
             left: Vector3::new(0.0, 0.0, 0.0),
+
             aspect_ratio,
+            fov,
+
             virtual_screen_size: compute_virtual_screen_size(fov, aspect_ratio),
             sun_direction: Vector3::new(-0.7, -1.5, -1.1),
             light_cycle: 0.0,
