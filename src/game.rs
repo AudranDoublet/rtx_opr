@@ -325,7 +325,7 @@ impl BaseApp {
 
                         while let Some((x, z, chunk)) = self.chunk_mesher_client.pull() {
                             self.tracer.register_or_update_chunk(
-                                &self.context, &self.swapchain, x, z, chunk
+                                &self.context, x, z, chunk
                             );
                         }
 
@@ -347,7 +347,7 @@ impl BaseApp {
                         self.window.request_redraw();
                     }
                     winit::event::Event::RedrawRequested(_) => {
-                        if self.tracer.update(&self.context) {
+                        if self.tracer.update(&self.swapchain,&self.context) {
                             if let Some(_) = self.draw_frame() {
                                 self.tracer.resize(&self.context, &self.swapchain);
                             }

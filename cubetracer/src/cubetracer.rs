@@ -23,7 +23,7 @@ pub struct Cubetracer {
 
     rtx_data: Option<RTXData>,
 
-    acceleration_structure: Option<TlasVariable>,
+    acceleration_structure: TlasVariable,
     texture_array: TextureVariable,
     uniform_scene: UniformVariable,
     uniform_camera: UniformVariable,
@@ -55,7 +55,7 @@ impl Cubetracer {
         Cubetracer {
             chunks: HashMap::new(),
             rtx_data: None,
-            acceleration_structure: None,
+            acceleration_structure: TlasVariable::new(),
             local_instance_bindings,
             texture_array,
             uniform_scene: UniformVariable::new(
@@ -75,32 +75,15 @@ impl Cubetracer {
         self.rendered_buffer = buffer;
     }
 
-    fn begin(
-        &mut self,
-        context: &Arc<Context>,
-        swapchain: &Swapchain,
-        name: BlasName,
-        blas: BlasVariable,
-    ) {
-        let mut acceleration_structure = TlasVariable::new();
-        acceleration_structure.register(name, blas);
-        acceleration_structure.build(context, &mut self.local_instance_bindings);
-        self.acceleration_structure = Some(acceleration_structure);
-
-        let rtx_data = RTXData::new(context, swapchain, self);
-
-        self.rtx_data = Some(rtx_data);
-    }
-
     pub fn register_or_update_chunk(
         &mut self,
         context: &Arc<Context>,
-        swapchain: &Swapchain,
         x: i32,
         y: i32,
         chunk: ChunkMesh,
     ) {
         let name = BlasName::Chunk(x, y);
+
         self.chunks.insert(name, chunk);
 
         let chunk = &self.chunks[&name];
@@ -145,11 +128,7 @@ impl Cubetracer {
             std::mem::size_of::<[f32; 4]>(),
         );
 
-        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
-            acceleration_structure.register(name, blas);
-        } else {
-            self.begin(context, swapchain, name, blas);
-        }
+        self.acceleration_structure.register(name, blas);
     }
 
     pub fn delete_chunk(&mut self, x: i32, y: i32) {
@@ -158,21 +137,28 @@ impl Cubetracer {
         if self.chunks.contains_key(&name) {
             self.chunks.remove(&name);
         }
-        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
-            acceleration_structure.unregister(name);
-        }
+
+        self.acceleration_structure.unregister(name);
     }
 
     pub fn camera(&mut self) -> &mut Camera {
         &mut self.camera
     }
 
-    pub fn update(&mut self, context: &Arc<Context>) -> bool {
-        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
-            if acceleration_structure.build(context, &mut self.local_instance_bindings) {
+    pub fn update(&mut self, swapchain: &Swapchain, context: &Arc<Context>) -> bool {
+        if self.chunks.len() >= 5 {
+            if self.rtx_data.is_none() {
+                self.acceleration_structure
+                    .build(context, &mut self.local_instance_bindings);
+
+                let rtx_data = RTXData::new(context, swapchain, self);
+                self.rtx_data = Some(rtx_data);
+            }
+
+            if self.acceleration_structure.build(context, &mut self.local_instance_bindings) {
                 self.rtx_data.as_mut().unwrap().update_blas_data(
-                    &mut acceleration_structure.get_blas_data(),
-                    &mut acceleration_structure.get_blas_textures(),
+                    &mut self.acceleration_structure.get_blas_data(),
+                    &mut self.acceleration_structure.get_blas_textures(),
                 );
             }
 
@@ -200,12 +186,10 @@ impl Cubetracer {
     pub fn resize(&mut self, context: &Arc<Context>, swapchain: &Swapchain) {
         self.rtx_data = Some(RTXData::new(context, swapchain, self));
 
-        if let Some(acceleration_structure) = self.acceleration_structure.as_mut() {
-            self.rtx_data.as_mut().unwrap().update_blas_data(
-                &mut acceleration_structure.get_blas_data(),
-                &mut acceleration_structure.get_blas_textures(),
-            );
-        }
+        self.rtx_data.as_mut().unwrap().update_blas_data(
+            &mut self.acceleration_structure.get_blas_data(),
+            &mut self.acceleration_structure.get_blas_textures(),
+        );
     }
 }
 
@@ -318,7 +302,7 @@ impl RTXData {
             .binding(
                 // 0
                 vk::DescriptorType::ACCELERATION_STRUCTURE_NV,
-                cubetracer.acceleration_structure.as_mut().unwrap(),
+                &mut cubetracer.acceleration_structure,
                 &[ShaderType::Raygen, ShaderType::ClosestHit],
             )
             .binding(
