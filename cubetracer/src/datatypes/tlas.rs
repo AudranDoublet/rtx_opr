@@ -80,8 +80,6 @@ impl TlasVariable {
 
         self.modified = false;
 
-        let len = self.blas_map.len();
-
         let data = self
             .blas_map
             .iter()
@@ -167,11 +165,7 @@ impl TlasVariable {
                 .build()];
 
             // Build bottom AS
-            self.blas_map.iter_mut().for_each(|(name, blas)| {
-                if len == 5 {
-                    dbg!(name);
-                }
-
+            self.blas_map.iter_mut().for_each(|(_, blas)| {
                 if blas.build(command_buffer, &scratch_buffer) {
                     // memory barrier if we build the BLAS
                     unsafe {
