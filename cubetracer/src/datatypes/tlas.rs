@@ -20,6 +20,7 @@ pub struct TlasVariable {
     modified: bool,
 
     pub blas_map: BTreeMap<BlasName, BlasVariable>,
+    blas_to_remove: Vec<BlasVariable>,
 
     instance_buffer: Option<BufferVariable>,
 
@@ -32,6 +33,7 @@ impl TlasVariable {
     pub fn new() -> TlasVariable {
         TlasVariable {
             blas_map: BTreeMap::new(),
+            blas_to_remove : vec![],
             structures: vec![],
             acceleration_structure: None,
             instance_buffer: None,
@@ -46,8 +48,8 @@ impl TlasVariable {
     }
 
     pub fn unregister(&mut self, name: BlasName) {
-        if self.blas_map.contains_key(&name) {
-            self.blas_map.remove(&name);
+        if let Some(blas) = self.blas_map.remove(&name) {
+            self.blas_to_remove.push(blas);
             self.modified = true;
         }
     }
@@ -201,6 +203,8 @@ impl TlasVariable {
                 )
             };
         });
+
+        self.blas_to_remove.clear();
 
         self.instance_buffer = Some(instance_buffer);
         true

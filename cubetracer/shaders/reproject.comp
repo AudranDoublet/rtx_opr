@@ -13,6 +13,8 @@
 #include "global_uniforms.h"
 #include "global_caches.h"
 
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
 //FIXME from uniforms ?
 const float gAlpha = 0.2;
 const float gMomentsAlpha = 0.2;
@@ -22,6 +24,9 @@ const float gMomentsAlpha = 0.2;
 vec2 basic_reprojection(const vec3 origin) {
     vec4 viewspace_position = UNI_CAMERA.previous_view_matrix * vec4(origin, 1);
     vec2 ndc = viewspace_position.xy / viewspace_position.z;
+
+    ndc.x = (ndc.x + 1) / 2;
+    ndc.y = (ndc.y + 1) / 2;
 
     return ndc;
 }
@@ -139,6 +144,10 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
 
             return false;
         }
+    } else {
+        historyLength = 0.0;
+        prevDiffuse = vec4(0.0);
+        prevMoments = vec4(0.0);
     }
 }
 

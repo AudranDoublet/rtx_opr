@@ -39,8 +39,8 @@ bool is_shadowed(vec3 origin) {
     return PAYLOAD_SHADOWED;
 }
 
-const int N_SAMPLES = 30;
-const int N_BOUNCES = 3;
+const int N_SAMPLES = 1;
+const int N_BOUNCES = 1;
 
 void indirect_illum(const vec3 origin, const vec3 normal, const ivec2 xy, inout vec3 illum) {
     for (int i = 0; i < N_SAMPLES; i++) {
