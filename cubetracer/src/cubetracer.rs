@@ -157,11 +157,13 @@ impl Cubetracer {
                 self.rtx_data = Some(rtx_data);
             }
 
-            if self
-                .acceleration_structure
-                .build(context, &mut self.local_instance_bindings)
-            {
-                self.rtx_data.as_mut().unwrap().update_blas_data(
+
+            let rtx_data = self.rtx_data.as_mut().unwrap();
+
+            rtx_data.update_cache_buffers();
+
+            if self.acceleration_structure.build(context, &mut self.local_instance_bindings) {
+                rtx_data.update_blas_data(
                     &mut self.acceleration_structure.get_blas_data(),
                     &mut self.acceleration_structure.get_blas_textures(),
                 );
@@ -216,6 +218,10 @@ pub struct RTXData {
 impl RTXData {
     pub fn get_command_buffers(&self) -> &[vk::CommandBuffer] {
         &self.command_buffers.buffers()
+    }
+
+    pub fn update_cache_buffers(&mut self) {
+        self.cache_buffers.update(&self.descriptor_sets[1]);
     }
 
     pub fn update_blas_data(
