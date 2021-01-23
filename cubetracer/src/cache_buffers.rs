@@ -112,7 +112,7 @@ impl BufferList {
     }
 
     pub fn update(&mut self, descriptor_set: &DescriptorSet) {
-        let mut builder = DescriptorUpdateFactory::new(descriptor_set, &self.context);
+        let mut builder = descriptor_set.update(&self.context);
         let mut i = 0;
 
         for buffer in &mut self.buffers {

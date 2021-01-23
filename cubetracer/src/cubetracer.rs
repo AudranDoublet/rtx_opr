@@ -220,7 +220,7 @@ impl RTXData {
     }
 
     pub fn update_cache_buffers(&mut self) {
-        self.cache_buffers.update(&self.descriptor_sets[1]);
+        //self.cache_buffers.update(&self.descriptor_sets[1]);
     }
 
     pub fn update_blas_data(
@@ -247,13 +247,13 @@ impl RTXData {
             .double("moments", swapchain, BufferFormat::RGBA)
             .simple("normals", swapchain, BufferFormat::RGBA)
             .double("initial_distances", swapchain, BufferFormat::VALUE)
-            .double("direct_illumination", swapchain, BufferFormat::RGBA)
+            .simple("direct_illumination", swapchain, BufferFormat::RGBA)
             .simple("hit_point", swapchain, BufferFormat::RGBA)
             .simple("shadow", swapchain, BufferFormat::RGBA)
             .simple("mer", swapchain, BufferFormat::RGBA)
             .simple("pathtracing_origin", swapchain, BufferFormat::RGBA)
             .simple("pathtracing_normal", swapchain, BufferFormat::RGBA)
-            .simple("pathtracing_illum", swapchain, BufferFormat::RGBA)
+            .double("pathtracing_illum", swapchain, BufferFormat::RGBA)
         ;
 
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
@@ -342,6 +342,12 @@ impl RTXData {
             .descriptor_set(&cache_descriptors)
             .build();
 
+        let temporal_filter_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
+            .shader("reproject.comp.spv")
+            .descriptor_set(&descriptor_set) //FIXME only uniforms
+            .descriptor_set(&cache_descriptors)
+            .build();
+
         ////// CREATE COMMANDS
         let command_buffers = CommandBuffers::new(context, swapchain);
         command_buffers.record(|index, buffer| {
@@ -386,6 +392,18 @@ impl RTXData {
                     ]),
                 );
             }
+
+            temporal_filter_pipeline.bind(&context, buffer);
+            temporal_filter_pipeline.dispatch(buffer, width, height);
+
+            image_barrier(
+                &context,
+                buffer,
+                &cache_buffers.images(&[
+                    "pathtracing_illum",
+                ]),
+            );
+
             image_barrier(&context, buffer, &cache_buffers.images(&["shadow"]));
 
             // Reconstruct
