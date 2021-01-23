@@ -1,6 +1,7 @@
 use ash::vk;
 
 use std::sync::Arc;
+use std::collections::HashMap;
 
 use crate::context::Context;
 use crate::datatypes::*;
@@ -26,6 +27,10 @@ trait CacheBuffer {
     fn swap(&mut self) -> bool;
 
     fn bindings<'a>(&'a mut self) -> Vec<&'a mut dyn DataType>;
+
+    fn texture<'a>(&'a self) -> &'a TextureVariable;
+
+    fn buffers(&self) -> Vec<vk::Image>;
 }
 
 /////// SIMPLE BUFFERING
@@ -40,6 +45,14 @@ impl CacheBuffer for SimpleCacheBuffer {
 
     fn bindings<'a>(&'a mut self) -> Vec<&'a mut dyn DataType> {
         vec![&mut self.buffer]
+    }
+
+    fn buffers(&self) -> Vec<vk::Image> {
+        vec![self.buffer.image.image]
+    }
+
+    fn texture<'a>(&'a self) -> &'a TextureVariable {
+        &self.buffer
     }
 }
 
@@ -58,15 +71,32 @@ impl CacheBuffer for DoubleBufferingCache {
     fn bindings<'a>(&'a mut self) -> Vec<&'a mut dyn DataType> {
         vec![&mut self.a, &mut self.b]
     }
+
+    fn buffers(&self) -> Vec<vk::Image> {
+        vec![self.a.image.image, self.b.image.image]
+    }
+
+    fn texture<'a>(&'a self) -> &'a TextureVariable {
+        &self.a
+    }
 }
 
 /////// BUFFER LIST
 pub struct BufferList {
     context: Arc<Context>,
     buffers: Vec<Box<dyn CacheBuffer>>,
+    names: HashMap<String, usize>,
 }
 
 impl BufferList {
+    pub fn new(context: &Arc<Context>) -> Self {
+        BufferList {
+            context: Arc::clone(context),
+            buffers: vec![],
+            names: HashMap::new(),
+        }
+    }
+
     pub fn descriptor_set(&mut self, shader_types: &[ShaderType]) -> DescriptorSet {
         let mut builder = DescriptorSetBuilder::new(&self.context);
 
@@ -99,13 +129,31 @@ impl BufferList {
         builder.update();
     }
 
-    pub fn simple(&mut self, swapchain: &Swapchain, format: BufferFormat) -> &mut Self {
-        let buffer = TextureVariable::from_swapchain_format(
+    pub fn images(&self, caches: &[&str]) -> Vec<vk::Image> {
+        let mut buffers = vec![];
+
+        for name in caches {
+            let name = name.to_string();
+
+            for buffer in self.buffers[self.names[&name]].buffers() {
+                buffers.push(buffer);
+            }
+        }
+
+        buffers
+    }
+
+    pub fn texture(&self, name: &str) -> &TextureVariable {
+        self.buffers[self.names[name]].texture()
+    }
+
+    pub fn simple_same(&mut self, name: &str, swapchain: &Swapchain) -> &mut Self {
+        let buffer = TextureVariable::from_swapchain(
             &self.context,
             swapchain,
-            format.vulkan(),
         );
 
+        self.names.insert(name.to_string(), self.buffers.len());
         self.buffers.push(Box::new(
             SimpleCacheBuffer {
                 buffer,
@@ -115,7 +163,24 @@ impl BufferList {
         self
     }
 
-    pub fn double(&mut self, swapchain: &Swapchain, format: BufferFormat) -> &mut Self {
+    pub fn simple(&mut self, name: &str, swapchain: &Swapchain, format: BufferFormat) -> &mut Self {
+        let buffer = TextureVariable::from_swapchain_format(
+            &self.context,
+            swapchain,
+            format.vulkan(),
+        );
+
+        self.names.insert(name.to_string(), self.buffers.len());
+        self.buffers.push(Box::new(
+            SimpleCacheBuffer {
+                buffer,
+            }
+        ));
+
+        self
+    }
+
+    pub fn double(&mut self, name: &str, swapchain: &Swapchain, format: BufferFormat) -> &mut Self {
         let a = TextureVariable::from_swapchain_format(
             &self.context,
             swapchain,
@@ -128,7 +193,7 @@ impl BufferList {
             format.vulkan(),
         );
 
-
+        self.names.insert(name.to_string(), self.buffers.len());
         self.buffers.push(Box::new(
             DoubleBufferingCache {
                 a,

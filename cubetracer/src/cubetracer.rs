@@ -6,6 +6,8 @@ use crate::descriptors::*;
 use crate::pipeline::*;
 use crate::window::*;
 
+use crate::cache_buffers::*;
+
 use world::{main_world, ChunkMesh};
 
 use nalgebra::{Vector2, Vector3};
@@ -197,8 +199,7 @@ impl Cubetracer {
 pub struct RTXData {
     context: Arc<Context>,
 
-    output_texture: TextureVariable,
-    cache: Vec<TextureVariable>,
+    cache_buffers: BufferList,
 
     command_buffers: CommandBuffers,
 
@@ -230,75 +231,22 @@ impl RTXData {
 impl RTXData {
     pub fn new(context: &Arc<Context>, swapchain: &Swapchain, cubetracer: &mut Cubetracer) -> Self {
         ////// CREATE CACHES
-        let mut output_texture = TextureVariable::from_swapchain(context, swapchain);
+        let mut cache_buffers = BufferList::new(context);
 
-        let mut cache_normals = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_initial_distances =
-            TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
-        let mut cache_direct_illuminations = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_origin = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_shadows = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_mer = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_pt_origins = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_pt_normals = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_pt_illum = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-
-        let mut cache_prev_initial_distances = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_prev_history_length =
-            TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
-        let mut cache_prev_moments = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_new_history_length =
-            TextureVariable::from_swapchain_format(context, swapchain, vk::Format::R32_SFLOAT);
-        let mut cache_new_moments = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
-        let mut cache_prev_diffuse = TextureVariable::from_swapchain_format(
-            context,
-            swapchain,
-            vk::Format::R32G32B32A32_SFLOAT,
-        );
+        cache_buffers
+            .simple_same("output_texture", swapchain)
+            .double("history_length", swapchain, BufferFormat::VALUE)
+            .double("moments", swapchain, BufferFormat::RGBA)
+            .simple("normals", swapchain, BufferFormat::RGBA)
+            .double("initial_distances", swapchain, BufferFormat::VALUE)
+            .double("direct_illumination", swapchain, BufferFormat::RGBA)
+            .simple("hit_point", swapchain, BufferFormat::RGBA)
+            .simple("shadow", swapchain, BufferFormat::RGBA)
+            .simple("mer", swapchain, BufferFormat::RGBA)
+            .simple("pathtracing_origin", swapchain, BufferFormat::RGBA)
+            .simple("pathtracing_normal", swapchain, BufferFormat::RGBA)
+            .simple("pathtracing_illum", swapchain, BufferFormat::RGBA)
+        ;
 
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
 
@@ -344,31 +292,7 @@ impl RTXData {
             )
             .build();
 
-        let cache_descriptors = DescriptorSetBuilder::new(context)
-            .bindings(
-                // 0 - 7
-                vk::DescriptorType::STORAGE_IMAGE,
-                vec![
-                    &mut output_texture,
-                    &mut cache_normals,
-                    &mut cache_initial_distances,
-                    &mut cache_direct_illuminations,
-                    &mut cache_origin,
-                    &mut cache_shadows,
-                    &mut cache_mer,
-                    &mut cache_pt_origins,
-                    &mut cache_pt_normals,
-                    &mut cache_pt_illum,
-                    &mut cache_prev_initial_distances,
-                    &mut cache_prev_history_length,
-                    &mut cache_prev_moments,
-                    &mut cache_new_history_length,
-                    &mut cache_new_moments,
-                    &mut cache_prev_diffuse,
-                ],
-                &[ShaderType::Raygen, ShaderType::Compute],
-            )
-            .build();
+        let cache_descriptors = cache_buffers.descriptor_set(&[ShaderType::Raygen, ShaderType::Compute]);
 
         ////// CREATE PIPELINES
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
@@ -425,18 +349,16 @@ impl RTXData {
             image_barrier(
                 &context,
                 buffer,
-                &[
-                    // general buffers
-                    cache_normals.image.image,
-                    cache_initial_distances.image.image,
-                    cache_origin.image.image,
-                    cache_mer.image.image,
-                    cache_direct_illuminations.image.image,
-                    // path tracing buffers, FIXME: should just init them with a copy
-                    cache_pt_normals.image.image,
-                    cache_pt_origins.image.image,
-                    cache_pt_illum.image.image,
-                ],
+                &cache_buffers.images(&[
+                    "normals",
+                    "initial_distances",
+                    "hit_point",
+                    "mer",
+                    "direct_illumination",
+                    "pathtracing_origin",
+                    "pathtracing_normal",
+                    "pathtracing_illum",
+                ])
             );
 
             // Shadows
@@ -449,47 +371,29 @@ impl RTXData {
                 image_barrier(
                     &context,
                     buffer,
-                    &[
-                    cache_pt_normals.image.image,
-                    cache_pt_origins.image.image,
-                    cache_pt_illum.image.image,
-                    ],
+                    &cache_buffers.images(&[
+                        "pathtracing_origin",
+                        "pathtracing_normal",
+                        "pathtracing_illum",
+                    ]),
                 );
             }
-            image_barrier(&context, buffer, &[cache_shadows.image.image]);
+            image_barrier(&context, buffer, &cache_buffers.images(&["shadow"]));
 
             // Reconstruct
             reconstruct_pipeline.bind(&context, buffer);
             reconstruct_pipeline.dispatch(buffer, width, height);
 
-            image_barrier(context, buffer, &[output_texture.image.image]);
+            image_barrier(&context, buffer, &cache_buffers.images(&["output_texture"]));
 
-            swapchain.cmd_update_image(buffer, index, &output_texture.image);
+            swapchain.cmd_update_image(buffer, index, &cache_buffers.texture("output_texture").image);
         });
 
         Self {
             context: Arc::clone(context),
 
             // variables
-            output_texture,
-
-            cache: vec![
-                cache_normals,
-                cache_initial_distances,
-                cache_direct_illuminations,
-                cache_origin,
-                cache_shadows,
-                cache_mer,
-                cache_pt_origins,
-                cache_pt_normals,
-                cache_pt_illum,
-                cache_prev_initial_distances,
-                cache_prev_history_length,
-                cache_prev_moments,
-                cache_new_history_length,
-                cache_new_moments,
-                cache_prev_diffuse,
-            ],
+            cache_buffers,
             descriptor_sets: vec![descriptor_set, cache_descriptors],
 
             pipeline,
