@@ -184,7 +184,7 @@ impl Camera {
             fov,
 
             virtual_screen_size: compute_virtual_screen_size(fov, aspect_ratio),
-            sun_direction: Vector3::new(-0.7, -1.5, -1.1),
+            sun_direction: Vector3::new(-0.7, -1.5, -1.1).normalize(),
             light_cycle: 0.0,
             previous_view_matrix: Matrix4::identity(),
         };
