@@ -8,5 +8,6 @@ pub mod descriptors;
 pub mod mesh;
 pub mod pipeline;
 pub mod window;
+pub mod cache_buffers;
 
 pub use cubetracer::*;
