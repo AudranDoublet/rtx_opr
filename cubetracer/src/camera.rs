@@ -57,32 +57,28 @@ impl Camera {
     }
 
     pub fn store_previous_view(&mut self) {
-        self.previous_view_matrix = self.view_matrix()
+        self.previous_view_matrix = self.projection_matrix() * self.view_matrix()
     }
 
     pub fn view_matrix(&self) -> Matrix4<f32> {
         Matrix4::from_columns(&[
-            vec3to4(-self.left, 0.0),
-            vec3to4(self.up, 0.0),
-            vec3to4(self.forward, 0.0),
+            vec3to4(-self.left.normalize(), 0.0),
+            vec3to4(self.up.normalize(), 0.0),
+            vec3to4(self.forward.normalize(), 0.0),
             vec3to4(self.origin, 1.0),
         ]).try_inverse().unwrap()
     }
 
     pub fn projection_matrix(&self) -> Matrix4<f32> {
-        //FIXME not hardcoded ?
-        let far = 200.0;
-        let near = 0.01;
-
         let r = self.aspect_ratio;
         let t = 1.0 / (self.fov / 2.0).tan();
 
         Matrix4::new(
             t / r, 0.0 ,                          0.0, 0.0,
             0.0  ,  t  ,                          0.0, 0.0,
-            0.0  ,  0.0, -(far + near) / (far - near), -1.0,
-            0.0  ,  0.0, -2.0*far*near / (far - near), 0.0,
-        )
+            0.0  ,  0.0, -1.0, -1.0,
+            0.0  ,  0.0, 0.0, 0.0,
+        ).transpose()
     }
 
     pub fn forward(&self) -> Vector3<f32> {
@@ -156,7 +152,6 @@ impl Camera {
     }
 
     pub fn set_fov(&mut self, fov: f32) {
-        let fov = std::f32::consts::PI / 4.;
         Self::assert_fov_valid(fov);
         self.fov = fov;
         self.virtual_screen_size = compute_virtual_screen_size(fov, self.aspect_ratio);
@@ -172,8 +167,6 @@ impl Camera {
         fov: f32,
         aspect_ratio: f32,
     ) -> Camera {
-        let fov = std::f32::consts::PI / 4.;
-
         let mut camera = Camera {
             origin,
             rotation,
