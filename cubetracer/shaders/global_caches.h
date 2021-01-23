@@ -27,8 +27,6 @@ DEF_IMAGE(11, rgba32f, SHADOWS);
 DEF_IMAGE(12, rgba32f, ILLUM_COEFFS);
 
 // PATH TRACING CACHES
-DEF_IMAGE(13, rgba32f, PT_ORIGINS);
-DEF_IMAGE(14, rgba32f, PT_NORMALS); // store normals + bounce_contribs
-DEF_IMAGE(15, rgba32f, PT_ILLUM);
+DEF_IMAGE(13, rgba32f, PT_ILLUM);
 
 #endif // _GLOBAL_CACHES_H

@@ -157,7 +157,10 @@ impl Cubetracer {
                 self.rtx_data = Some(rtx_data);
             }
 
-            if self.acceleration_structure.build(context, &mut self.local_instance_bindings) {
+            if self
+                .acceleration_structure
+                .build(context, &mut self.local_instance_bindings)
+            {
                 self.rtx_data.as_mut().unwrap().update_blas_data(
                     &mut self.acceleration_structure.get_blas_data(),
                     &mut self.acceleration_structure.get_blas_textures(),
@@ -243,10 +246,7 @@ impl RTXData {
             .simple("hit_point", swapchain, BufferFormat::RGBA)
             .simple("shadow", swapchain, BufferFormat::RGBA)
             .simple("mer", swapchain, BufferFormat::RGBA)
-            .simple("pathtracing_origin", swapchain, BufferFormat::RGBA)
-            .simple("pathtracing_normal", swapchain, BufferFormat::RGBA)
-            .simple("pathtracing_illum", swapchain, BufferFormat::RGBA)
-        ;
+            .simple("pathtracing_illum", swapchain, BufferFormat::RGBA);
 
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
 
@@ -268,7 +268,12 @@ impl RTXData {
                 // 2
                 vk::DescriptorType::UNIFORM_BUFFER,
                 &mut cubetracer.uniform_scene,
-                &[ShaderType::Raygen, ShaderType::ClosestHit, ShaderType::Miss, ShaderType::Compute],
+                &[
+                    ShaderType::Raygen,
+                    ShaderType::ClosestHit,
+                    ShaderType::Miss,
+                    ShaderType::Compute,
+                ],
             )
             .binding(
                 // 3
@@ -292,18 +297,17 @@ impl RTXData {
             )
             .build();
 
-        let cache_descriptors = cache_buffers.descriptor_set(&[ShaderType::Raygen, ShaderType::Compute]);
+        let cache_descriptors =
+            cache_buffers.descriptor_set(&[ShaderType::Raygen, ShaderType::Compute]);
 
         ////// CREATE PIPELINES
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "path_tracing/raygen.rgen.spv")
-
             .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "path_tracing/miss.rmiss.spv")
-
             .hit_shaders(
                 Some("initial/closesthit.rchit.spv"),
                 Some("initial/anyhit.rahit.spv"),
@@ -317,13 +321,11 @@ impl RTXData {
             .general_shader(ShaderType::Raygen, "path_tracing/raygen.rgen.spv")
             .general_shader(ShaderType::Miss, "path_tracing/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
-
             .hit_shaders(
                 Some("initial/closesthit.rchit.spv"),
                 Some("initial/anyhit.rahit.spv"),
             )
             .hit_shaders(None, Some("initial/anyhit.rahit.spv"))
-
             .descriptor_set(&descriptor_set)
             .descriptor_set(&cache_descriptors)
             .build(3);
@@ -355,29 +357,21 @@ impl RTXData {
                     "hit_point",
                     "mer",
                     "direct_illumination",
-                    "pathtracing_origin",
-                    "pathtracing_normal",
                     "pathtracing_illum",
-                ])
+                ]),
             );
 
             // Shadows
             pipeline.dispatch(buffer, width, height, 1);
 
             // Path tracing with _ bouncing rays
-            for _ in 0..1 {
-                pipeline.dispatch(buffer, width, height, 2);
+            pipeline.dispatch(buffer, width, height, 2);
 
-                image_barrier(
-                    &context,
-                    buffer,
-                    &cache_buffers.images(&[
-                        "pathtracing_origin",
-                        "pathtracing_normal",
-                        "pathtracing_illum",
-                    ]),
-                );
-            }
+            image_barrier(
+                &context,
+                buffer,
+                &cache_buffers.images(&["pathtracing_illum"]),
+            );
             image_barrier(&context, buffer, &cache_buffers.images(&["shadow"]));
 
             // Reconstruct
@@ -386,7 +380,11 @@ impl RTXData {
 
             image_barrier(&context, buffer, &cache_buffers.images(&["output_texture"]));
 
-            swapchain.cmd_update_image(buffer, index, &cache_buffers.texture("output_texture").image);
+            swapchain.cmd_update_image(
+                buffer,
+                index,
+                &cache_buffers.texture("output_texture").image,
+            );
         });
 
         Self {

@@ -25,59 +25,81 @@ vec3 generate_rnd_direction(vec3 normal, vec2 uv) {
     return normalize(basis * dir_sphere);
 }
 
+bool is_shadowed(vec3 origin) {
+    PAYLOAD_SHADOWED = true;
+
+    traceNV(
+        UNI_TLAS,
+        gl_RayFlagsTerminateOnFirstHitNV, 0xff,
+        1, 0, 1,
+        origin, 0, -UNI_SCENE.sunDirection, 100.0,
+        PAYLOAD_IDX_SHADOWED
+    );
+
+    return PAYLOAD_SHADOWED;
+}
+
+const int N_SAMPLES = 30;
+const int N_BOUNCES = 3;
+
+void indirect_illum(const vec3 origin, const vec3 normal, const ivec2 xy, inout vec3 illum) {
+    for (int i = 0; i < N_SAMPLES; i++) {
+        vec3 bounces_illum = vec3(0);
+
+        float bounce_contrib = 1.0;
+        vec3 bounce_origin = origin;
+        vec3 bounce_normal = normal;
+
+        for (int j = 0; j < N_BOUNCES; j++) {
+            const vec2 uv = vec2(
+                noise(7*i + 9*j*(xy.x * bounce_normal.xz + bounce_normal.y + 7.0  * bounce_origin.xy)),
+                noise(11*i + 17*j*(xy.y * bounce_normal.xy - bounce_normal.z + 29.0 * bounce_origin.xz))
+            );
+
+            const vec3 bounce_dir = generate_rnd_direction(bounce_normal, uv);
+
+            // FIXME: should replace by correct formula
+            bounce_contrib *= max(dot(bounce_normal, bounce_dir), 0.0);
+
+            if (bounce_contrib <= C_PT_MIN_CONTRIB)
+                break;
+
+            traceNV(
+                UNI_TLAS,
+                gl_RayFlagsNoneNV, 0xff,
+                0, 0, 2,
+                bounce_origin, 0, bounce_dir, 100.0,
+                PAYLOAD_IDX_GENERAL
+            );
+
+            if (!PAYLOAD_GENERAL.hit)
+                break;
+
+            // if (is_shadowed(PAYLOAD_GENERAL.hit_position))
+                // continue;
+
+            vec3 BRDF = PAYLOAD_GENERAL.illumination/C_PI;
+            // FIXME: multiply by BRDF (reflectance/PI)
+            bounces_illum += 2.0 * C_PI * BRDF * bounce_contrib;
+        }
+
+        illum += bounces_illum;
+    }
+
+    illum /= N_SAMPLES;
+}
+
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
 
-    vec4 normal_and_bounce_contrib = imageLoad(CACHE_PT_NORMALS, xy);
+    vec3 normal = imageLoad(CACHE_NORMALS, xy).xyz;
 
-    vec3 normal = normal_and_bounce_contrib.xyz;
-    float pt_bounce_contrib = normal_and_bounce_contrib.w;
+    vec3 illum = vec3(0);
 
-    if (pt_bounce_contrib <= C_PT_MIN_CONTRIB)
-        return;
-
-    // generate ray
-    const vec3 origin = imageLoad(CACHE_PT_ORIGINS, xy).xyz;
-
-    const vec2 uv = vec2(
-        noise(xy.x * normal.xz + normal.y + 7.0  * origin.xy),
-        noise(xy.y * normal.xy - normal.z + 29.0 * origin.xz)
-    );
-    const vec3 direction = generate_rnd_direction(normal, uv);
-
-    const uint cullMask = 0xff;
-    traceNV(
-        UNI_TLAS,
-        gl_RayFlagsNoneNV, cullMask,
-        0, 0, 2,
-        origin, 0, direction, 10.0,
-        PAYLOAD_IDX_GENERAL
-    );
-
-    if (PAYLOAD_GENERAL.hit) {
-        PAYLOAD_SHADOWED = false;
-
-        traceNV(
-            UNI_TLAS,
-            gl_RayFlagsTerminateOnFirstHitNV, cullMask,
-            1, 0, 1,
-            PAYLOAD_GENERAL.hit_position, 0, -UNI_SCENE.sunDirection, 100.0,
-            PAYLOAD_IDX_SHADOWED
-        );
-
-        vec3 pt_illum = imageLoad(CACHE_PT_ILLUM, xy).rgb;
-        float lighting = PAYLOAD_SHADOWED ? 0.0 : 1.0;
-
-        pt_bounce_contrib *= max(dot(normal, direction), 0.0); // FIXME: should replace by correct formula
-        pt_illum += 2. * lighting * pt_bounce_contrib * PAYLOAD_GENERAL.illumination; // FIXME: multiply by BRDF (reflectance/PI)
-
-        // store illum
-        imageStore(CACHE_PT_ILLUM, xy, vec4(pt_illum, 0.0));
-
-        // store data for further bounces
-        imageStore(CACHE_PT_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, pt_bounce_contrib));
-        imageStore(CACHE_PT_ORIGINS, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
-    } else {
-        imageStore(CACHE_PT_NORMALS, xy, vec4(0.0));
+    if (normal != vec3(0)) {
+        const vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
+        indirect_illum(origin, normal, xy, illum);
     }
+
+    imageStore(CACHE_PT_ILLUM, xy, vec4(illum, 0.0));
 }
