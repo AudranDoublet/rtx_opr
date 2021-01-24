@@ -30,9 +30,9 @@ bool is_shadowed(vec3 origin) {
 
     traceNV(
         UNI_TLAS,
-        gl_RayFlagsTerminateOnFirstHitNV, 0xff,
+        gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsSkipClosestHitShaderNV, 0xff,
         1, 0, 1,
-        origin, 0, -UNI_SCENE.sunDirection, 100.0,
+        origin, 0, -UNI_SCENE.sunDirection, 200.0,
         PAYLOAD_IDX_SHADOWED
     );
 
@@ -68,19 +68,23 @@ void indirect_illum(const vec3 origin, const vec3 normal, const ivec2 xy, inout 
                 UNI_TLAS,
                 gl_RayFlagsNoneNV, 0xff,
                 0, 0, 2,
-                bounce_origin, 0, bounce_dir, 100.0,
+                bounce_origin, 0, bounce_dir, 200.0,
                 PAYLOAD_IDX_GENERAL
             );
+
+            bounce_normal = PAYLOAD_GENERAL.normal;
+            bounce_origin = PAYLOAD_GENERAL.hit_position;
 
             if (!PAYLOAD_GENERAL.hit)
                 break;
 
-            // if (is_shadowed(PAYLOAD_GENERAL.hit_position))
-                // continue;
+            if (is_shadowed(PAYLOAD_GENERAL.hit_position))
+                continue;
 
-            vec3 BRDF = PAYLOAD_GENERAL.illumination/C_PI;
+            vec3 BRDF = PAYLOAD_GENERAL.illumination;
+
             // FIXME: multiply by BRDF (reflectance/PI)
-            bounces_illum += 2.0 * C_PI * BRDF * bounce_contrib;
+            bounces_illum += BRDF * bounce_contrib;
         }
 
         illum += bounces_illum;

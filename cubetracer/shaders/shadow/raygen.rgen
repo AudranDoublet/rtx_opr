@@ -32,7 +32,7 @@ void main() {
 
     traceNV(
         UNI_TLAS,
-        gl_RayFlagsTerminateOnFirstHitNV,
+        gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsSkipClosestHitShaderNV,
         cullMask,
         1, 0, 1,
         origin,
