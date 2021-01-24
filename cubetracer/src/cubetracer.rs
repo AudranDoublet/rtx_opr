@@ -244,10 +244,10 @@ impl RTXData {
 
         cache_buffers
             .simple_same("output_texture", swapchain)
-            .double("history_length", swapchain, BufferFormat::VALUE)
+            .double("history_length", swapchain, BufferFormat::RGBA)
             .double("moments", swapchain, BufferFormat::RGBA)
             .simple("normals", swapchain, BufferFormat::RGBA)
-            .double("initial_distances", swapchain, BufferFormat::VALUE)
+            .double("initial_distances", swapchain, BufferFormat::RGBA)
             .simple("direct_illumination", swapchain, BufferFormat::RGBA)
             .simple("hit_point", swapchain, BufferFormat::RGBA)
             .simple("shadow", swapchain, BufferFormat::RGBA)

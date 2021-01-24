@@ -20,7 +20,7 @@ void main() {
         const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
         const vec4 pt_illum = vec4(imageLoad(CACHE_PT_ILLUM, xy).xyz, 1.0);
 
-        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows + pt_illum);
+        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows + max(pt_illum, 0));
     }
     else if (UNI_SCENE.rendered_buffer == 1)
     {
@@ -29,7 +29,7 @@ void main() {
     }
     else if (UNI_SCENE.rendered_buffer == 2)
     {
-        const vec4 pt_illum = imageLoad(CACHE_PT_ILLUM, xy);
+        const vec4 pt_illum = vec4(imageLoad(CACHE_PT_ILLUM, xy).xyz, 1);
         imageStore(CACHE_RESULT_IMAGE, xy, pt_illum);
     }
     else if (UNI_SCENE.rendered_buffer == 3)

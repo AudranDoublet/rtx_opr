@@ -38,7 +38,10 @@ bool rayAtmosphereIntersect(const vec3 orig, const vec3 dir, const float radius,
 
 vec3 computeSkyLight(vec3 dir, const vec3 origin)
 {
-    const vec3 orig = vec3(0, CST_SKY_EARTH_RADIUS - origin.y, 0);
+    if (dir.y < 0.1)
+        dir.y = 0.1;
+
+    const vec3 orig = vec3(0, CST_SKY_EARTH_RADIUS, 0);
     float tmin, tmax;
 
     if (!rayAtmosphereIntersect(orig, dir, CST_SKY_ATMOSPHERE_RADIUS, tmin, tmax) || tmax < 0) return vec3(0);
