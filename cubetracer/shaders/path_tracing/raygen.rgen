@@ -95,6 +95,8 @@ void indirect_illum(const vec3 origin, const vec3 normal, const ivec2 xy, inout 
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
+    uint seed = imageLoad(CACHE_NOISE, xy).r;
+    seed = wang_hash(seed);
 
     vec3 normal = imageLoad(CACHE_NORMALS, xy).xyz;
 
@@ -105,5 +107,8 @@ void main() {
         indirect_illum(origin, normal, xy, illum);
     }
 
+    // seed = wang_hash(seed);
+
+    imageStore(CACHE_NOISE, xy, uvec4(seed));
     imageStore(CACHE_PT_ILLUM, xy, vec4(illum, 0.0));
 }

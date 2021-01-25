@@ -322,7 +322,7 @@ impl TextureVariable {
 }
 
 impl TextureVariable {
-    pub fn fill_image(&self, command_buffer: vk::CommandBuffer, data: &[u8]) {
+    pub fn fill_image<T: Sized + Copy>(&self, context: &Arc<Context>, data: &[T]) {
         let buffer = BufferVariable::host_buffer(
             "texture_buffer".to_string(),
             &self.context,
@@ -332,20 +332,19 @@ impl TextureVariable {
 
         // Transition the image layout and copy the buffer into the image
         // and transition the layout again to be readable from fragment shader.
-        {
+        context.execute_one_time_commands(|cmd| {
             self.image.cmd_transition_image_layout(
-                command_buffer,
+                cmd,
                 vk::ImageLayout::UNDEFINED,
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             );
 
             self.image.cmd_copy_buffer(
-                command_buffer,
+                cmd,
                 &buffer,
                 self.image.extent()
             );
-
-        }
+        });
     }
 }
 
