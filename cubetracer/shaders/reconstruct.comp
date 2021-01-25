@@ -71,6 +71,14 @@ void main() {
 
         imageStore(CACHE_RESULT_IMAGE, xy, shadows);
     }
+    else if (UNI_SCENE.rendered_buffer == 7)
+    {
+        const float noise = imageLoad(CACHE_NOISE, xy).r;
+        float b = sin(float(noise));
+        b = (b+1.0) / 2.0;
+
+        imageStore(CACHE_RESULT_IMAGE, xy, vec4(noise));
+    }
 
     imageStore(CACHE_DENOISE_PREV_DIFFUSE, xy, imageLoad(CACHE_PT_ILLUM, xy));
     imageStore(CACHE_DENOISE_PREV_MOMENTS, xy, imageLoad(CACHE_DENOISE_NEW_MOMENTS, xy));

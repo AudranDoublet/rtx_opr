@@ -216,6 +216,11 @@ pub struct RTXData {
 }
 
 impl RTXData {
+    fn generate_noise_texture(extent: vk::Extent2D) -> Vec<u32> {
+        let noise: Vec<u32> = (0..extent.width*extent.height).into_iter().map(|_| rand::random::<u32>()).collect();
+        noise
+    }
+
     pub fn get_command_buffers(&self) -> &[vk::CommandBuffer] {
         &self.command_buffers.buffers()
     }
@@ -252,7 +257,18 @@ impl RTXData {
             .simple("hit_point", swapchain, BufferFormat::RGBA)
             .simple("shadow", swapchain, BufferFormat::RGBA)
             .simple("mer", swapchain, BufferFormat::RGBA)
-            .double("pathtracing_illum", swapchain, BufferFormat::RGBA);
+            .double("pathtracing_illum", swapchain, BufferFormat::RGBA)
+            .simple("noise", swapchain, BufferFormat::U32);
+
+        context.execute_one_time_commands(|command_buffer| {
+            let texture = cache_buffers.texture("noise");
+            let extent = texture.image.extent();
+            let noise = RTXData::generate_noise_texture(extent);
+            unsafe {
+                let noise = any_as_u8_slice(&noise);
+                texture.fill_image(command_buffer, noise);
+            }
+        });
 
         let max_nb_chunks = MAX_INSTANCE_BINDING; // FIXME: replace with the real max number of visible chunks
 

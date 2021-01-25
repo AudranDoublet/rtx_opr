@@ -267,6 +267,10 @@ impl ImageVariable {
 }
 
 impl ImageVariable {
+    pub fn extent(&self) -> vk::Extent2D {
+        vk::Extent2D { width: self.extent.width, height: self.extent.height }
+    }
+
     pub fn create_view(
         &self,
         view_type: vk::ImageViewType,

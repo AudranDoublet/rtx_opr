@@ -3,6 +3,7 @@
 
 
 #define DEF_IMAGE(BINDING, TYPE, NAME) layout(set=G_CACHE_SET, binding=BINDING, TYPE) uniform image2D CACHE_ ## NAME
+#define DEF_IMAGE_U(BINDING, TYPE, NAME) layout(set=G_CACHE_SET, binding=BINDING, TYPE) uniform uimage2D CACHE_ ## NAME
 
 /* FIXME: What about compressing the images? as we're never using the alpha channels */
 
@@ -28,5 +29,7 @@ DEF_IMAGE(11, rgba32f, ILLUM_COEFFS);
 // PATH TRACING CACHES
 DEF_IMAGE(12, rgba32f, PT_ILLUM);
 DEF_IMAGE(13, rgba32f, DENOISE_PREV_DIFFUSE);
+
+DEF_IMAGE_U(14, r32ui, NOISE);
 
 #endif // _GLOBAL_CACHES_H

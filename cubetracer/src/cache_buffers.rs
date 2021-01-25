@@ -12,6 +12,7 @@ use crate::window::*;
 pub enum BufferFormat {
     RGBA,
     VALUE,
+    U32,
 }
 
 impl BufferFormat {
@@ -19,6 +20,7 @@ impl BufferFormat {
         match self {
             BufferFormat::RGBA => vk::Format::R32G32B32A32_SFLOAT,
             BufferFormat::VALUE => vk::Format::R32_SFLOAT,
+            BufferFormat::U32 => vk::Format::R32_UINT,
         }
     }
 }

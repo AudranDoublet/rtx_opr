@@ -79,7 +79,7 @@ impl DataType for UniformVariable {
     }
 }
 
-unsafe fn any_as_u8_slice<T: Sized>(any: &T) -> &[u8] {
+pub unsafe fn any_as_u8_slice<T: Sized>(any: &T) -> &[u8] {
     let ptr = (any as *const T) as *const u8;
     std::slice::from_raw_parts(ptr, std::mem::size_of::<T>())
 }

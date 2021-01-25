@@ -259,7 +259,9 @@ impl TextureVariable {
             mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
             extent: swapchain_props.extent,
             format: swapchain_props.format.format,
-            usage: vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::STORAGE,
+            usage: vk::ImageUsageFlags::TRANSFER_SRC 
+                | vk::ImageUsageFlags::STORAGE 
+                | vk::ImageUsageFlags::TRANSFER_DST,
             ..Default::default()
         };
         let image = ImageVariable::create(Arc::clone(context), params);
@@ -293,7 +295,9 @@ impl TextureVariable {
             mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
             extent: swapchain_props.extent,
             format,
-            usage: vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::STORAGE,
+            usage: vk::ImageUsageFlags::TRANSFER_DST
+                | vk::ImageUsageFlags::TRANSFER_SRC
+                | vk::ImageUsageFlags::STORAGE,
             ..Default::default()
         };
         let image = ImageVariable::create(Arc::clone(context), params);
@@ -313,6 +317,34 @@ impl TextureVariable {
             view,
             sampler: None,
             info: Vec::new(),
+        }
+    }
+}
+
+impl TextureVariable {
+    pub fn fill_image(&self, command_buffer: vk::CommandBuffer, data: &[u8]) {
+        let buffer = BufferVariable::host_buffer(
+            "texture_buffer".to_string(),
+            &self.context,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            data,
+        );
+
+        // Transition the image layout and copy the buffer into the image
+        // and transition the layout again to be readable from fragment shader.
+        {
+            self.image.cmd_transition_image_layout(
+                command_buffer,
+                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            );
+
+            self.image.cmd_copy_buffer(
+                command_buffer,
+                &buffer,
+                self.image.extent()
+            );
+
         }
     }
 }
