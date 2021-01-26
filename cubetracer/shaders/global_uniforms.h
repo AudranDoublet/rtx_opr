@@ -8,11 +8,9 @@ layout(set=G_UNIFORM_SET, binding = 0) uniform accelerationStructureNV UNI_TLAS;
 #endif
 
 layout(set=G_UNIFORM_SET, binding = 1) uniform SCamera{
-    vec3 forward;
-    vec3 left;
-    vec3 up;
-    vec3 origin;
-    mat4 previous_view_matrix;
+    dmat4 screen_to_world;
+    dmat4 prev_world_to_screen;
+    dvec3 origin;
 } UNI_CAMERA;
 
 layout(set=G_UNIFORM_SET, binding = 2) uniform SScene {

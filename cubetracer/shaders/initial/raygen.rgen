@@ -18,14 +18,11 @@ layout(location = PAYLOAD_IDX_GENERAL) rayPayloadNV InitialPayload PAYLOAD_GENER
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
-    const vec2 xy_normalized = xy / vec2(gl_LaunchSizeNV.xy) - 0.5;
+    dvec2 xy_normalized = -(xy / dvec2(gl_LaunchSizeNV.xy) - 0.5) * 2;
 
-    const vec3 origin = UNI_CAMERA.origin;
-    const vec3 direction = normalize(
-        UNI_CAMERA.forward
-        - xy_normalized.x * UNI_CAMERA.left
-        + xy_normalized.y * UNI_CAMERA.up
-    );
+    const dvec3 origin = UNI_CAMERA.origin;
+    const dvec4 seen_point = (UNI_CAMERA.screen_to_world * dvec4(xy_normalized, 1, 1));
+    const dvec3 direction = normalize(seen_point.xyz / seen_point.w - origin);
 
     const uint cullMask = 0xff;
     const float tmin = 0.1;
@@ -35,7 +32,7 @@ void main() {
         UNI_TLAS,
         gl_RayFlagsNoneNV,
         cullMask, 0, 0, 0,
-        origin, tmin, direction, tmax,
+        vec3(origin), tmin, vec3(direction), tmax,
         PAYLOAD_IDX_GENERAL
     );
 

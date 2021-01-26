@@ -23,6 +23,7 @@ vec3 generate_rnd_direction(vec3 normal, vec2 uv) {
     const vec3 dir_sphere = sample_cos_hemisphere(uv);
     const mat3 basis = construct_ONB_frisvad(normal);
     return normalize(basis * dir_sphere);
+    // return random_dir(normal);
 }
 
 bool is_shadowed(vec3 origin) {
@@ -42,7 +43,7 @@ bool is_shadowed(vec3 origin) {
 const int N_SAMPLES = 1;
 const int N_BOUNCES = 1;
 
-void indirect_illum(const vec3 origin, const vec3 normal, const ivec2 xy, inout vec3 illum) {
+void indirect_illum(in out uint seed, const vec3 origin, const vec3 normal, const ivec2 xy, inout vec3 illum) {
     for (int i = 0; i < N_SAMPLES; i++) {
         vec3 bounces_illum = vec3(0);
 
@@ -52,8 +53,8 @@ void indirect_illum(const vec3 origin, const vec3 normal, const ivec2 xy, inout 
 
         for (int j = 0; j < N_BOUNCES; j++) {
             const vec2 uv = vec2(
-                noise(7*i + 9*j*(xy.x * bounce_normal.xz + bounce_normal.y + 7.0  * bounce_origin.xy)),
-                noise(11*i + 17*j*(xy.y * bounce_normal.xy - bounce_normal.z + 29.0 * bounce_origin.xz))
+                noise(seed),
+                noise(seed)
             );
 
             const vec3 bounce_dir = generate_rnd_direction(bounce_normal, uv);
@@ -84,19 +85,20 @@ void indirect_illum(const vec3 origin, const vec3 normal, const ivec2 xy, inout 
             vec3 BRDF = PAYLOAD_GENERAL.illumination;
 
             // FIXME: multiply by BRDF (reflectance/PI)
-            bounces_illum += BRDF * bounce_contrib;
+            bounces_illum += 2.0 * BRDF * bounce_contrib;
         }
 
         illum += bounces_illum;
     }
 
     illum /= N_SAMPLES;
+    illum = clamp(illum, vec3(0), vec3(1));
 }
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
-    uint seed = imageLoad(CACHE_NOISE, xy).r;
-    seed = wang_hash(seed);
+    float seed_f = imageLoad(CACHE_NOISE, xy).r * 255.;
+    uint seed = uint(seed_f);
 
     vec3 normal = imageLoad(CACHE_NORMALS, xy).xyz;
 
@@ -104,11 +106,13 @@ void main() {
 
     if (normal != vec3(0)) {
         const vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
-        indirect_illum(origin, normal, xy, illum);
+        indirect_illum(seed, origin, normal, xy, illum);
     }
 
-    // seed = wang_hash(seed);
+    seed_f += 1.;
+    if (seed_f > 255)
+        seed_f = 0;
 
-    imageStore(CACHE_NOISE, xy, uvec4(seed));
+    imageStore(CACHE_NOISE, xy, vec4(seed_f / 255.0));
     imageStore(CACHE_PT_ILLUM, xy, vec4(illum, 0.0));
 }

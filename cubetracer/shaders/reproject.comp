@@ -21,14 +21,11 @@ const float gMomentsAlpha = 0.2;
 
 //// reproject hit point in previous frame space using its projection/view matrix
 //// (similar to rasterization techniques)
-vec2 basic_reprojection(const vec3 origin) {
-    vec4 viewspace_position = UNI_CAMERA.previous_view_matrix * vec4(origin, 1);
-    vec2 ndc = -viewspace_position.xy / viewspace_position.z;
+dvec2 basic_reprojection(const vec3 origin) {
+    dvec4 viewspace_position = UNI_CAMERA.prev_world_to_screen * dvec4(origin, 1);
+    dvec2 ndc = -viewspace_position.xy / viewspace_position.z;
 
-    ndc.x = ndc.x / 2.0 + 0.5;
-    ndc.y = ndc.y / 2.0 + 0.5;
-
-    return ndc;
+    return dvec2(ndc / 2.0 + 0.5);
 }
 
 //// check if a given reprojection seems to be valid
@@ -48,19 +45,15 @@ float luminance(const vec4 rgb) {
     return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
 }
 
-vec4 lerp(const vec4 a, const vec4 b, float t) {
-    return a * (1 - t) + b * t;
-}
-
 bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMoments, out float historyLength) {
     const ivec2 screen_size = imageSize(CACHE_ORIGIN);
     const float dist = imageLoad(CACHE_INIT_DISTANCES, xy).x;
 
     // if an object has been hit this tick
-    if (dist != 0.0) {
-        vec2 prev = screen_size * basic_reprojection(imageLoad(CACHE_ORIGIN, xy).xyz);
-
-        vec2 prev_frac = prev - floor(prev);
+    if (dist != 0.0)
+    {
+        dvec2 prev = screen_size * basic_reprojection(imageLoad(CACHE_ORIGIN, xy).xyz);
+        dvec2 prev_frac = fract(prev);
 
         ivec2 offsets[4] = { ivec2(0, 0), ivec2(1, 0), ivec2(0, 1), ivec2(1, 1) };
 
@@ -73,17 +66,18 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
             ivec2 loc = ivec2(prev) + offsets[sampleIdx];
             valid_arr[sampleIdx] = is_reprojection_valid(screen_size, loc, dist);
 
-            valid = valid && valid_arr[sampleIdx];
+            valid = valid || valid_arr[sampleIdx];
         }
 
         // STEP 2: if we found at least one valid pixel, try to approximate the
         // previous value using a bilinear interpolation
         if (valid) {
             // bilinear weights
-            float w[4] = { (1 - prev_frac.x) * (1 - prev_frac.y), 
+            double w[4] = { (1 - prev_frac.x) * (1 - prev_frac.y), 
                                 prev_frac.x  * (1 - prev_frac.y), 
                            (1 - prev_frac.x) *      prev_frac.y,
                                 prev_frac.x  *      prev_frac.y };
+
             float sumw = 0;
             prevDiffuse = vec4(0);
             prevMoments = vec4(0);
@@ -95,9 +89,9 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
 
                 if (valid_arr[sampleIdx])
                 {
-                    prevDiffuse += w[sampleIdx] * imageLoad(CACHE_DENOISE_PREV_DIFFUSE, loc);
-                    prevMoments += w[sampleIdx] * imageLoad(CACHE_DENOISE_PREV_MOMENTS, loc);
-                    sumw        += w[sampleIdx];
+                    prevDiffuse   += float(w[sampleIdx]) * imageLoad(CACHE_DENOISE_PREV_DIFFUSE, loc);
+                    prevMoments   += float(w[sampleIdx]) * imageLoad(CACHE_DENOISE_PREV_MOMENTS, loc);
+                    sumw          += float(w[sampleIdx]);
                 }
             }
 
@@ -108,12 +102,14 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
             } else {
                 prevDiffuse   = vec4(0);
                 prevMoments   = vec4(0);
-                valid = false;
             }
         }
 
+        // imageStore(CACHE_PT_ILLUM, xy, imageLoad(CACHE_DIRECT_ILLUM, ivec2(round(prev))));
+
         // STEP 3: if surrounding pixels wern't valid, try to do a bilateral filter with more pixels
-        if (!valid) {
+
+           if (!valid) {
             prevDiffuse = vec4(0);
             prevMoments = vec4(0);
 
@@ -182,13 +178,13 @@ void main() {
     moments.b = moments.r * moments.r;
     moments.a = moments.g * moments.g;
 
-    moments = lerp(prevMoments, moments, momentsAlpha);
+    moments = mix(prevMoments, moments, momentsAlpha);
 
     // compute variance
     vec2 variance = max(vec2(0), moments.ga - moments.rb * moments.rb);
 
     // compute new diffuse
-    diffuse = lerp(prevDiffuse, diffuse, alpha);
+    diffuse = mix(prevDiffuse, diffuse, alpha);
     diffuse.a = variance.r;
 
     imageStore(CACHE_DENOISE_NEW_MOMENTS, xy, moments);

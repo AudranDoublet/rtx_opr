@@ -304,10 +304,10 @@ impl Player {
 
         for input in &inputs {
             match input {
-                PlayerInput::MoveLeft => directional_input.x -= 1.,
-                PlayerInput::MoveRight => directional_input.x += 1.,
-                PlayerInput::MoveFoward => directional_input.y += 1.,
-                PlayerInput::MoveBackward => directional_input.y -= 1.,
+                PlayerInput::MoveLeft => directional_input.x += 1.,
+                PlayerInput::MoveRight => directional_input.x -= 1.,
+                PlayerInput::MoveFoward => directional_input.y -= 1.,
+                PlayerInput::MoveBackward => directional_input.y += 1.,
                 PlayerInput::Jump => jumping = true,
                 PlayerInput::Sneaking => sneaking = true,
                 PlayerInput::SprintToggle => sprinting = true,

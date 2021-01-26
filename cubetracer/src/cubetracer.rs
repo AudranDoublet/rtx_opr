@@ -37,7 +37,7 @@ pub struct Cubetracer {
 impl Cubetracer {
     pub fn new(context: &Arc<Context>, ratio: f32, fov: f32) -> Self {
         let camera = Camera::new(
-            Vector3::x(),
+            Vector3::new(0.0, 80.0, 0.0),
             Vector2::new(std::f32::consts::PI / 2.0, 0.0),
             fov,
             ratio,
@@ -216,10 +216,10 @@ pub struct RTXData {
 }
 
 impl RTXData {
-    fn generate_noise_texture(extent: vk::Extent2D) -> Vec<u32> {
-        (0..extent.width*extent.height)
+    fn generate_noise_texture(extent: vk::Extent2D) -> Vec<f32> {
+        (0..extent.width*extent.height*4)
             .into_iter()
-            .map(|_| rand::random::<u32>())
+            .map(|_| rand::random::<f32>())
             .collect()
     }
 
@@ -263,7 +263,7 @@ impl RTXData {
             .simple("shadow", swapchain, BufferFormat::RGBA)
             .simple("mer", swapchain, BufferFormat::RGBA)
             .double("pathtracing_illum", swapchain, BufferFormat::RGBA)
-            .simple("noise", swapchain, BufferFormat::U32)
+            .simple("noise", swapchain, BufferFormat::RGBA)
             .simple_extent("shadow_map", SHADOW_MAP_EXTENT, BufferFormat::RGBA);
 
         cache_buffers
@@ -407,14 +407,14 @@ impl RTXData {
                 &cache_buffers.images(&["pathtracing_illum"]),
             );
 
-            temporal_filter_pipeline.bind(&context, buffer);
-            temporal_filter_pipeline.dispatch(buffer, width, height);
+              temporal_filter_pipeline.bind(&context, buffer);
+              temporal_filter_pipeline.dispatch(buffer, width, height);
 
-            image_barrier(
-                &context,
-                buffer,
-                &cache_buffers.images(&["pathtracing_illum"]),
-            );
+              image_barrier(
+               &context,
+               buffer,
+               &cache_buffers.images(&["pathtracing_illum"]),
+              );
 
             image_barrier(&context, buffer, &cache_buffers.images(&["shadow"]));
 
