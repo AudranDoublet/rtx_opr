@@ -244,8 +244,11 @@ impl RTXData {
     }
 }
 
+const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 1024, width: 1024 };
+
 impl RTXData {
     pub fn new(context: &Arc<Context>, swapchain: &Swapchain, cubetracer: &mut Cubetracer) -> Self {
+
         ////// CREATE CACHES
         let mut cache_buffers = BufferList::new(context);
 
@@ -260,7 +263,12 @@ impl RTXData {
             .simple("shadow", swapchain, BufferFormat::RGBA)
             .simple("mer", swapchain, BufferFormat::RGBA)
             .double("pathtracing_illum", swapchain, BufferFormat::RGBA)
-            .simple("noise", swapchain, BufferFormat::U32);
+            .simple("noise", swapchain, BufferFormat::U32)
+            .simple_extent("shadow_map", SHADOW_MAP_EXTENT, BufferFormat::RGBA);
+
+        cache_buffers
+            .texture_mut("shadow_map")
+            .set_sampler(TextureVariable::create_default_sampler(context));
 
         let texture = cache_buffers.texture("noise");
         let extent = texture.image.extent();

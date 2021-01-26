@@ -32,6 +32,8 @@ trait CacheBuffer {
 
     fn texture<'a>(&'a self) -> &'a TextureVariable;
 
+    fn texture_mut<'a>(&'a mut self) -> &'a mut TextureVariable;
+
     fn buffers(&self) -> Vec<vk::Image>;
 }
 
@@ -55,6 +57,10 @@ impl CacheBuffer for SimpleCacheBuffer {
 
     fn texture<'a>(&'a self) -> &'a TextureVariable {
         &self.buffer
+    }
+
+    fn texture_mut<'a>(&'a mut self) -> &'a mut TextureVariable {
+        &mut self.buffer
     }
 }
 
@@ -80,6 +86,10 @@ impl CacheBuffer for DoubleBufferingCache {
 
     fn texture<'a>(&'a self) -> &'a TextureVariable {
         &self.a
+    }
+
+    fn texture_mut<'a>(&'a mut self) -> &'a mut TextureVariable {
+        &mut self.a
     }
 }
 
@@ -149,10 +159,32 @@ impl BufferList {
         self.buffers[self.names[name]].texture()
     }
 
+
+    pub fn texture_mut(&mut self, name: &str) -> &mut TextureVariable {
+        self.buffers[self.names[name]].texture_mut()
+    }
+
     pub fn simple_same(&mut self, name: &str, swapchain: &Swapchain) -> &mut Self {
         let buffer = TextureVariable::from_swapchain(
             &self.context,
             swapchain,
+        );
+
+        self.names.insert(name.to_string(), self.buffers.len());
+        self.buffers.push(Box::new(
+            SimpleCacheBuffer {
+                buffer,
+            }
+        ));
+
+        self
+    }
+
+    pub fn simple_extent(&mut self, name: &str, extent: vk::Extent2D, format: BufferFormat) -> &mut Self {
+        let buffer = TextureVariable::from_extent(
+            &self.context,
+            extent,
+            format.vulkan(),
         );
 
         self.names.insert(name.to_string(), self.buffers.len());

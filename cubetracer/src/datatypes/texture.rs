@@ -193,6 +193,32 @@ impl TextureVariable {
         (texture, buffer)
     }
 
+    pub fn create_default_sampler(context: &Arc<Context>,) -> vk::Sampler {
+        let device = context.device();
+        let sampler_info = vk::SamplerCreateInfo::builder()
+                .mag_filter(vk::Filter::LINEAR)
+                .min_filter(vk::Filter::LINEAR)
+                .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                .anisotropy_enable(false)
+                .max_anisotropy(0.0)
+                .border_color(vk::BorderColor::FLOAT_OPAQUE_WHITE)
+                .unnormalized_coordinates(false)
+                .compare_enable(false)
+                .compare_op(vk::CompareOp::ALWAYS)
+                .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+                .mip_lod_bias(0.0)
+                .min_lod(0.0)
+                .max_lod(1.0);
+
+        unsafe {
+            device
+                .create_sampler(&sampler_info, None)
+                .expect("Failed to create sampler")
+        }
+    }
+
     pub fn create_renderable_texture(
         context: &Arc<Context>,
         width: u32,
@@ -200,8 +226,6 @@ impl TextureVariable {
         format: vk::Format,
     ) -> Self {
         let extent = vk::Extent2D { width, height };
-
-        let device = context.device();
 
         let image = ImageVariable::create(
             Arc::clone(context),
@@ -224,30 +248,7 @@ impl TextureVariable {
 
         let image_view = image.create_view(vk::ImageViewType::TYPE_2D, vk::ImageAspectFlags::COLOR);
 
-        let sampler = {
-            let sampler_info = vk::SamplerCreateInfo::builder()
-                .mag_filter(vk::Filter::LINEAR)
-                .min_filter(vk::Filter::LINEAR)
-                .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
-                .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
-                .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE)
-                .anisotropy_enable(false)
-                .max_anisotropy(0.0)
-                .border_color(vk::BorderColor::FLOAT_OPAQUE_WHITE)
-                .unnormalized_coordinates(false)
-                .compare_enable(false)
-                .compare_op(vk::CompareOp::ALWAYS)
-                .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
-                .mip_lod_bias(0.0)
-                .min_lod(0.0)
-                .max_lod(1.0);
-
-            unsafe {
-                device
-                    .create_sampler(&sampler_info, None)
-                    .expect("Failed to create sampler")
-            }
-        };
+        let sampler = Self::create_default_sampler(context);
 
         TextureVariable::new(Arc::clone(context), image, image_view, Some(sampler))
     }
@@ -284,16 +285,14 @@ impl TextureVariable {
         }
     }
 
-    pub fn from_swapchain_format(
+    pub fn from_extent(
         context: &Arc<Context>,
-        swapchain: &Swapchain,
+        extent: vk::Extent2D,
         format: vk::Format,
     ) -> TextureVariable {
-        let swapchain_props = swapchain.properties();
-
         let params = ImageParameters {
             mem_properties: vk::MemoryPropertyFlags::DEVICE_LOCAL,
-            extent: swapchain_props.extent,
+            extent: extent,
             format,
             usage: vk::ImageUsageFlags::TRANSFER_DST
                 | vk::ImageUsageFlags::TRANSFER_SRC
@@ -319,9 +318,22 @@ impl TextureVariable {
             info: Vec::new(),
         }
     }
+
+    pub fn from_swapchain_format(
+        context: &Arc<Context>,
+        swapchain: &Swapchain,
+        format: vk::Format,
+    ) -> TextureVariable {
+        let swapchain_props = swapchain.properties();
+        Self::from_extent(context, swapchain_props.extent, format)
+    }
 }
 
 impl TextureVariable {
+    pub fn set_sampler(&mut self, sampler: vk::Sampler) {
+        self.sampler = Some(sampler);
+    }
+
     pub fn fill_image<T: Sized + Copy>(&self, context: &Arc<Context>, data: &[T]) {
         let buffer = BufferVariable::host_buffer(
             "texture_buffer".to_string(),
