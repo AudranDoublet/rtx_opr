@@ -98,6 +98,7 @@ pub enum Block {
     LightBlue,
     LightYellow,
     LightCyan,
+    LightMagenta,
 
     OakPlanks,
     AcaciaPlanks,
@@ -122,7 +123,7 @@ impl Block {
     }
 
     pub fn get_nb_lights() -> u32 {
-        6
+        7
     }
 
     pub fn get_light(t: u32) -> Block {
@@ -132,7 +133,8 @@ impl Block {
             2 => Block::LightGreen,
             3 => Block::LightBlue,
             4 => Block::LightYellow,
-            _ => Block::LightCyan,
+            5 => Block::LightCyan,
+            _ => Block::LightMagenta,
         }
     }
 
