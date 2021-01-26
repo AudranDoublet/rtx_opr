@@ -11,6 +11,7 @@ pub struct UniformCamera {
     pub screen_to_world: Matrix4<f64>,
     pub prev_world_to_screen: Matrix4<f64>,
     pub origin: Vector4<f64>,
+    pub updated: bool,
 }
 
 #[repr(C)]

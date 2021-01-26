@@ -12,12 +12,15 @@ impl Camera {
             origin: vec3to4(self.origin, 0.0),
             screen_to_world: self.world_to_screen().try_inverse().unwrap(),
             prev_world_to_screen: self.prev_world_to_screen,
+            updated: self.updated,
         }
     }
 }
 
 pub struct Camera {
-    pub origin: Vector3<f32>,
+    origin: Vector3<f32>,
+
+    updated: bool,
 
     up: Vector3<f32>,
     forward: Vector3<f32>,
@@ -37,6 +40,7 @@ pub struct Camera {
 
 impl Camera {
     pub fn store_previous_view(&mut self) {
+        self.updated = false;
         self.prev_world_to_screen = self.world_to_screen();
     }
 
@@ -109,6 +113,8 @@ impl Camera {
     }
 
     fn update_axes(&mut self) {
+        self.updated = true;
+
         let cos_rot_x = self.rotation.x.cos();
         let cos_rot_y = self.rotation.y.cos();
         let sin_rot_x = self.rotation.x.sin();
@@ -129,12 +135,16 @@ impl Camera {
     }
 
     pub fn set_fov(&mut self, fov: f32) {
+        self.updated = true;
         Self::assert_fov_valid(fov);
         self.fov = fov;
-    }
+}
 
-    pub fn set_origin(&mut self, x: f32, y: f32, z: f32) {
-        self.origin = Vector3::new(x, y, z)
+    pub fn set_origin(&mut self, origin: Vector3<f32>) {
+        if self.origin != origin {
+            self.updated = true;
+        }
+        self.origin = origin;
     }
 
     pub fn new(
@@ -149,6 +159,8 @@ impl Camera {
             up: Vector3::new(0.0, 0.0, 0.0),
             forward: Vector3::new(0.0, 0.0, 0.0),
             left: Vector3::new(0.0, 0.0, 0.0),
+
+            updated: true,
 
             aspect_ratio,
             fov,
