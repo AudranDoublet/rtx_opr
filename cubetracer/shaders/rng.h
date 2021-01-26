@@ -5,8 +5,7 @@
 #include "constants.h"
 
 // http://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
-uint wang_hash(uint seed)
-{
+uint update_seed(in out uint seed) {
     seed = (seed ^ 61) ^ (seed >> 16);
     seed *= 9;
     seed = seed ^ (seed >> 4);
@@ -20,7 +19,20 @@ float rand(vec2 n) {
 	return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
 }
 
-float noise(vec2 p){
+float floatConstruct( uint m ) {
+    const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+    const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+
+    m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+    m |= ieeeOne;                          // Add fractional part to 1.0
+
+    float  f = uintBitsToFloat( m );       // Range [1:2]
+    return f - 1.0;                        // Range [0:1]
+}
+
+
+float noise(in out  uint seed) {
+    vec2 p = vec2(floatConstruct(update_seed(seed)), floatConstruct(update_seed(seed)));
 	vec2 ip = floor(p);
 	vec2 u = fract(p);
 	u = u*u*(3.0-2.0*u);

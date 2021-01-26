@@ -57,8 +57,10 @@ void main() {
             origin = floor(origin);
             origin *= C_PI;
 
-            float a = noise(origin.xz);
-            float b = noise(origin.zx);
+            uint seed = uint(origin.x) * 7 + uint(origin.z) * 11;
+
+            float a = noise(seed);
+            float b = noise(seed);
 
             color = vec3(a, b, 0.5+(cos(2*C_PI*origin.x) + sin(2*C_PI*origin.z))/4);
         }
@@ -73,11 +75,8 @@ void main() {
     }
     else if (UNI_SCENE.rendered_buffer == 7)
     {
-        uint noise = imageLoad(CACHE_NOISE, xy).r;
-        noise = noise % 255;
-        float b = noise / 255.0;
-
-        imageStore(CACHE_RESULT_IMAGE, xy, vec4(b));
+        float noise = imageLoad(CACHE_NOISE, xy).r;
+        imageStore(CACHE_RESULT_IMAGE, xy, vec4(noise));
     }
 
     imageStore(CACHE_DENOISE_PREV_DIFFUSE, xy, imageLoad(CACHE_PT_ILLUM, xy));
