@@ -1,6 +1,6 @@
 use crate::context::Context;
 use ash::vk;
-use nalgebra::{Vector3, Vector4, Matrix4};
+use nalgebra::{Vector4, Matrix4};
 use std::sync::Arc;
 
 use crate::datatypes::{BufferVariable, DataType};
@@ -11,6 +11,7 @@ pub struct UniformCamera {
     pub screen_to_world: Matrix4<f64>,
     pub prev_world_to_screen: Matrix4<f64>,
     pub origin: Vector4<f64>,
+    pub updated: bool,
 }
 
 #[repr(C)]

@@ -306,8 +306,8 @@ impl Player {
             match input {
                 PlayerInput::MoveLeft => directional_input.x += 1.,
                 PlayerInput::MoveRight => directional_input.x -= 1.,
-                PlayerInput::MoveFoward => directional_input.y -= 1.,
-                PlayerInput::MoveBackward => directional_input.y += 1.,
+                PlayerInput::MoveFoward => directional_input.y += 1.,
+                PlayerInput::MoveBackward => directional_input.y -= 1.,
                 PlayerInput::Jump => jumping = true,
                 PlayerInput::Sneaking => sneaking = true,
                 PlayerInput::SprintToggle => sprinting = true,
@@ -338,7 +338,7 @@ impl Player {
                             if allowed {
                                 changed = true;
 
-                                world.set_block_at(pos, Block::Cactus);
+                                world.set_block_at(pos, btype);
                                 self.block_place_cooldown = BLOCK_PLACE_COOLDOWN;
                                 self._debug_light_type =
                                     (self._debug_light_type + 1) % Block::get_nb_lights();

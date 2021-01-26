@@ -9,12 +9,6 @@ empty_blocks:
 
     #FIXME
     - Water
-    - LightWhite
-    - LightRed
-    - LightGreen
-    - LightBlue
-    - LightYellow
-    - LightCyan
 
 classic_blocks:
     Stone:
@@ -87,6 +81,21 @@ classic_blocks:
         side: "brick"
     StoneBricks:
         side: "stonebrick"
+
+    LightWhite:
+        side: light_white
+    LightRed:
+        side: light_red
+    LightGreen:
+        side: light_green
+    LightBlue:
+        side: light_blue
+    LightYellow:
+        side: light_yellow
+    LightCyan:
+        side: light_cyan
+    LightMagenta:
+        side: light_magenta
 
 flower_blocks:
     TallGrass:

@@ -12,6 +12,7 @@ impl Camera {
             origin: vec3to4(self.origin, 0.0),
             screen_to_world: self.world_to_screen().try_inverse().unwrap(),
             prev_world_to_screen: self.prev_world_to_screen,
+            updated: self.updated,
         }
     }
 }
@@ -79,7 +80,9 @@ impl Sun {
 }
 
 pub struct Camera {
-    pub origin: Vector3<f32>,
+    origin: Vector3<f32>,
+
+    updated: bool,
 
     up: Vector3<f32>,
     forward: Vector3<f32>,
@@ -95,6 +98,7 @@ pub struct Camera {
 
 impl Camera {
     pub fn store_previous_view(&mut self) {
+        self.updated = false;
         self.prev_world_to_screen = self.world_to_screen();
     }
 
@@ -106,7 +110,7 @@ impl Camera {
         Matrix4::from_columns(&[
             vec3to4(-self.left.normalize(), 0.0),
             vec3to4(self.up.normalize(), 0.0),
-            vec3to4(self.forward.normalize(), 0.0),
+            vec3to4(-self.forward.normalize(), 0.0),
             vec3to4(self.origin, 1.0),
         ])
     }
@@ -138,10 +142,6 @@ impl Camera {
         self.left
     }
 
-    pub fn right(&self) -> Vector3<f32> {
-        -self.left
-    }
-
     pub fn reorient(&mut self, x: f32, y: f32) {
         self.rotation += Vector2::new(x, -y);
         self.rotation.y = self
@@ -154,6 +154,8 @@ impl Camera {
     }
 
     fn update_axes(&mut self) {
+        self.updated = true;
+
         let cos_rot_x = self.rotation.x.cos();
         let cos_rot_y = self.rotation.y.cos();
         let sin_rot_x = self.rotation.x.sin();
@@ -161,8 +163,8 @@ impl Camera {
 
         self.forward =
             Vector3::new(cos_rot_x * cos_rot_y, sin_rot_y, sin_rot_x * cos_rot_y).normalize();
-        self.left = -self.forward.cross(&Vector3::y()).normalize();
-        self.up = -self.left.cross(&self.forward).normalize();
+        self.left = self.forward.cross(&Vector3::y()).normalize();
+        self.up = self.left.cross(&self.forward).normalize();
     }
 
     fn assert_fov_valid(fov: f32) {
@@ -174,12 +176,16 @@ impl Camera {
     }
 
     pub fn set_fov(&mut self, fov: f32) {
+        self.updated = true;
         Self::assert_fov_valid(fov);
         self.fov = fov;
-    }
+}
 
-    pub fn set_origin(&mut self, x: f32, y: f32, z: f32) {
-        self.origin = Vector3::new(x, y, z)
+    pub fn set_origin(&mut self, origin: Vector3<f32>) {
+        if self.origin != origin {
+            self.updated = true;
+        }
+        self.origin = origin;
     }
 
     pub fn new(
@@ -194,6 +200,8 @@ impl Camera {
             up: Vector3::new(0.0, 0.0, 0.0),
             forward: Vector3::new(0.0, 0.0, 0.0),
             left: Vector3::new(0.0, 0.0, 0.0),
+
+            updated: true,
 
             aspect_ratio,
             fov,

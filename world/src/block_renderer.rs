@@ -24,43 +24,8 @@ pub enum BlockRenderer {
         width: i32,
     },
     FlowerBlock {
-        id: usize,
-        normal_id: Option<usize>,
+        face: FaceProperties,
     },
-}
-
-#[macro_export]
-macro_rules! topdown_renderer {
-    // default behaviour
-    ($side_face:expr, $top_face:expr, $down_face:expr) => {{
-        topdown_renderer!($side_face, $top_face, $down_face, width=10, height=10)
-    }};
-
-    // When something is passed
-    ($side_face:expr, $top_face:expr, $down_face:expr, width=$width:expr, height=$height:expr) => {{
-        BlockRenderer::ClassicBlock {
-            faces: [$top_face, $down_face, $side_face, $side_face, $side_face, $side_face],
-            height: $height,
-            width: $width,
-        }
-    }}
-}
-
-#[macro_export]
-macro_rules! classic_renderer {
-    // default behaviour
-    ($face:expr) => {{
-        classic_renderer!($face, width=10, height=10)
-    }};
-
-    // When something is passed
-    ($face:expr, width=$width:expr, height=$height:expr) => {{
-        BlockRenderer::ClassicBlock {
-            faces: [$face; 6],
-            height: $height,
-            width: $width,
-        }
-    }}
 }
 
 pub const BLOCK_RENDERERS: [BlockRenderer; 1] = [
@@ -179,7 +144,29 @@ impl BlockRenderer {
                     );
                 }
             }
-            _ => (),
+            BlockRenderer::FlowerBlock { face} => {
+                self.generate_face(
+                    mesh,
+                    face,
+                    0,
+                    10,
+                    0,
+                    position * 10,
+                    Vector3::y() * 10,
+                    Vector3::new(10, 0, 10),
+                );
+
+                self.generate_face(
+                    mesh,
+                    face,
+                    0,
+                    10,
+                    0,
+                    position * 10 + Vector3::new(10, 0, 0),
+                    Vector3::y() * 10,
+                    Vector3::new(-10, 0, 10),
+                );
+            }
         }
     }
 }

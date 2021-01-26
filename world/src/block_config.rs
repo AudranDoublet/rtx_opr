@@ -133,9 +133,12 @@ impl BlockConfig {
                 width,
                 height,
             }
-        } else if let Some(_block) = self.flower_blocks.get(&block_name) {
-            //FIXME render flower blocks
-            BlockRenderer::Empty
+        } else if let Some(block) = self.flower_blocks.get(&block_name) {
+            let texture = texture.texture(&self, &block.texture);
+
+            BlockRenderer::FlowerBlock {
+                face: FaceProperties::new(texture as u32, 0),
+            }
         } else {
             panic!("block {} not in configuration", block_name);
         }

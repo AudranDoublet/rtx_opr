@@ -315,7 +315,7 @@ impl BaseApp {
                             delta_time,
                         );
 
-                        self.tracer.camera_mut().origin = self.player.head_position();
+                        self.tracer.camera_mut().set_origin(self.player.head_position());
 
                         if listener.has_been_updated() {
                             listener
