@@ -33,7 +33,7 @@ bool is_shadowed(vec3 origin) {
         UNI_TLAS,
         gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsSkipClosestHitShaderNV, 0xff,
         1, 0, 1,
-        origin, 0, -UNI_SCENE.sunDirection, 200.0,
+        origin, 0, -UNI_SUN.direction, 200.0,
         PAYLOAD_IDX_SHADOWED
     );
 

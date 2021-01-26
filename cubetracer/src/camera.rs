@@ -1,4 +1,4 @@
-use crate::datatypes::UniformCamera;
+use crate::datatypes::{UniformCamera, UniformSun};
 
 use nalgebra::{Vector2, Vector3, Vector4, Matrix4};
 
@@ -16,6 +16,68 @@ impl Camera {
     }
 }
 
+
+pub struct Sun {
+    sun_direction: Vector3<f32>,
+    light_cycle: f32,
+    view_distance: f32,
+}
+
+impl Sun {
+    pub fn sun_light_cycle(&mut self, dt: f32) {
+        self.light_cycle = (self.light_cycle + dt / 4.) % (std::f32::consts::PI * 1.2);
+
+        let x = self.light_cycle.cos();
+        let y = -self.light_cycle.sin();
+
+        self.sun_direction = Vector3::new(x, y, x * y).normalize();
+    }
+
+    pub fn update_sun_pos(&mut self, forward: Vector3<f32>) {
+        self.sun_direction = -forward;
+    }
+
+    pub fn sun_direction(&self) -> Vector3<f32> {
+        self.sun_direction
+    }
+
+    fn projection_matrix(&self) -> Matrix4<f32> {
+        *nalgebra::Orthographic3::new(
+            -self.view_distance * 16.0,
+            self.view_distance * 16.0,
+            0.0,
+            256.0,
+            0.0,
+            256.0
+        ).as_matrix()
+    }
+
+    pub fn uniform(&self) -> UniformSun {
+        let direction = self.sun_direction();
+        let direction: Vector4<f32> = Vector4::new(
+            direction.x,
+            direction.y,
+            direction.z,
+            0.0
+        );
+
+        UniformSun {
+            projection: self.projection_matrix(),
+            direction,
+        }
+    }
+}
+
+impl Sun {
+    pub fn new(view_distance: usize, direction: Vector3<f32>) -> Self {
+        Sun {
+            view_distance: view_distance as f32,
+            light_cycle: 0.0,
+            sun_direction: direction.normalize(),
+        }
+    }
+}
+
 pub struct Camera {
     pub origin: Vector3<f32>,
 
@@ -29,10 +91,6 @@ pub struct Camera {
 
     fov: f32,
     aspect_ratio: f32,
-
-    sun_direction: Vector3<f32>,
-
-    light_cycle: f32,
 }
 
 impl Camera {
@@ -95,23 +153,6 @@ impl Camera {
         self.update_axes();
     }
 
-    pub fn sun_light_cycle(&mut self, dt: f32) {
-        self.light_cycle = (self.light_cycle + dt / 4.) % (std::f32::consts::PI * 1.2);
-
-        let x = self.light_cycle.cos();
-        let y = -self.light_cycle.sin();
-
-        self.sun_direction = Vector3::new(x, y, x * y).normalize();
-    }
-
-    pub fn update_sun_pos(&mut self) {
-        self.sun_direction = -self.forward();
-    }
-
-    pub fn sun_direction(&self) -> Vector3<f32> {
-        self.sun_direction
-    }
-
     fn update_axes(&mut self) {
         let cos_rot_x = self.rotation.x.cos();
         let cos_rot_y = self.rotation.y.cos();
@@ -157,8 +198,6 @@ impl Camera {
             aspect_ratio,
             fov,
 
-            sun_direction: Vector3::new(-0.7, -1.5, -1.1).normalize(),
-            light_cycle: 0.0,
             prev_world_to_screen: Matrix4::identity(),
         };
 

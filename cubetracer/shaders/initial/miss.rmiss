@@ -56,7 +56,7 @@ vec3 computeSkyLight(vec3 dir, const vec3 origin)
     float tCurrent = tmin;
 
     float opticalDepthR = 0, opticalDepthM = 0;
-    float mu = dot(dir, -UNI_SCENE.sunDirection); // mu in the paper which is the cosine of the angle between the sun direction and the ray direction
+    float mu = dot(dir, -UNI_SUN.direction); // mu in the paper which is the cosine of the angle between the sun direction and the ray direction
     float phaseR = 3.f / (16.f * C_PI) * (1 + mu * mu);
     float g = 0.76f;
     float phaseM = 3.f / (8.f * C_PI) * ((1.f - g * g) * (1.f + mu * mu)) / ((2.f + g * g) * pow(1.f + g * g - 2.f * g * mu, 1.5f));
@@ -73,13 +73,13 @@ vec3 computeSkyLight(vec3 dir, const vec3 origin)
 
         // light optical depth
         float t0Light, t1Light;
-        rayAtmosphereIntersect(samplePosition, -UNI_SCENE.sunDirection, CST_SKY_ATMOSPHERE_RADIUS, t0Light, t1Light);
+        rayAtmosphereIntersect(samplePosition, -UNI_SUN.direction, CST_SKY_ATMOSPHERE_RADIUS, t0Light, t1Light);
         float segmentLengthLight = t1Light / CST_SKY_NUM_SAMPLES_LIGHT, tCurrentLight = 0;
         float opticalDepthLightR = 0, opticalDepthLightM = 0;
 
         int j;
         for (j = 0; j < CST_SKY_NUM_SAMPLES_LIGHT; ++j) {
-            vec3 samplePositionLight = samplePosition + (tCurrentLight + segmentLengthLight * 0.5f) * (-UNI_SCENE.sunDirection);
+            vec3 samplePositionLight = samplePosition + (tCurrentLight + segmentLengthLight * 0.5f) * (-UNI_SUN.direction);
             float heightLight = length(samplePositionLight) - CST_SKY_EARTH_RADIUS;
             if (heightLight < 0) break;
             opticalDepthLightR += exp(-heightLight / CST_SKY_HR) * segmentLengthLight;

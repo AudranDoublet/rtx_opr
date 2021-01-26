@@ -37,7 +37,7 @@ void main() {
         1, 0, 1,
         origin,
         tmin,
-        -UNI_SCENE.sunDirection,
+        -UNI_SUN.direction,
         tmax,
         PAYLOAD_IDX_SHADOWED
     );

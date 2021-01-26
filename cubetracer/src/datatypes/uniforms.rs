@@ -14,8 +14,13 @@ pub struct UniformCamera {
 }
 
 #[repr(C)]
+pub struct UniformSun {
+    pub projection: Matrix4<f32>,
+    pub direction: Vector4<f32>,
+}
+
+#[repr(C)]
 pub struct UniformScene {
-    pub sun_direction: Vector3<f32>,
     pub rendered_buffer: u32,
 }
 

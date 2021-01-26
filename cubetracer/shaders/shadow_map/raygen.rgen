@@ -22,7 +22,7 @@ void main() {
 
     // FIXME: the origin should change depending on `xy`
     const vec3 origin = UNI_CAMERA.origin - UNI_CAMERA * C_SUN_DISTANCE;
-    const vec3 direction = UNI_SCENE.sunDirection;
+    const vec3 direction = UNI_SUN.direction;
 
     const uint cullMask = 0xff;
     const float tmin = 0;

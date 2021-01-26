@@ -22,6 +22,7 @@ const MAX_INSTANCE_BINDING: usize = 1024;
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
     camera: Camera,
+    sun: Sun,
 
     rtx_data: Option<RTXData>,
 
@@ -29,18 +30,24 @@ pub struct Cubetracer {
     texture_array: TextureVariable,
     uniform_scene: UniformVariable,
     uniform_camera: UniformVariable,
+    uniform_sun: UniformVariable,
 
     local_instance_bindings: [InstanceBinding; MAX_INSTANCE_BINDING],
     rendered_buffer: u32,
 }
 
 impl Cubetracer {
-    pub fn new(context: &Arc<Context>, ratio: f32, fov: f32) -> Self {
+    pub fn new(context: &Arc<Context>, ratio: f32, fov: f32, view_distance: usize) -> Self {
         let camera = Camera::new(
             Vector3::new(0.0, 80.0, 0.0),
             Vector2::new(std::f32::consts::PI / 2.0, 0.0),
             fov,
             ratio,
+        );
+
+        let sun = Sun::new(
+            view_distance,
+            Vector3::new(-0.7, -1.5, -1.1),
         );
 
         let textures_info = &main_world().textures;
@@ -63,19 +70,21 @@ impl Cubetracer {
             uniform_scene: UniformVariable::new(
                 &context,
                 &UniformScene {
-                    sun_direction: Vector3::new(0.5, 1.0, -0.5).normalize(),
                     rendered_buffer: 0,
                 },
             ),
+            uniform_sun: UniformVariable::new(&context, &sun.uniform()),
             uniform_camera: UniformVariable::new(&context, &camera.uniform()),
             camera,
+            sun,
             rendered_buffer: 0,
         }
     }
 
-    pub fn update_shadow_map(&self) {
-        if self.rtx_data.is_some() {
-            self.rtx_data.as_ref().unwrap().update_shadow_map();
+    pub fn update_shadow_map(&mut self) {
+        if let Some(rtx_data) = &self.rtx_data {
+            self.uniform_sun.set(&rtx_data.context, &self.sun.uniform());
+            rtx_data.update_shadow_map();
         }
     }
 
@@ -149,10 +158,21 @@ impl Cubetracer {
         self.acceleration_structure.unregister(name);
     }
 
-    pub fn camera(&mut self) -> &mut Camera {
+    pub fn camera(&self) -> &Camera {
+        & self.camera
+    }
+
+    pub fn camera_mut(&mut self) -> &mut Camera {
         &mut self.camera
     }
 
+    pub fn sun(&self) -> &Sun {
+        &self.sun
+    }
+
+    pub fn sun_mut(&mut self) -> &mut Sun {
+        &mut self.sun
+    }
     pub fn update(&mut self, swapchain: &Swapchain, context: &Arc<Context>) -> bool {
         if self.chunks.len() > 0 {
             if self.rtx_data.is_none() {
@@ -178,7 +198,6 @@ impl Cubetracer {
             self.uniform_scene.set(
                 context,
                 &UniformScene {
-                    sun_direction: self.camera.sun_direction(),
                     rendered_buffer: self.rendered_buffer,
                 },
             );
@@ -334,6 +353,17 @@ impl RTXData {
                 max_nb_chunks as u32,
                 &mut BufferVariableList::empty(max_nb_chunks),
                 &[ShaderType::ClosestHit, ShaderType::AnyHit],
+            )
+            .binding(
+                // 6
+                vk::DescriptorType::UNIFORM_BUFFER,
+                &mut cubetracer.uniform_sun,
+                &[
+                    ShaderType::Raygen,
+                    ShaderType::ClosestHit,
+                    ShaderType::Miss,
+                    ShaderType::Compute,
+                ],
             )
             .build();
 

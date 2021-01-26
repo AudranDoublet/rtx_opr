@@ -136,6 +136,7 @@ impl BaseApp {
             &context,
             16. / 9.,
             FOV_RANGE.start + (FOV_RANGE.end - FOV_RANGE.start) / 2.,
+            view_distance,
         );
 
         let game = Self {
@@ -228,12 +229,12 @@ impl BaseApp {
                         if self.input_handler.updated(wininput::StateChange::MouseScroll) {
                             let fov = FOV_RANGE.start
                                 + self.input_handler.get_scroll() * (FOV_RANGE.end - FOV_RANGE.start);
-                            self.tracer.camera().set_fov(fov)
+                            self.tracer.camera_mut().set_fov(fov)
                         }
 
                         if self.input_handler.updated(wininput::StateChange::MouseMotion) {
                             let offset = self.input_handler.get_mouse_offset() * delta_time;
-                            self.tracer.camera().reorient(offset.x, offset.y);
+                            self.tracer.camera_mut().reorient(offset.x, offset.y);
                         }
 
                         let mut inputs = vec![];
@@ -272,13 +273,13 @@ impl BaseApp {
                         }
                         if self.input_handler.is_pressed(KeyCode::K) {
                             self.update_shadow_map = true;
-                            self.tracer.camera().update_sun_pos();
+                            let forward = self.tracer.camera().forward();
+                            self.tracer.sun_mut().update_sun_pos(forward);
                         }
                         if self.input_handler.is_pressed(KeyCode::N) {
                             self.update_shadow_map = true;
-                            self.tracer.camera().sun_light_cycle(delta_time);
+                            self.tracer.sun_mut().sun_light_cycle(delta_time);
                         }
-
                         if self.input_handler.is_pressed(KeyCode::Key1) {
                             self.tracer.set_rendered_buffer(0);
                         }
@@ -314,7 +315,7 @@ impl BaseApp {
                             delta_time,
                         );
 
-                        self.tracer.camera().origin = self.player.head_position();
+                        self.tracer.camera_mut().origin = self.player.head_position();
 
                         if listener.has_been_updated() {
                             listener
