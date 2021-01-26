@@ -79,7 +79,7 @@ impl WinInput {
     }
 
     fn handle_mouse_motion(&mut self, dx: f32, dy: f32) {
-        self.mouse_motion_offset = Vector2::new(dx, -dy) * self.mouse_motion_sensitivity;
+        self.mouse_motion_offset = Vector2::new(dx, dy) * self.mouse_motion_sensitivity;
         self.set_state_updated(StateChange::MouseMotion);
     }
 

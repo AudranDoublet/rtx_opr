@@ -303,8 +303,6 @@ impl BaseApp {
                             self.tracer.set_rendered_buffer(7);
                         }
 
-
-
                         // --- Update States ---
                         self.player.update(
                             main_world(),

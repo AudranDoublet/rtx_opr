@@ -48,7 +48,7 @@ impl Camera {
         Matrix4::from_columns(&[
             vec3to4(-self.left.normalize(), 0.0),
             vec3to4(self.up.normalize(), 0.0),
-            vec3to4(self.forward.normalize(), 0.0),
+            vec3to4(-self.forward.normalize(), 0.0),
             vec3to4(self.origin, 1.0),
         ])
     }
@@ -78,10 +78,6 @@ impl Camera {
 
     pub fn left(&self) -> Vector3<f32> {
         self.left
-    }
-
-    pub fn right(&self) -> Vector3<f32> {
-        -self.left
     }
 
     pub fn reorient(&mut self, x: f32, y: f32) {
@@ -120,8 +116,8 @@ impl Camera {
 
         self.forward =
             Vector3::new(cos_rot_x * cos_rot_y, sin_rot_y, sin_rot_x * cos_rot_y).normalize();
-        self.left = -self.forward.cross(&Vector3::y()).normalize();
-        self.up = -self.left.cross(&self.forward).normalize();
+        self.left = self.forward.cross(&Vector3::y()).normalize();
+        self.up = self.left.cross(&self.forward).normalize();
     }
 
     fn assert_fov_valid(fov: f32) {
