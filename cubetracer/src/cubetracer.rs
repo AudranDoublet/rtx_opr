@@ -73,6 +73,12 @@ impl Cubetracer {
         }
     }
 
+    pub fn update_shadow_map(&self) {
+        if self.rtx_data.is_some() {
+            self.rtx_data.as_ref().unwrap().update_shadow_map();
+        }
+    }
+
     pub fn set_rendered_buffer(&mut self, buffer: u32) {
         self.rendered_buffer = buffer;
     }
@@ -148,7 +154,7 @@ impl Cubetracer {
     }
 
     pub fn update(&mut self, swapchain: &Swapchain, context: &Arc<Context>) -> bool {
-        if self.chunks.len() >= 5 {
+        if self.chunks.len() > 0 {
             if self.rtx_data.is_none() {
                 self.acceleration_structure
                     .build(context, &mut self.local_instance_bindings);
@@ -211,7 +217,6 @@ pub struct RTXData {
     descriptor_sets: Vec<DescriptorSet>,
 
     pipeline: RaytracerPipeline,
-    pipeline_reflection: RaytracerPipeline,
     reconstruct_pipeline: ComputePipeline,
 }
 
@@ -221,6 +226,13 @@ impl RTXData {
             .into_iter()
             .map(|_| rand::random::<f32>())
             .collect()
+    }
+
+    pub fn update_shadow_map(&self) {
+        self.context.execute_one_time_commands(|cmd| {
+            self.pipeline.bind(&self.context, cmd);
+            self.pipeline.dispatch(cmd, SHADOW_MAP_EXTENT.width, SHADOW_MAP_EXTENT.height, 3);
+        });
     }
 
     pub fn get_command_buffers(&self) -> &[vk::CommandBuffer] {
@@ -333,22 +345,13 @@ impl RTXData {
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "path_tracing/raygen.rgen.spv")
+            .general_shader(ShaderType::Raygen, "shadow_map/raygen.rgen.spv")
+
             .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "path_tracing/miss.rmiss.spv")
-            .hit_shaders(
-                Some("initial/closesthit.rchit.spv"),
-                Some("initial/anyhit.rahit.spv"),
-            )
-            .hit_shaders(None, Some("initial/anyhit.rahit.spv"))
-            .descriptor_set(&descriptor_set)
-            .descriptor_set(&cache_descriptors)
-            .build(3);
+            .general_shader(ShaderType::Miss, "shadow_map/miss.rmiss.spv")
 
-        let pipeline_reflection = PipelineBuilder::new(context, SHADER_FOLDER)
-            .general_shader(ShaderType::Raygen, "path_tracing/raygen.rgen.spv")
-            .general_shader(ShaderType::Miss, "path_tracing/miss.rmiss.spv")
-            .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
             .hit_shaders(
                 Some("initial/closesthit.rchit.spv"),
                 Some("initial/anyhit.rahit.spv"),
@@ -439,7 +442,6 @@ impl RTXData {
             descriptor_sets: vec![descriptor_set, cache_descriptors],
 
             pipeline,
-            pipeline_reflection,
             reconstruct_pipeline,
 
             command_buffers,

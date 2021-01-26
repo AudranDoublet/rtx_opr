@@ -76,6 +76,7 @@ pub struct BaseApp {
 
     chunk_mesher_client: ChunkMesherClient,
     player: world::Player,
+    update_shadow_map: bool,
 }
 
 impl BaseApp {
@@ -155,6 +156,7 @@ impl BaseApp {
             tracer,
 
             chunk_mesher_client: ChunkMesherClient::new(),
+            update_shadow_map: true,
             player,
         };
         game.process_event(event_loop);
@@ -206,8 +208,6 @@ impl BaseApp {
     }
 
     pub fn process_event(mut self, event_loop: EventLoop<()>) {
-        let mut total_time = 0.0;
-
         let mut frame_counter = FrameCounter::new(60);
         let mut listener = MyChunkListener::new();
 
@@ -223,7 +223,6 @@ impl BaseApp {
                     },
                     winit::event::Event::MainEventsCleared => {
                         self.input_handler.update_time(delta_time);
-                        total_time += delta_time;
 
                         // --- Process inputs ---
                         if self.input_handler.updated(wininput::StateChange::MouseScroll) {
@@ -272,9 +271,11 @@ impl BaseApp {
                             inputs.push(PlayerInput::FlyToggle);
                         }
                         if self.input_handler.is_pressed(KeyCode::K) {
+                            self.update_shadow_map = true;
                             self.tracer.camera().update_sun_pos();
                         }
                         if self.input_handler.is_pressed(KeyCode::N) {
+                            self.update_shadow_map = true;
                             self.tracer.camera().sun_light_cycle(delta_time);
                         }
 
@@ -302,8 +303,6 @@ impl BaseApp {
                         if self.input_handler.is_pressed(KeyCode::Key8) {
                             self.tracer.set_rendered_buffer(7);
                         }
-
-
 
                         // --- Update States ---
                         self.player.update(
@@ -359,6 +358,11 @@ impl BaseApp {
                             if let Some(_) = self.draw_frame() {
                                 self.tracer.resize(&self.context, &self.swapchain);
                             }
+                            self.update_shadow_map = true;
+                        }
+
+                        if self.update_shadow_map {
+                            self.tracer.update_shadow_map();
                         }
                         frame_counter.tick();
                     }

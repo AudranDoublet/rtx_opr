@@ -1,0 +1,43 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+
+#define G_UNIFORM_INC_NV
+#define G_UNIFORM_SET 0
+#include "../global_uniforms.h"
+#undef G_UNIFORM_SET
+#undef G_UNIFORM_INC_NV
+
+#define G_CACHE_SET 1
+#include "../global_caches.h"
+#undef G_CACHE_SET
+
+#include "../payloads.h"
+
+layout(location = PAYLOAD_IDX_GENERAL) rayPayloadNV InitialPayload PAYLOAD_GENERAL;
+
+void main() {
+    const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
+    const vec2 xy_normalized = xy / vec2(gl_LaunchSizeNV.xy) - 0.5;
+
+    // FIXME: the origin should change depending on `xy`
+    const vec3 origin = UNI_CAMERA.origin - UNI_CAMERA * C_SUN_DISTANCE;
+    const vec3 direction = UNI_SCENE.sunDirection;
+
+    const uint cullMask = 0xff;
+    const float tmin = 0;
+    const float tmax = C_SUN_DISTANCE;
+
+    traceNV(
+        UNI_TLAS,
+        gl_RayFlagsNoneNV,
+        cullMask, 0, 0, 3,
+        origin, tmin, direction, tmax,
+        PAYLOAD_IDX_GENERAL
+    );
+
+    const vec3 sunColor = C_SUN_COLOR;
+    float hitDistance = PAYLOAD_GENERAL.hit ? PAYLOAD_GENERAL.distance : tmax;
+
+    imageStore(CACHE_SHADOW_MAP, xy, vec4(C_SUN_COLOR, hitDistance));
+}
