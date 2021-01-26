@@ -37,8 +37,8 @@ bool is_reprojection_valid(const ivec2 screen_size, const ivec2 prev_xy, const f
     return prev_xy.x >= 0
         && prev_xy.y >= 0
         && prev_xy.x < screen_size.x
-        && prev_xy.y < screen_size.y;
-        //&& abs(prev_dist - dist) < 2; //FIXME doesn't works with low FPS
+        && prev_xy.y < screen_size.y
+        && abs(prev_dist - dist) < 2; //FIXME doesn't works with low FPS
 }
 
 float luminance(const vec4 rgb) {
