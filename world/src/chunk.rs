@@ -2,7 +2,7 @@ extern crate serde;
 
 use std::{cmp::Ordering, fs::File, io::prelude::*, path::Path, rc::Rc};
 
-use nalgebra::{Vector2, Vector3};
+use nalgebra::{Vector2, Vector3, Vector4};
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::generator::decorators::decorator_random;
@@ -50,7 +50,7 @@ serde_array!(biome_arr, (WIDTH * WIDTH) as usize);
 pub struct Chunk {
     coords: Vector2<i32>,
     pub blocks: Vec<Block>,
-    pub grass_color: Vec<f32>,
+    pub grass_color: Vec<Vector4<f32>>,
     biomes: Vec<BiomeType>,
 
     decorated: bool,
@@ -83,7 +83,7 @@ impl Chunk {
             coords: Vector2::new(x, z),
             blocks: vec![Block::Air; COUNT as usize],
             decorated: false,
-            grass_color: vec![1.0; (WIDTH * WIDTH * 3) as usize],
+            grass_color: vec![Vector4::zeros(); (WIDTH * WIDTH) as usize],
             biomes: vec![BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
             modified: true,
         })
@@ -104,7 +104,7 @@ impl Chunk {
             coords: Vector2::new(x, z),
             blocks,
             decorated: true,
-            grass_color: vec![1.0; (WIDTH * WIDTH * 3) as usize],
+            grass_color: vec![Vector4::zeros(); (WIDTH * WIDTH) as usize],
             biomes: vec![BiomeType::Ocean; WIDTH as usize * WIDTH as usize],
             modified: true,
         }))
@@ -159,11 +159,9 @@ impl Chunk {
     }
 
     pub fn set_grass_color(&mut self, x: i32, z: i32, color: Vector3<f32>) {
-        let pos = (x + z * WIDTH) as usize * 3;
+        let pos = (x + z * WIDTH) as usize;
 
-        self.grass_color[pos + 0] = color.x / 255.;
-        self.grass_color[pos + 1] = color.y / 255.;
-        self.grass_color[pos + 2] = color.z / 255.;
+        self.grass_color[pos] = Vector4::new(color.x, color.y, color.z, 255.0) / 255.;
     }
 
     pub fn set_modified(&mut self) {

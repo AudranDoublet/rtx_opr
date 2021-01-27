@@ -52,7 +52,7 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
     // if an object has been hit this tick
     if (dist != 0.0)
     {
-        if (!UNI_CAMERA.updated) {
+        if (UNI_SCENE.updated == 0) {
             prevDiffuse = imageLoad(CACHE_DENOISE_PREV_DIFFUSE, xy);
             prevMoments = imageLoad(CACHE_DENOISE_PREV_MOMENTS, xy);
             historyLength = imageLoad(CACHE_DENOISE_PREV_HISTORY_LENGTH, xy).x;

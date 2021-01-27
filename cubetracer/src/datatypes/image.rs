@@ -317,6 +317,27 @@ impl ImageVariable {
         }
     }
 
+    pub fn create_sampler_nearest(&self, context: &Arc<Context>) -> vk::Sampler {
+        let info = vk::SamplerCreateInfo::builder()
+            .mag_filter(vk::Filter::NEAREST)
+            .min_filter(vk::Filter::NEAREST)
+            .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
+            .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+            .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+            .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+            .mip_lod_bias(0.0)
+            .min_lod(0.0)
+            .max_lod(self.mip_levels as f32)
+            .build();
+
+        unsafe {
+            context
+                .device()
+                .create_sampler(&info, None)
+                .expect("can't create sampler")
+        }
+    }
+
     pub fn cmd_transition_image_layout(
         &self,
         command_buffer: vk::CommandBuffer,

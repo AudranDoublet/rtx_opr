@@ -72,6 +72,7 @@ impl Cubetracer {
                 &context,
                 &UniformScene {
                     rendered_buffer: 0,
+                    updated: 1,
                 },
             ),
             uniform_sun: UniformVariable::new(&context, &sun.uniform()),
@@ -137,12 +138,21 @@ impl Cubetracer {
         )
         .0;
 
+        let column_colors = BufferVariable::device_buffer(
+            "column_colors".to_string(),
+            context,
+            vk::BufferUsageFlags::STORAGE_BUFFER,
+            &chunk.column_colors,
+        )
+        .0;
+
         let blas = BlasVariable::from_geometry(
             context,
             vertices,
             indices,
             triangle_data,
             textures,
+            column_colors,
             std::mem::size_of::<[f32; 4]>(),
         );
 
@@ -193,6 +203,7 @@ impl Cubetracer {
                 rtx_data.update_blas_data(
                     &mut self.acceleration_structure.get_blas_data(),
                     &mut self.acceleration_structure.get_blas_textures(),
+                    &mut self.acceleration_structure.get_blas_colors(),
                 );
             }
 
@@ -200,6 +211,7 @@ impl Cubetracer {
                 context,
                 &UniformScene {
                     rendered_buffer: self.rendered_buffer,
+                    updated: self.camera.updated() as u32,
                 },
             );
 
@@ -222,6 +234,7 @@ impl Cubetracer {
         self.rtx_data.as_mut().unwrap().update_blas_data(
             &mut self.acceleration_structure.get_blas_data(),
             &mut self.acceleration_structure.get_blas_textures(),
+            &mut self.acceleration_structure.get_blas_colors(),
         );
     }
 }
@@ -267,11 +280,13 @@ impl RTXData {
         &mut self,
         data: &mut BufferVariableList,
         textures: &mut BufferVariableList,
+        colors: &mut BufferVariableList,
     ) {
         self.descriptor_sets[0]
             .update(&self.context)
             .register(4, vk::DescriptorType::STORAGE_BUFFER, data)
             .register(5, vk::DescriptorType::STORAGE_BUFFER, textures)
+            .register(7, vk::DescriptorType::STORAGE_BUFFER, colors)
             .update();
     }
 }
@@ -364,6 +379,13 @@ impl RTXData {
                     ShaderType::Miss,
                     ShaderType::Compute,
                 ],
+            )
+            .binding_count(
+                // 7
+                vk::DescriptorType::STORAGE_BUFFER,
+                max_nb_chunks as u32,
+                &mut BufferVariableList::empty(max_nb_chunks),
+                &[ShaderType::ClosestHit, ShaderType::AnyHit],
             )
             .build();
 

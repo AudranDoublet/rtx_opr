@@ -74,6 +74,16 @@ impl TlasVariable {
         )
     }
 
+    pub fn get_blas_colors(&self) -> BufferVariableList {
+        BufferVariableList::new(
+            self.blas_map
+                .values()
+                .into_iter()
+                .map(|blas| *blas.column_colors().buffer())
+                .collect(),
+        )
+    }
+
     /// build or rebuild the acceleration structure
     pub fn build(&mut self, context: &Arc<Context>, bindings: &mut [InstanceBinding]) -> bool {
         if !self.modified {

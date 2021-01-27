@@ -2,7 +2,7 @@ texture_path: data/ # all textures should be in this path
 texture_extension: '' # all textures should have the same extension
 texture_normal_extension: _n # all textures normals should have the same extension
 texture_mer_extension: _mer # all textures mer should have the same extension
-texture_dimension: [512, 512] # if a texture doesn't match, it will be resized
+texture_dimension: [128, 128] # if a texture doesn't match, it will be resized
 
 empty_blocks:
     - Air
@@ -14,9 +14,16 @@ classic_blocks:
     Stone:
         side: "stone"
     Grass:
-        side: "grass_side"
-        top: "grass_top"
+        side: "grass_block_side"
+        side_overlay: "grass_block_side_overlay"
+        side_material: 2
+
+        top: "grass_block_top"
+        top_material: 1
+
         bottom: "dirt"
+        bottom_material: 0
+
     Dirt:
         side: "dirt"
     Gravel:
@@ -39,8 +46,8 @@ classic_blocks:
         side: "log_acacia"
         top: "log_acacia_top"
     BigOakLog:
-        side: "log_big_oak"
-        top: "log_big_oak_top"
+        side: "log_dark_oak"
+        top: "log_dark_oak_top"
     BirchLog:
         side: "log_birch"
         top: "log_birch_top"
@@ -53,23 +60,29 @@ classic_blocks:
 
     OakLeaves:
         side: "leaves_oak"
+        side_material: 1
     AcaciaLeaves:
         side: "leaves_acacia"
+        side_material: 1
     BigOakLeaves:
-        side: "leaves_big_oak"
+        side: "leaves_dark_oak"
+        side_material: 1
     BirchLeaves:
         side: "leaves_birch"
+        side_material: 1
     JungleLeaves:
         side: "leaves_jungle"
+        side_material: 1
     SpruceLeaves:
         side: "leaves_spruce"
+        side_material: 1
 
     OakPlanks:
         side: "planks_oak"
     AcaciaPlanks:
         side: "planks_acacia"
     BigOakPlanks:
-        side: "planks_big_oak"
+        side: "planks_dark_oak"
     BirchPlanks:
         side: "planks_birch"
     JunglePlanks:
@@ -78,9 +91,9 @@ classic_blocks:
         side: "planks_spruce"
 
     Brick:
-        side: "brick"
+        side: "bricks"
     StoneBricks:
-        side: "stonebrick"
+        side: "stone_bricks"
 
     LightWhite:
         side: light_white
@@ -99,7 +112,8 @@ classic_blocks:
 
 flower_blocks:
     TallGrass:
-        texture: "tallgrass"
+        texture: "grass"
+        material: 1
     OrangeTulipe:
         texture: "flower_tulip_orange"
     PinkTulip:
