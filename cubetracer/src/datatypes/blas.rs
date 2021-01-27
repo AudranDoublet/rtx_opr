@@ -46,6 +46,7 @@ pub struct GeometryInstanceData {
     acceleration_structure_handle: u64,
 }
 
+#[allow(dead_code)]
 pub struct BlasVariable {
     pub is_build: bool,
     acceleration_structure: AccelerationStructure,
@@ -53,9 +54,12 @@ pub struct BlasVariable {
 
     triangle_data: BufferVariable,
     textures: BufferVariable,
-    _geometries: Vec<vk::GeometryNV>,
-    _vertices: BufferVariable,
-    _indices: BufferVariable,
+    column_colors: BufferVariable,
+
+    // those fields are unused but the :evice-memory they handle need to be freed at the same time than the whole structure
+    geometries: Vec<vk::GeometryNV>,
+    vertices: BufferVariable,
+    indices: BufferVariable,
 }
 
 impl BlasVariable {
@@ -65,6 +69,7 @@ impl BlasVariable {
         indices: BufferVariable,
         triangle_data: BufferVariable,
         textures: BufferVariable,
+        column_colors: BufferVariable,
         vertex_stride: usize,
     ) -> BlasVariable {
         ///// Create geometries list
@@ -118,10 +123,11 @@ impl BlasVariable {
             instance_data,
             triangle_data,
             textures,
-            _geometries: geometries,
             is_build: false,
-            _vertices: vertices,
-            _indices: indices,
+            geometries,
+            vertices,
+            indices,
+            column_colors,
         }
     }
 
@@ -131,6 +137,10 @@ impl BlasVariable {
 
     pub fn textures(&self) -> &BufferVariable {
         &self.textures
+    }
+
+    pub fn column_colors(&self) -> &BufferVariable {
+        &self.column_colors
     }
 
     pub fn bindings(&self) -> InstanceBinding {

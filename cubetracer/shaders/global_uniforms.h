@@ -26,5 +26,8 @@ layout (set=G_UNIFORM_SET, binding = 4) buffer BlasTriangleData {
 layout (set=G_UNIFORM_SET, binding = 5) buffer ChunkTextures {
     vec3 data[];
 } BLAS_TEXTURES[];
+layout (set=G_UNIFORM_SET, binding = 6) buffer ChunkColumnColor {
+    vec3 colors[];
+} BLAS_CHUNK_COLUMN_COLOR[];
 
 #endif // _GLOBAL_UNIFORMS_H

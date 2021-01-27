@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::{World, Chunk, FaceProperties, main_world};
-use nalgebra::{Vector2, Vector3};
+use nalgebra::{Vector2, Vector3, Vector4};
 
 use std::sync::mpsc;
 use std::thread;
@@ -42,6 +42,7 @@ pub struct ChunkMesh {
 
     pub texture_vertices: Vec<[f32; 4]>,
     pub triangle_data: Vec<TriangleData>,
+    pub column_colors: Vec<Vector4<f32>>,
 }
 
 impl ChunkMesh {
@@ -52,6 +53,7 @@ impl ChunkMesh {
             indices: Vec::new(),
             texture_vertices: vec![[0.0, 0.0, 0.0, 0.0]],
             triangle_data: Vec::new(),
+            column_colors: Vec::new(),
         }
     }
 
@@ -62,6 +64,8 @@ impl ChunkMesh {
         };
 
         let mut mesh = ChunkMesh::new();
+        mesh.column_colors = chunk.grass_color.clone();
+
         for y in 0..256 {
             for z in 0..16 {
                 for x in 0..16 {
