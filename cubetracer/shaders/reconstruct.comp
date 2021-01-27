@@ -16,11 +16,21 @@ void main() {
 
     if (UNI_SCENE.rendered_buffer == 0)
     {
-        const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
-        const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
-        const vec4 pt_illum = vec4(imageLoad(CACHE_PT_ILLUM, xy).xyz, 1.0);
+        // const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
+        // const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
+        // const vec4 pt_illum = vec4(imageLoad(CACHE_PT_ILLUM, xy).xyz, 1.0);
 
-        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows + max(pt_illum, 0));
+        // imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows + max(pt_illum, 0));
+
+        vec2 xy_ratio = vec2(xy) / vec2(imageSize(CACHE_RESULT_IMAGE));
+        ivec2 xy_scaled_shadow = ivec2(
+            round(xy_ratio * vec2(imageSize(CACHE_SHADOW_MAP)))
+        );
+
+        vec4 shadow_map = texture(CACHE_SHADOW_MAP_TEX, xy_ratio);
+        // vec4 shadow_map = imageLoad(CACHE_SHADOW_MAP, xy);
+        imageStore(CACHE_RESULT_IMAGE, xy, vec4(shadow_map.w / 256.0));
+        // imageStore(CACHE_RESULT_IMAGE, xy, vec4(shadow_map.rgb, 1));
     }
     else if (UNI_SCENE.rendered_buffer == 1)
     {

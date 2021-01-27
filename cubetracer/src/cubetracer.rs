@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 const SHADER_FOLDER: &str = "cubetracer/shaders";
 const MAX_INSTANCE_BINDING: usize = 1024;
+const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 1024, width: 1024 };
 
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
@@ -275,7 +276,6 @@ impl RTXData {
     }
 }
 
-const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 1024, width: 1024 };
 
 impl RTXData {
     pub fn new(context: &Arc<Context>, swapchain: &Swapchain, cubetracer: &mut Cubetracer) -> Self {
@@ -438,6 +438,13 @@ impl RTXData {
                 &context,
                 buffer,
                 &cache_buffers.images(&["pathtracing_illum"]),
+            );
+
+            pipeline.dispatch(buffer, SHADOW_MAP_EXTENT.width, SHADOW_MAP_EXTENT.height, 3);
+            image_barrier(
+                &context,
+                buffer,
+                &cache_buffers.images(&["shadow_map"]),
             );
 
               temporal_filter_pipeline.bind(&context, buffer);

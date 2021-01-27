@@ -4,6 +4,7 @@
 
 #define DEF_IMAGE(BINDING, TYPE, NAME) layout(set=G_CACHE_SET, binding=BINDING, TYPE) uniform image2D CACHE_ ## NAME
 #define DEF_IMAGE_U(BINDING, TYPE, NAME) layout(set=G_CACHE_SET, binding=BINDING, TYPE) uniform uimage2D CACHE_ ## NAME
+#define DEF_SAMPLER(BINDING, NAME) layout(set=G_CACHE_SET, binding=BINDING) uniform sampler2D CACHE_ ## NAME
 
 /* FIXME: What about compressing the images? as we're never using the alpha channels */
 
@@ -33,5 +34,6 @@ DEF_IMAGE(13, rgba32f, DENOISE_PREV_DIFFUSE);
 DEF_IMAGE(14, rgba32f, NOISE);
 
 DEF_IMAGE(15, rgba32f, SHADOW_MAP);
+DEF_SAMPLER(15, SHADOW_MAP_TEX);
 
 #endif // _GLOBAL_CACHES_H

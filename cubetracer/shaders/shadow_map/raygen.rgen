@@ -12,6 +12,7 @@
 #include "../global_caches.h"
 #undef G_CACHE_SET
 
+#include "../constants.h"
 #include "../payloads.h"
 
 layout(location = PAYLOAD_IDX_GENERAL) rayPayloadNV InitialPayload PAYLOAD_GENERAL;
@@ -21,7 +22,7 @@ void main() {
     const vec2 xy_normalized = xy / vec2(gl_LaunchSizeNV.xy) - 0.5;
 
     // FIXME: the origin should change depending on `xy`
-    const vec3 origin = UNI_CAMERA.origin - UNI_CAMERA * C_SUN_DISTANCE;
+    const vec3 origin = (UNI_SUN.projection * vec4(xy_normalized, 1, 1)).xyz;
     const vec3 direction = UNI_SUN.direction;
 
     const uint cullMask = 0xff;

@@ -9,7 +9,11 @@ SRC=\
 	./cubetracer/shaders/path_tracing/miss.rmiss \
 	./cubetracer/shaders/path_tracing/raygen.rgen \
 	./cubetracer/shaders/reconstruct.comp \
-	./cubetracer/shaders/reproject.comp
+	./cubetracer/shaders/reconstruct.comp \
+	./cubetracer/shaders/reproject.comp \
+	./cubetracer/shaders/shadow_map/raygen.rgen \
+	./cubetracer/shaders/shadow_map/miss.rmiss \
+	./cubetracer/shaders/shadow_map/closesthit.rchit \
 
 OBJ=$(SRC:=.spv)
 
