@@ -13,8 +13,10 @@
 #undef G_CACHE_SET
 
 #include "../payloads.h"
+#include "../shading.h"
 
 layout(location = PAYLOAD_IDX_GENERAL) rayPayloadNV InitialPayload PAYLOAD_GENERAL;
+
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
@@ -36,17 +38,29 @@ void main() {
         PAYLOAD_IDX_GENERAL
     );
 
+    vec3 directIllum;
+
     if (PAYLOAD_GENERAL.hit) {
+        directIllum = composeColor(
+            PAYLOAD_GENERAL.hit_position,
+            PAYLOAD_GENERAL.normal,
+            PAYLOAD_GENERAL.illumination,
+            PAYLOAD_GENERAL.mer
+        );
+        // directIllum = PAYLOAD_GENERAL.illumination;
+
         imageStore(CACHE_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, 0.0));
         imageStore(CACHE_INIT_DISTANCES, xy, vec4(PAYLOAD_GENERAL.distance));
         imageStore(CACHE_ORIGIN, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
         imageStore(CACHE_ILLUM_COEFFS, xy, vec4(PAYLOAD_GENERAL.mer, 0.0));
     } else {
+        directIllum = PAYLOAD_GENERAL.illumination;
+
         imageStore(CACHE_NORMALS, xy, vec4(0));
         imageStore(CACHE_INIT_DISTANCES, xy, vec4(0.0));
         imageStore(CACHE_ORIGIN, xy, vec4(0));
         imageStore(CACHE_ILLUM_COEFFS, xy, vec4(0));
     }
 
-    imageStore(CACHE_DIRECT_ILLUM, xy, vec4(PAYLOAD_GENERAL.illumination, 0.0));
+    imageStore(CACHE_DIRECT_ILLUM, xy, vec4(directIllum, 0.0));
 }

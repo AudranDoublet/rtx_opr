@@ -9,6 +9,6 @@
 
 // VOLUMETRIC LIGHTING
 #define C_SUN_DISTANCE 256.0
-#define C_SUN_COLOR    vec3(0.9, 0.2, 0.7)
+#define C_SUN_COLOR    vec3(1.0, 1.0, 1.0)
 
 #endif // _CONSTANTS_H_

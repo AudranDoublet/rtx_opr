@@ -184,6 +184,7 @@ impl Cubetracer {
     pub fn sun_mut(&mut self) -> &mut Sun {
         &mut self.sun
     }
+
     pub fn update(&mut self, swapchain: &Swapchain, context: &Arc<Context>) -> bool {
         if self.chunks.len() > 0 {
             if self.rtx_data.is_none() {
