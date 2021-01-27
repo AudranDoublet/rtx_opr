@@ -20,7 +20,7 @@ void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
     dvec2 xy_normalized = -(xy / dvec2(gl_LaunchSizeNV.xy) - 0.5) * 2;
 
-    const dvec3 origin = UNI_CAMERA.origin;
+    const dvec3 origin = UNI_CAMERA.origin.xyz;
     const dvec4 seen_point = (UNI_CAMERA.screen_to_world * dvec4(xy_normalized, 1, 1));
     const dvec3 direction = normalize(seen_point.xyz / seen_point.w - origin);
 
