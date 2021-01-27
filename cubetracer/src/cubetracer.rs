@@ -65,6 +65,7 @@ impl Cubetracer {
                 &UniformScene {
                     sun_direction: Vector3::new(0.5, 1.0, -0.5).normalize(),
                     rendered_buffer: 0,
+                    updated: 1,
                 },
             ),
             uniform_camera: UniformVariable::new(&context, &camera.uniform()),
@@ -184,6 +185,7 @@ impl Cubetracer {
                 &UniformScene {
                     sun_direction: self.camera.sun_direction(),
                     rendered_buffer: self.rendered_buffer,
+                    updated: self.camera.updated() as u32,
                 },
             );
 

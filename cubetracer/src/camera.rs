@@ -12,7 +12,6 @@ impl Camera {
             origin: vec3to4(self.origin, 0.0),
             screen_to_world: self.world_to_screen().try_inverse().unwrap(),
             prev_world_to_screen: self.prev_world_to_screen,
-            updated: self.updated,
         }
     }
 }
@@ -42,6 +41,10 @@ impl Camera {
     pub fn store_previous_view(&mut self) {
         self.updated = false;
         self.prev_world_to_screen = self.world_to_screen();
+    }
+
+    pub fn updated(&self) -> bool {
+        self.updated
     }
 
     pub fn world_to_screen(&self) -> Matrix4<f64> {

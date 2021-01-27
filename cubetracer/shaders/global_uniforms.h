@@ -11,12 +11,12 @@ layout(set=G_UNIFORM_SET, binding = 1) uniform SCamera{
     dmat4 screen_to_world;
     dmat4 prev_world_to_screen;
     dvec4 origin;
-    bool updated;
 } UNI_CAMERA;
 
 layout(set=G_UNIFORM_SET, binding = 2) uniform SScene {
     vec3 sunDirection;
     uint rendered_buffer;
+    uint updated;
 } UNI_SCENE;
 
 layout (set=G_UNIFORM_SET, binding = 3) uniform sampler2DArray UNI_TEXTURE_ARRAY;

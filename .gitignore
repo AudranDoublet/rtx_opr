@@ -4,3 +4,4 @@ target/
 /*.png
 /map_dump/
 /target/
+*.spv
