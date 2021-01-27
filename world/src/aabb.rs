@@ -1,11 +1,11 @@
-use nalgebra::Vector3;
+use nalgebra::{Vector3, Vector4, Matrix4};
 
 use crate::{BlockFace, World};
 
 #[derive(Debug)]
 pub struct AABB {
-    min: Vector3<f32>,
-    max: Vector3<f32>,
+    pub min: Vector3<f32>,
+    pub max: Vector3<f32>,
 }
 
 pub struct AABBIterator {
@@ -17,9 +17,57 @@ pub struct AABBIterator {
 impl AABB {
     pub fn new(min: Vector3<f32>, max: Vector3<f32>) -> AABB {
         AABB {
-            min: min,
-            max: max,
+            min,
+            max,
         }
+    }
+
+    pub fn new_from_coords(positions: &[Vector3<f32>]) -> AABB {
+        let mut min_x = std::f32::INFINITY;
+        let mut min_y = std::f32::INFINITY;
+        let mut min_z = std::f32::INFINITY;
+        let mut max_x = std::f32::NEG_INFINITY;
+        let mut max_y = std::f32::NEG_INFINITY;
+        let mut max_z = std::f32::NEG_INFINITY;
+
+        for pos in positions {
+            min_x = min_x.min(pos.x);
+            min_y = min_y.min(pos.y);
+            min_z = min_z.min(pos.z);
+
+            max_x = max_x.max(pos.x);
+            max_y = max_y.max(pos.y);
+            max_z = max_z.max(pos.z);
+        }
+
+        AABB::new(Vector3::new(min_x, min_y, min_z), Vector3::new(max_x, max_y, max_z))
+    }
+
+    pub fn rotate(&self, transformation: Matrix4<f32>) -> AABB {
+        let transform = |v: Vector3<f32>| {
+            let v = Vector4::new(v.x, v.y, v.z, 1.0);
+            let t = transformation * v;
+
+            Vector3::new(t.x / t.w, t.y / t.w, t.z / t.w)
+        };
+
+        let mut points = vec![
+            transform(self.min),
+        ];
+
+        let diff = self.max - self.min;
+
+        for i in 0..=1 {
+            for j in 0..=1 {
+                for k in 0..=1 {
+                    points.push(
+                        transform(self.min + diff.component_mul(&Vector3::new(i as f32, j as f32, k as f32)))
+                    );
+                }
+            }
+        }
+
+        Self::new_from_coords(&points)
     }
 
     pub fn translate(&self, diff: Vector3<f32>) -> AABB {

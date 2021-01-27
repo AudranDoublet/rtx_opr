@@ -8,7 +8,7 @@
 #define C_PT_MIN_CONTRIB (1e-4) // min contrib coeff, if reached, we stop bouncing on that pixel
 
 // VOLUMETRIC LIGHTING
-#define C_SUN_DISTANCE 256.0
+#define C_SUN_DISTANCE 256.0*5
 #define C_SUN_COLOR    vec3(0.9, 0.2, 0.7)
 
 #endif // _CONSTANTS_H_

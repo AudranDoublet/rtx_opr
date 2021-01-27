@@ -23,7 +23,6 @@ const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 1024, width: 102
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
     camera: Camera,
-    sun: Sun,
 
     rtx_data: Option<RTXData>,
 
@@ -44,11 +43,8 @@ impl Cubetracer {
             Vector2::new(std::f32::consts::PI / 2.0, 0.0),
             fov,
             ratio,
-        );
-
-        let sun = Sun::new(
             view_distance,
-            Vector3::new(-0.7, -1.5, -1.1),
+            Vector3::new(0.1, -1.0, 0.1),
         );
 
         let textures_info = &main_world().textures;
@@ -75,17 +71,16 @@ impl Cubetracer {
                     updated: 1,
                 },
             ),
-            uniform_sun: UniformVariable::new(&context, &sun.uniform()),
+            uniform_sun: UniformVariable::new(&context, &camera.sun_uniform()),
             uniform_camera: UniformVariable::new(&context, &camera.uniform()),
             camera,
-            sun,
             rendered_buffer: 0,
         }
     }
 
     pub fn update_shadow_map(&mut self) {
         if let Some(rtx_data) = &self.rtx_data {
-            self.uniform_sun.set(&rtx_data.context, &self.sun.uniform());
+            self.uniform_sun.set(&rtx_data.context, &self.camera.sun_uniform());
             rtx_data.update_shadow_map();
         }
     }
@@ -177,13 +172,6 @@ impl Cubetracer {
         &mut self.camera
     }
 
-    pub fn sun(&self) -> &Sun {
-        &self.sun
-    }
-
-    pub fn sun_mut(&mut self) -> &mut Sun {
-        &mut self.sun
-    }
     pub fn update(&mut self, swapchain: &Swapchain, context: &Arc<Context>) -> bool {
         if self.chunks.len() > 0 {
             if self.rtx_data.is_none() {

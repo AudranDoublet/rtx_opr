@@ -19,10 +19,12 @@ layout(location = PAYLOAD_IDX_GENERAL) rayPayloadNV InitialPayload PAYLOAD_GENER
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
-    const vec2 xy_normalized = xy / vec2(gl_LaunchSizeNV.xy) - 0.5;
+    const vec2 xy_normalized = 2 * (xy / vec2(gl_LaunchSizeNV.xy) - 0.5);
 
     // FIXME: the origin should change depending on `xy`
-    const vec3 origin = (UNI_SUN.projection * vec4(xy_normalized, 1, 1)).xyz;
+    vec4 seen = (UNI_SUN.projection * vec4(xy_normalized, 1, 1));
+    vec3 origin = seen.xyz / seen.w;
+
     const vec3 direction = UNI_SUN.direction;
 
     const uint cullMask = 0xff;
@@ -40,5 +42,6 @@ void main() {
     const vec3 sunColor = C_SUN_COLOR;
     float hitDistance = PAYLOAD_GENERAL.hit ? PAYLOAD_GENERAL.distance : tmax;
 
+    //imageStore(CACHE_SHADOW_MAP, xy, vec4(PAYLOAD_GENERAL.illumination, 1.0));
     imageStore(CACHE_SHADOW_MAP, xy, vec4(C_SUN_COLOR, hitDistance));
 }

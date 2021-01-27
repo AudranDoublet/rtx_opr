@@ -274,11 +274,11 @@ impl BaseApp {
                         if self.input_handler.is_pressed(KeyCode::K) {
                             self.update_shadow_map = true;
                             let forward = self.tracer.camera().forward();
-                            self.tracer.sun_mut().update_sun_pos(forward);
+                            self.tracer.camera_mut().update_sun_pos(forward);
                         }
                         if self.input_handler.is_pressed(KeyCode::N) {
                             self.update_shadow_map = true;
-                            self.tracer.sun_mut().sun_light_cycle(delta_time);
+                            self.tracer.camera_mut().sun_light_cycle(delta_time);
                         }
                         if self.input_handler.is_pressed(KeyCode::Key1) {
                             self.tracer.set_rendered_buffer(0);
