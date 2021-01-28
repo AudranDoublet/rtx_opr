@@ -119,7 +119,7 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transpare
         } else if (PAYLOAD_GENERAL.material < 3) { // OPAQUE MATERIAL
             stop = true;
             float shadow = isShadowed(PAYLOAD_GENERAL.hit_position) ? 0 : 1;
-            behindColor = PAYLOAD_GENERAL.illumination; //shadow * sunIllum(PAYLOAD_GENERAL.normal) * PAYLOAD_GENERAL.illumination;
+            behindColor = shadow * sunIllum(PAYLOAD_GENERAL.normal) * PAYLOAD_GENERAL.illumination;
         } else { // transparent material
             material = PAYLOAD_GENERAL.material;
 
