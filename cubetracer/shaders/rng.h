@@ -78,28 +78,22 @@ vec3 sampleCosHemisphere(vec3 normal, vec2 uv) {
 
 
 // Eric Heitz, Sampling the GGX Distribution of Visible Normals, Journal of Computer Graphics Techniques (JCGT), vol. 7, no. 4, 1–13, 2018
-// Quake 2 rtx implem
-vec3 sampleGGXVNDF(vec2 u, float alpha, vec3 V, mat3 basis)
-{
+// nvidia quake2 implem
+vec3 sampleGGXVNDF(vec2 u, float alpha, vec3 V, mat3 basis) {
     vec3 Ve = -vec3(dot(V, basis[0]), dot(V, basis[2]), dot(V, basis[1]));
     vec3 Vh = normalize(vec3(alpha * Ve.x, alpha * Ve.y, Ve.z));
-
     float lensq = Vh.x*Vh.x + Vh.y*Vh.y;
     vec3 T1 = lensq > 0.0 ? vec3(-Vh.y, Vh.x, 0.0) * inversesqrt(lensq) : vec3(1.0, 0.0, 0.0);
     vec3 T2 = cross(Vh, T1);
-
-    float r = u.x;
+    float r = sqrt(u.x);
     float phi = 2.0 * C_PI * u.y;
     float t1 = r * cos(phi);
     float t2 = r * sin(phi);
     float s = 0.5 * (1.0 + Vh.z);
-    t2 = (1.0 - s) * sqrt(1.0 - t1*t1)+ s * t2;
-
+    t2 = (1.0 - s) * sqrt(1.0 - t1*t1) + s * t2;
     vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1*t1 - t2*t2)) * Vh;
-
     // Tangent space H
     vec3 Ne = vec3(alpha * Nh.x, max(0.0, Nh.z), alpha * Nh.y);
-
     // World space H
     return normalize(basis * Ne);
 }

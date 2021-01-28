@@ -20,7 +20,7 @@
 layout(location = PAYLOAD_IDX_GENERAL)  rayPayloadNV InitialPayload PAYLOAD_GENERAL;
 layout(location = PAYLOAD_IDX_SHADOWED) rayPayloadNV bool           PAYLOAD_SHADOWED;
 
-bool is_shadowed(vec3 origin) {
+bool isShadowed(vec3 origin) {
     PAYLOAD_SHADOWED = true;
 
     traceNV(
@@ -38,24 +38,27 @@ vec3 sampleBrdfSpecular(
         in out uint seed,
         const vec3 origin,
         const vec3 N,
-        float alpha,
-        const vec3 V
+        const vec3 mer,
+        const vec3 V,
+        const vec3 specularColor
     ) {
+    float roughness = max(mer.z, 0.02);
+    float alpha = roughness*roughness;
+
     const mat3 basis = construct_ONB_frisvad(N);
+    const vec2 rnd = vec2(noise(seed), noise(seed));
 
-    vec3 H = sampleGGXVNDF(
-           vec2(noise(seed), noise(seed)), alpha, V, basis);
-    vec3 L = reflect(V, H);
+    vec3 H = sampleGGXVNDF(rnd, alpha, V, basis);
+    vec3 L = normalize(reflect(V, H));
 
-    float NoV = max(0, dot(N, V));
+    float NoV = max(0, -dot(N, V));
     float NoL = max(0, dot(N, L));
 
     if (NoL == 0 || NoV == 0) {
         return vec3(0);
     }
 
-    float G1_NoL = G1_GGX(alpha, NoL);
-    L = normalize(L);
+    const vec3 F = fresnelSchlick(max(0, dot(-V, H)), specularColor, mer.x);
 
     traceNV(
         UNI_TLAS,
@@ -65,70 +68,44 @@ vec3 sampleBrdfSpecular(
         PAYLOAD_IDX_GENERAL
     );
 
-    const vec3 F_V_L = fresnelSchlick(max(0, dot(V, L)));
-    return vec3(sunIllum(N)) * PAYLOAD_GENERAL.illumination * F_V_L * G1_NoL;
+    vec3 Li = PAYLOAD_GENERAL.illumination;
+    if (PAYLOAD_GENERAL.hit) {
+        Li *= vec3(sunIllum(PAYLOAD_GENERAL.normal));
+        if (isShadowed(PAYLOAD_GENERAL.hit_position)) {
+            Li = vec3(0);
+        }
+    } 
+
+    // G2(V, L)/G1(V) = (G1(V) * G1(L))/G1(V) = G1(L)
+    return (specularColor / C_PI + F * G1_GGX(roughness, NoL)) * Li * NoL;
 }
-
-
-
-/*
-vec3 sampleBrdfSpecular(
-        in out uint seed,
-        const vec3 origin,
-        const vec3 normal,
-        float alpha,
-        const vec3 V
-    ) {
-
-    mat3 basis = construct_ONB_frisvad(normal);
-    const vec3 Ni = sampleGGXVNDF(
-           vec2(noise(seed), noise(seed)), alpha, V, basis);
-
-    // const vec3 Ni = sampleGGXVNDF(V, alpha, noise(seed), noise(seed));
-    vec3 Li = normalize(reflect(V, Ni)); // FIXME: remove normalize
-    const float NoLi = max(0, dot(normal, Li));
-    if (NoLi == 0) {
-        return vec3(0);
-    }
-
-    traceNV(
-        UNI_TLAS,
-        gl_RayFlagsNoneNV, 0xff,
-        0, 0, 0,
-        origin, 0.01, Li, 200.0,
-        PAYLOAD_IDX_GENERAL
-    );
-
-    const float F_V_Li = fresnelSchlickSameMaterial(max(0, dot(V, Li)));
-    const float G1_Li = G1_GGX(alpha, NoLi);
-
-    // G2(V, Li)/G1(V) = G1(Li)*G1(V)/G1(V) simplifies to G1_Li
-    return sunIllum(N) * F_V_Li * G1_Li;
-}
-*/
 
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
     float seed_f = imageLoad(CACHE_NOISE, xy).r * 1024.;
     uint seed = uint(seed_f);
 
-
     vec3 specular = vec3(0);
     vec3 normal = imageLoad(CACHE_NORMALS, xy).xyz;
 
     if (normal != vec3(0)) {
         const vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
-        const vec3 V = normalize(vec3(UNI_CAMERA.origin.xyz) - origin);
+        const vec3 V = normalize(origin - vec3(UNI_CAMERA.origin.xyz));
         const vec3 mer = imageLoad(CACHE_ILLUM_COEFFS, xy).rgb;
-        const float alpha = mer.b * mer.b;
+        const vec3 surfaceColor = imageLoad(CACHE_BLOCK_COLOR, xy).rgb;
 
-        specular = sampleBrdfSpecular(
-            seed,
-            origin,
-            normal,
-            alpha,
-            V
-        );
+        for (int i = 0; i < 6; i++) {
+            specular += sampleBrdfSpecular(
+                seed,
+                origin,
+                normal,
+                mer,
+                V,
+                surfaceColor
+            );
+        }
+
+        specular /= 3;
     }
 
     imageStore(CACHE_PT_SPECULAR, xy, vec4(specular, 0.0));
