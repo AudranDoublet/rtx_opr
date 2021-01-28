@@ -62,7 +62,7 @@ bool sampleBrdfDiffuseBounces(const vec2 rnd,
     origin = PAYLOAD_GENERAL.hit_position;
 
     // multiply by previous througput, as it's should be direct illumination
-    diffuse += 2.0 * PAYLOAD_GENERAL.illumination * PAYLOAD_GENERAL.mer.g * old_through;
+    diffuse += 2.0 * PAYLOAD_GENERAL.illumination * PAYLOAD_GENERAL.mer.g * old_through / (0.5);
 
     if (is_shadowed(origin))
         return true;

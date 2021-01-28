@@ -74,6 +74,7 @@ vec3 sampleBrdfSpecular(
         if (isShadowed(PAYLOAD_GENERAL.hit_position)) {
             Li = vec3(0);
         }
+        Li += PAYLOAD_GENERAL.mer.g * PAYLOAD_GENERAL.illumination * 2.0;
     } 
 
     // G2(V, L)/G1(V) = (G1(V) * G1(L))/G1(V) = G1(L)
