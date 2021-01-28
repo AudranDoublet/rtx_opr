@@ -143,7 +143,7 @@ impl Block {
     pub fn get_light(t: u32) -> (bool, Block) {
         let v = match t {
             0 => Block::LightWhite,
-            1 => Block::Light%s/\<\u\|\l\u/\= join(split(tolower(submatch(0)), '\zs'), '_')/gcRed,
+            1 => Block::LightRed,
             2 => Block::LightGreen,
             3 => Block::LightBlue,
             4 => Block::LightYellow,
@@ -158,7 +158,7 @@ impl Block {
         }
     }
 
-    pub fn get_colored_glass(t%s/\<\u\|\l\u/\= join(split(tolower(submatch(0)), '\zs'), '_')/gc: u32) -> (bool, Block) {
+    pub fn get_colored_glass(t: u32) -> (bool, Block) {
         let v = match t {
             0  => Block::GlassBlack,
             1  => Block::GlassBlue,
@@ -251,7 +251,7 @@ impl Block {
             | Block::BirchLeaves
             | Block::JungleLeaves
             | Block::SpruceLeaves => true,
-            %s/\<\u\|\l\u/\= join(split(tolower(submatch(0)), '\zs'), '_')/gc_ => false,
+            _ => false,
         }
     }
 
