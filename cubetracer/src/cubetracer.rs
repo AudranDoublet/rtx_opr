@@ -286,8 +286,13 @@ impl RTXData {
 impl RTXData {
     pub fn new(context: &Arc<Context>, swapchain: &Swapchain, cubetracer: &mut Cubetracer) -> Self {
         let swapchain_props = swapchain.properties();
-        let width = swapchain_props.extent.width;
-        let height = swapchain_props.extent.height;
+        let width = swapchain_props.extent.width;// / 4 * 3;
+        let height = swapchain_props.extent.height;// / 4 * 3;
+
+        let extent = vk::Extent2D {
+            width,
+            height,
+        };
 
         ////// CREATE CACHES
         let mut cache_buffers = BufferList::new(context);
@@ -299,17 +304,17 @@ impl RTXData {
             .simple("normals", swapchain, BufferFormat::RGBA)
             .double("initial_distances", swapchain, BufferFormat::RGBA)
             .simple("direct_illumination", swapchain, BufferFormat::RGBA)
-            .double("hit_point", swapchain, BufferFormat::RGBA)
+            .double_extent("hit_point", extent, BufferFormat::RGBA)
             .simple("shadow", swapchain, BufferFormat::RGBA)
             .simple("mer", swapchain, BufferFormat::RGBA)
             .double("pt_diffuse", swapchain, BufferFormat::RGBA)
-            .simple("noise", swapchain, BufferFormat::RGBA)
+            .simple_extent("noise", extent, BufferFormat::RGBA)
             .simple_extent("shadow_map", SHADOW_MAP_EXTENT, BufferFormat::RGBA)
             .simple_extent("god_rays_temp", vk::Extent2D {
                     width: width / 2,
                     height: height / 2,
                 }, BufferFormat::RGBA)
-            .simple("god_rays", swapchain, BufferFormat::RGBA)
+            .simple_extent("god_rays", extent, BufferFormat::RGBA)
             .double("pt_specular", swapchain, BufferFormat::RGBA)
             .simple("block_color", swapchain, BufferFormat::RGBA)
             .simple("refract", swapchain, BufferFormat::RGBA);
