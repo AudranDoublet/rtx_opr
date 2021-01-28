@@ -49,7 +49,8 @@ void main()
     const vec3 sun_color = UNI_SUN.color.xyz;
     const float god_rays_intensity = 2.0;
 
-    ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 pixelPos = xy * 2;
 
     vec3 original_pos = vec3(UNI_CAMERA.origin.xyz);
 
@@ -97,5 +98,5 @@ void main()
     if (length(inscatterColor) > 0.5)
         inscatterColor /= length(inscatterColor) / 0.5;
 
-    imageStore(CACHE_GOD_RAYS, pixelPos, vec4(inscatterColor, 1));
+    imageStore(CACHE_GOD_RAYS_TEMP, xy, vec4(inscatterColor, 1));
 }

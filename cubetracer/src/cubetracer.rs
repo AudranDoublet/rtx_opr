@@ -241,6 +241,7 @@ pub struct RTXData {
     reconstruct_pipeline: ComputePipeline,
     temporal_filter_pipeline: ComputePipeline,
     god_rays_pipeline: ComputePipeline,
+    god_rays_reconstruct_pipeline: ComputePipeline,
 }
 
 impl RTXData {
@@ -284,6 +285,9 @@ impl RTXData {
 
 impl RTXData {
     pub fn new(context: &Arc<Context>, swapchain: &Swapchain, cubetracer: &mut Cubetracer) -> Self {
+        let swapchain_props = swapchain.properties();
+        let width = swapchain_props.extent.width;
+        let height = swapchain_props.extent.height;
 
         ////// CREATE CACHES
         let mut cache_buffers = BufferList::new(context);
@@ -301,6 +305,10 @@ impl RTXData {
             .double("pathtracing_illum", swapchain, BufferFormat::RGBA)
             .simple("noise", swapchain, BufferFormat::RGBA)
             .simple_extent("shadow_map", SHADOW_MAP_EXTENT, BufferFormat::RGBA)
+            .simple_extent("god_rays_temp", vk::Extent2D {
+                    width: width / 2,
+                    height: height / 2,
+                }, BufferFormat::RGBA)
             .simple("god_rays", swapchain, BufferFormat::RGBA);
 
         cache_buffers
@@ -421,15 +429,15 @@ impl RTXData {
             .descriptor_set(&descriptor_set)
             .descriptor_set(&cache_descriptors)
             .build();
+        let god_rays_reconstruct_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
+            .shader("god_rays_reconstruct.comp.spv")
+            .descriptor_set(&descriptor_set)
+            .descriptor_set(&cache_descriptors)
+            .build();
 
         ////// CREATE COMMANDS
         let command_buffers = CommandBuffers::new(context, swapchain);
         command_buffers.record(|index, buffer| {
-            let swapchain_props = swapchain.properties();
-
-            let width = swapchain_props.extent.width;
-            let height = swapchain_props.extent.height;
-
             // Initial ray
             pipeline.bind(&context, buffer);
             pipeline.dispatch(buffer, width, height, 0);
@@ -472,8 +480,18 @@ impl RTXData {
 
             // god rays
             god_rays_pipeline.bind(&context, buffer);
-            god_rays_pipeline.dispatch(buffer, width, height);
+            god_rays_pipeline.dispatch(buffer, width/2, height/2);
 
+            image_barrier(
+                &context,
+                buffer,
+                &cache_buffers.images(&["god_rays_temp"]),
+            );
+
+            god_rays_reconstruct_pipeline.bind(&context, buffer);
+            god_rays_reconstruct_pipeline.dispatch(buffer, width, height);
+
+            // wait all branches to end
             image_barrier(
                 &context,
                 buffer,
@@ -504,6 +522,7 @@ impl RTXData {
             reconstruct_pipeline,
             temporal_filter_pipeline,
             god_rays_pipeline,
+            god_rays_reconstruct_pipeline,
 
             command_buffers,
         }
