@@ -96,7 +96,7 @@ impl BlockRenderer {
 
                     // skip face if the neighbouring block is opaque (the face won't be seen)
                     if let Some(block) = world.block_at(position + rel) {
-                        if block.is_opaque() {
+                        if block.is_opaque() && height == 10 {
                             continue;
                         }
 

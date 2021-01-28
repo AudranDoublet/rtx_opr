@@ -327,7 +327,7 @@ impl Player {
                         if let Some((pos, face)) = self.looked_block(world, camera_forward) {
                             let pos = pos + face.relative();
 
-                            let (cycle, btype) = match self.block_cur_type {
+                            let (cycle, btype) = match self.block_mode {
                                 0 => Block::get_light(self.block_cur_type),
                                 1 => Block::get_colored_glass(self.block_cur_type),
                                 2 => (true, Block::Glass),
