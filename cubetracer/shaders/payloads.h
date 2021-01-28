@@ -4,6 +4,7 @@
 struct InitialPayload {
     bool hit;
     float distance;
+    uint material;
     vec3 normal;
     vec3 illumination;
     vec3 hit_position;

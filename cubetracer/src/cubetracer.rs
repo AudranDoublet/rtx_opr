@@ -311,7 +311,8 @@ impl RTXData {
                 }, BufferFormat::RGBA)
             .simple("god_rays", swapchain, BufferFormat::RGBA)
             .double("pt_specular", swapchain, BufferFormat::RGBA)
-            .double("block_color", swapchain, BufferFormat::RGBA);
+            .simple("block_color", swapchain, BufferFormat::RGBA)
+            .simple("block_material", swapchain, BufferFormat::RGBA);
 
         cache_buffers
             .texture_mut("shadow_map")
@@ -455,6 +456,7 @@ impl RTXData {
                     "mer",
                     "direct_illumination",
                     "block_color",
+                    "block_material",
                 ]),
             );
 

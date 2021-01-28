@@ -44,7 +44,6 @@ void main() {
         const vec3 mer = PAYLOAD_GENERAL.mer;
         const vec3 surfaceColor = PAYLOAD_GENERAL.illumination;
 
-
         vec3 diffuse;
         vec3 specular;
         float NoL;
@@ -60,14 +59,14 @@ void main() {
         diffuse = surfaceColor * (1 - specular);
         specular = mix(vec3(1), surfaceColor, mer.r) * specular;
 
-        directIllum = mer.g * surfaceColor 
-            + sunIllum(PAYLOAD_GENERAL.normal) * (diffuse + specular);
+        directIllum = sunIllum(PAYLOAD_GENERAL.normal) * (diffuse + specular);
 
         imageStore(CACHE_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, 0.0));
         imageStore(CACHE_INIT_DISTANCES, xy, vec4(PAYLOAD_GENERAL.distance));
         imageStore(CACHE_ORIGIN, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
         imageStore(CACHE_ILLUM_COEFFS, xy, vec4(PAYLOAD_GENERAL.mer, 0.0));
         imageStore(CACHE_BLOCK_COLOR, xy, vec4(PAYLOAD_GENERAL.illumination, 0.0));
+        imageStore(CACHE_BLOCK_MATERIAL, xy, vec4(PAYLOAD_GENERAL.material));
     } else {
         directIllum = PAYLOAD_GENERAL.illumination;
 
@@ -76,6 +75,7 @@ void main() {
         imageStore(CACHE_ORIGIN, xy, vec4(origin + direction, 1.0));
         imageStore(CACHE_ILLUM_COEFFS, xy, vec4(0));
         imageStore(CACHE_BLOCK_COLOR, xy, vec4(0.0));
+        imageStore(CACHE_BLOCK_MATERIAL, xy, vec4(0));
     }
 
     imageStore(CACHE_DIRECT_ILLUM, xy, vec4(directIllum, 0.0));

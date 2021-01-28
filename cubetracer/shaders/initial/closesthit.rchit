@@ -60,6 +60,7 @@ void main() {
     PAYLOAD_GENERAL.normal = normal_deformed;
     PAYLOAD_GENERAL.distance = gl_RayTmaxNV;
     PAYLOAD_GENERAL.illumination = illum;
+    PAYLOAD_GENERAL.material = material;
 
     PAYLOAD_GENERAL.mer = coeffs;
 }
