@@ -73,12 +73,4 @@ vec3 sunIllum(vec3 N) {
     return UNI_SUN.color.rgb * max(0, dot(N, -UNI_SUN.direction));
 }
 
-vec3 composeColor(
-        vec3 diffuse,
-        vec3 specular,
-        float NoL
-        ) {
-    return diffuse * fresnelSchlick(NoL) + specular;
-}
-
 #endif // _SHADING_H_

@@ -50,23 +50,23 @@ vec3 sampleBrdfSpecular(
     float NoV = max(0, dot(N, V));
     float NoL = max(0, dot(N, L));
 
-    if (NoL > 0 && NoV > 0)
-    {
-        float G1_NoL = G1_GGX(alpha, NoL);
-        L = normalize(L);
-        traceNV(
-            UNI_TLAS,
-            gl_RayFlagsNoneNV, 0xff,
-            0, 0, 0,
-            origin, 0.01, L, 200.0,
-            PAYLOAD_IDX_GENERAL
-        );
-
-        const vec3 F_V_L = fresnelSchlick(max(0, dot(V, L)));
-        return vec3(sunIllum(N)) * PAYLOAD_GENERAL.illumination * F_V_L * G1_NoL;
+    if (NoL == 0 || NoV == 0) {
+        return vec3(0);
     }
 
-    return vec3(0);
+    float G1_NoL = G1_GGX(alpha, NoL);
+    L = normalize(L);
+
+    traceNV(
+        UNI_TLAS,
+        gl_RayFlagsNoneNV, 0xff,
+        0, 0, 0,
+        origin, 0.01, L, 200.0,
+        PAYLOAD_IDX_GENERAL
+    );
+
+    const vec3 F_V_L = fresnelSchlick(max(0, dot(V, L)));
+    return vec3(sunIllum(N)) * PAYLOAD_GENERAL.illumination * F_V_L * G1_NoL;
 }
 
 
