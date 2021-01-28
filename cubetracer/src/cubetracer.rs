@@ -302,14 +302,15 @@ impl RTXData {
             .simple("hit_point", swapchain, BufferFormat::RGBA)
             .simple("shadow", swapchain, BufferFormat::RGBA)
             .simple("mer", swapchain, BufferFormat::RGBA)
-            .double("pathtracing_illum", swapchain, BufferFormat::RGBA)
+            .double("pt_diffuse", swapchain, BufferFormat::RGBA)
             .simple("noise", swapchain, BufferFormat::RGBA)
             .simple_extent("shadow_map", SHADOW_MAP_EXTENT, BufferFormat::RGBA)
             .simple_extent("god_rays_temp", vk::Extent2D {
                     width: width / 2,
                     height: height / 2,
                 }, BufferFormat::RGBA)
-            .simple("god_rays", swapchain, BufferFormat::RGBA);
+            .simple("god_rays", swapchain, BufferFormat::RGBA)
+            .double("pt_specular", swapchain, BufferFormat::RGBA);
 
         cache_buffers
             .texture_mut("shadow_map")
@@ -395,8 +396,9 @@ impl RTXData {
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
             .general_shader(ShaderType::Raygen, "initial/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow/raygen.rgen.spv")
-            .general_shader(ShaderType::Raygen, "path_tracing/raygen.rgen.spv")
+            .general_shader(ShaderType::Raygen, "path_tracing/diffuse.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow_map/raygen.rgen.spv")
+            .general_shader(ShaderType::Raygen, "path_tracing/specular.rgen.spv")
 
             .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
@@ -451,7 +453,6 @@ impl RTXData {
                     "hit_point",
                     "mer",
                     "direct_illumination",
-                    "pathtracing_illum",
                 ]),
             );
 
@@ -460,25 +461,29 @@ impl RTXData {
 
             // Path tracing with _ bouncing rays
             pipeline.dispatch(buffer, width, height, 2);
+            pipeline.dispatch(buffer, width, height, 4);
 
+            pipeline.dispatch(buffer, SHADOW_MAP_EXTENT.width, SHADOW_MAP_EXTENT.height, 3);
+
+            // temporal filter on pathtracing buffers
             image_barrier(
                 &context,
                 buffer,
-                &cache_buffers.images(&["pathtracing_illum"]),
+                &cache_buffers.images(&[
+                    "pt_diffuse",
+                    "pt_specular",
+                ]),
             );
+            temporal_filter_pipeline.bind(&context, buffer);
+            temporal_filter_pipeline.dispatch(buffer, width, height);
 
-            pipeline.dispatch(buffer, SHADOW_MAP_EXTENT.width, SHADOW_MAP_EXTENT.height, 3);
+            // god rays
             image_barrier(
                 &context,
                 buffer,
                 &cache_buffers.images(&["shadow_map"]),
             );
 
-            // temporal filter on pathtracing buffers
-            temporal_filter_pipeline.bind(&context, buffer);
-            temporal_filter_pipeline.dispatch(buffer, width, height);
-
-            // god rays
             god_rays_pipeline.bind(&context, buffer);
             god_rays_pipeline.dispatch(buffer, width/2, height/2);
 
@@ -495,7 +500,7 @@ impl RTXData {
             image_barrier(
                 &context,
                 buffer,
-                &cache_buffers.images(&["pathtracing_illum", "god_rays", "shadow"]),
+                &cache_buffers.images(&["pt_diffuse", "pt_specular", "god_rays", "shadow"]),
             );
 
             // Reconstruct

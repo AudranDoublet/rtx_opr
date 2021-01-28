@@ -112,7 +112,7 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
             }
         }
 
-        // imageStore(CACHE_PT_ILLUM, xy, imageLoad(CACHE_DIRECT_ILLUM, ivec2(round(prev))));
+        // imageStore(CACHE_PT_DIFFUSE, xy, imageLoad(CACHE_DIRECT_ILLUM, ivec2(round(prev))));
 
         // STEP 3: if surrounding pixels wern't valid, try to do a bilateral filter with more pixels
 
@@ -164,7 +164,7 @@ void main() {
     const ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
 
     // new data
-    vec4 diffuse = imageLoad(CACHE_PT_ILLUM, xy);
+    vec4 diffuse = imageLoad(CACHE_PT_DIFFUSE, xy);
 
     // previous data
     vec4 prevDiffuse;
@@ -196,5 +196,5 @@ void main() {
 
     imageStore(CACHE_DENOISE_NEW_MOMENTS, xy, moments);
     imageStore(CACHE_DENOISE_NEW_HISTORY_LENGTH, xy, vec4(historyLength));
-    imageStore(CACHE_PT_ILLUM, xy, diffuse);
+    imageStore(CACHE_PT_DIFFUSE, xy, diffuse);
 }

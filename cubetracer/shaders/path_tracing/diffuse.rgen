@@ -1,0 +1,117 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+
+#include "../rng.h"
+#include "../constants.h"
+
+#define G_UNIFORM_INC_NV
+#define G_UNIFORM_SET 0
+#include "../global_uniforms.h"
+#undef G_UNIFORM_SET
+#undef G_UNIFORM_INC_NV
+
+#define G_CACHE_SET 1
+#include "../global_caches.h"
+#undef G_CACHE_SET
+
+#include "../shading.h"
+#include "../payloads.h"
+layout(location = PAYLOAD_IDX_GENERAL)  rayPayloadNV InitialPayload PAYLOAD_GENERAL;
+layout(location = PAYLOAD_IDX_SHADOWED) rayPayloadNV bool           PAYLOAD_SHADOWED;
+
+bool is_shadowed(vec3 origin) {
+    PAYLOAD_SHADOWED = true;
+
+    traceNV(
+        UNI_TLAS,
+        gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsSkipClosestHitShaderNV, 0xff,
+        1, 0, 1,
+        origin, 0.01, -UNI_SUN.direction, 200.0,
+        PAYLOAD_IDX_SHADOWED
+    );
+
+    return PAYLOAD_SHADOWED;
+}
+
+
+bool sampleBrdfDiffuseBounces(const vec2 rnd,
+        inout vec3 origin,
+        inout vec3 normal,
+        inout vec3 diffuse,
+        inout float throughput) {
+    const vec3 direction = sampleCosHemisphere(normal, rnd);
+
+    // FIXME: must replace by correct formula
+    throughput *= max(dot(normal, direction), 0.0);
+
+    traceNV(
+        UNI_TLAS,
+        gl_RayFlagsNoneNV, 0xff,
+        0, 0, 2,
+        origin, 0.01, direction, 200.0,
+        PAYLOAD_IDX_GENERAL
+    );
+
+    if (!PAYLOAD_GENERAL.hit) {
+        return false;
+    }
+
+    normal = PAYLOAD_GENERAL.normal;
+    origin = PAYLOAD_GENERAL.hit_position;
+
+    if (is_shadowed(origin))
+        return true;
+
+    // FIXME: must replace by correct formula (div by prob)
+
+    vec3 BRDF = vec3(1);
+    diffuse += 2.0 * BRDF * sunIllum(normal) * throughput;
+
+    return true;
+}
+
+vec3 sampleBrdfDiffuse(inout uint seed, vec3 origin, vec3 normal, const uint n_bounces) {
+    float throughput = 1.0;
+    vec3 diffuse = vec3(0);
+
+    for (uint i = 0; i < n_bounces; i++) {
+        const vec2 rnd = vec2(
+            noise(seed),
+            noise(seed)
+        );
+
+        if (!sampleBrdfDiffuseBounces(rnd, origin, normal, diffuse, throughput)) {
+            break;
+        }
+    }
+
+    return diffuse;
+}
+
+const int N_BOUNCES_DIFFUSE = 1;
+const float SEED_MAX = float(1 << 12);
+
+void main() {
+    const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
+    float seed_f = imageLoad(CACHE_NOISE, xy).r * SEED_MAX;
+    uint seed = uint(seed_f);
+
+    vec3 normal = imageLoad(CACHE_NORMALS, xy).xyz;
+
+    vec3 diffuse = vec3(0);
+
+    if (normal != vec3(0)) {
+        const vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
+        const vec3 mer = imageLoad(CACHE_ILLUM_COEFFS, xy).rgb;
+        const float alpha = mer.b * mer.b;
+        diffuse = sampleBrdfDiffuse(seed, origin, normal, N_BOUNCES_DIFFUSE);
+    }
+
+    seed_f += C_PI;
+    if (seed_f > SEED_MAX)
+        seed_f = 3 * cos(C_PI * 2 * 10 *seed_f);
+
+    imageStore(CACHE_NOISE, xy, vec4(seed_f / SEED_MAX));
+    imageStore(CACHE_PT_DIFFUSE, xy, vec4(diffuse, 0.0));
+}

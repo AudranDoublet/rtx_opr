@@ -41,13 +41,15 @@ void main() {
     vec3 directIllum;
 
     if (PAYLOAD_GENERAL.hit) {
+
         vec3 diffuse;
         vec3 specular;
         float NoL;
         diffuseBurleySun(
             PAYLOAD_GENERAL.hit_position, 
             PAYLOAD_GENERAL.normal, 
-            PAYLOAD_GENERAL.mer.b,
+            PAYLOAD_GENERAL.mer,
+            PAYLOAD_GENERAL.illumination,
             diffuse, 
             specular,
             NoL);
@@ -61,7 +63,6 @@ void main() {
             specular,
             NoL
         );
-
 
         // directIllum = PAYLOAD_GENERAL.mer;
 
