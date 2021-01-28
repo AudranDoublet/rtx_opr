@@ -43,8 +43,6 @@ bool sampleBrdfDiffuseBounces(const vec2 rnd,
     const vec3 direction = sampleCosHemisphere(normal, rnd);
 
     // FIXME: must replace by correct formula
-    throughput *= max(dot(normal, direction), 0.0);
-
     traceNV(
         UNI_TLAS,
         gl_RayFlagsNoneNV, 0xff,
@@ -60,12 +58,15 @@ bool sampleBrdfDiffuseBounces(const vec2 rnd,
     normal = PAYLOAD_GENERAL.normal;
     origin = PAYLOAD_GENERAL.hit_position;
 
+    // multiply by previous througput, as it's should be direct illumination
+    diffuse += 2.0 * PAYLOAD_GENERAL.illumination * PAYLOAD_GENERAL.mer.g * throughput;
+
     if (is_shadowed(origin))
         return true;
 
-    // FIXME: must replace by correct formula (div by prob)
-
     vec3 BRDF = vec3(1) * PAYLOAD_GENERAL.illumination;
+
+    throughput *= max(dot(normal, direction), 0.0);
     diffuse += 2.0 * BRDF * sunIllum(normal) * throughput;
 
     return true;
