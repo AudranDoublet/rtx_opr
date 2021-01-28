@@ -51,6 +51,32 @@ impl ChunkListener for MyChunkListener {
     }
 }
 
+fn num_pressed(input_handler: &wininput::WinInput) -> Option<usize> {
+    if input_handler.is_pressed(KeyCode::Key1) {
+        Some(0)
+    } else if input_handler.is_pressed(KeyCode::Key2) {
+        Some(1)
+    } else if input_handler.is_pressed(KeyCode::Key3) {
+        Some(2)
+    } else if input_handler.is_pressed(KeyCode::Key4) {
+        Some(3)
+    } else if input_handler.is_pressed(KeyCode::Key5) {
+        Some(4)
+    } else if input_handler.is_pressed(KeyCode::Key6) {
+        Some(5)
+    } else if input_handler.is_pressed(KeyCode::Key7) {
+        Some(6)
+    } else if input_handler.is_pressed(KeyCode::Key8) {
+        Some(7)
+    } else if input_handler.is_pressed(KeyCode::Key9) {
+        Some(8)
+    } else if input_handler.is_pressed(KeyCode::Key0) {
+        Some(9)
+    } else {
+        None
+    }
+}
+
 const FOV_RANGE: std::ops::Range<f32> = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
 
 pub struct BaseApp {
@@ -286,35 +312,13 @@ impl BaseApp {
                             self.update_shadow_map = true;
                             self.tracer.camera_mut().sun_light_cycle(delta_time);
                         }
-                        if self.input_handler.is_pressed(KeyCode::Key1) {
-                            self.tracer.set_rendered_buffer(0);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key2) {
-                            self.tracer.set_rendered_buffer(1);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key3) {
-                            self.tracer.set_rendered_buffer(2);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key4) {
-                            self.tracer.set_rendered_buffer(3);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key5) {
-                            self.tracer.set_rendered_buffer(4);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key6) {
-                            self.tracer.set_rendered_buffer(5);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key7) {
-                            self.tracer.set_rendered_buffer(6);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key8) {
-                            self.tracer.set_rendered_buffer(7);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key9) {
-                            self.tracer.set_rendered_buffer(8);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key0) {
-                            self.tracer.set_rendered_buffer(9);
+
+                        if let Some(num) = num_pressed(&self.input_handler) {
+                            if self.input_handler.is_pressed(KeyCode::Tab) {
+                                self.player.block_mode(num as u32);
+                            } else {
+                                self.tracer.set_rendered_buffer(num as u32);
+                            }
                         }
 
                         // --- Update States ---
