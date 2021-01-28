@@ -14,6 +14,7 @@ SRC=\
 	./cubetracer/shaders/shadow_map/raygen.rgen \
 	./cubetracer/shaders/shadow_map/miss.rmiss \
 	./cubetracer/shaders/shadow_map/closesthit.rchit \
+	./cubetracer/shaders/god_rays.comp
 
 OBJ=$(SRC:=.spv)
 

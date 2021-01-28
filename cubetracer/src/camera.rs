@@ -216,6 +216,7 @@ impl Camera {
 
         UniformSun {
             projection: self.sun_screen_to_world(),
+            projection_inv: self.sun_world_to_screen(),
             direction,
         }
     }

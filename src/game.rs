@@ -307,6 +307,9 @@ impl BaseApp {
                         if self.input_handler.is_pressed(KeyCode::Key9) {
                             self.tracer.set_rendered_buffer(8);
                         }
+                        if self.input_handler.is_pressed(KeyCode::Key0) {
+                            self.tracer.set_rendered_buffer(9);
+                        }
 
                         // --- Update States ---
                         self.player.update(

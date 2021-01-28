@@ -1,0 +1,97 @@
+#version 460
+#extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_GOOGLE_include_directive    : enable
+#extension GL_EXT_nonuniform_qualifier    : enable
+
+#define G_UNIFORM_SET 0
+#define G_CACHE_SET 1
+
+#include "constants.h"
+#include "global_uniforms.h"
+#include "global_caches.h"
+
+float GetShadow(vec3 worldPos)
+{
+    vec4 uvzShadow = UNI_SUN.projection_inv * vec4(worldPos, 1);
+    vec3 pos = (UNI_SUN.projection * vec4(uvzShadow.xy, 1, 1)).xyz - worldPos;
+
+    uvzShadow.xy = (uvzShadow.xy + 1) / 2;
+
+    float depthOpaque = texture(CACHE_SHADOW_MAP_TEX, uvzShadow.xy * imageSize(CACHE_SHADOW_MAP)).a;
+    return depthOpaque > length(pos) - 0.5 ? 1 : 0;
+}
+
+float ScatterPhase_HenyeyGreenstein(float cosa, float g)
+{
+    // "normalized" Henyey-Greenstein
+    float g_sqr = g * g;
+    float num = (1 - abs(g));
+    float denom = sqrt(max(1 - 2 * g*cosa + g_sqr, 0));
+    float frac = num / denom;
+    float scale = g_sqr + (1 - g_sqr) / (4 * C_PI);
+    return scale * (frac*frac*frac);
+}
+
+float getDensity(vec3 p)
+{
+    return 1.2;
+}
+
+float getStep(float t, float density)
+{
+    return 0.3;
+    return max(1, mix(20, 5, density));
+}
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+void main()
+{
+    const vec3 sun_color = vec3(1.0); //FIXME sami râle
+    const float god_rays_intensity = 2.0;
+
+    ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
+
+    vec3 original_pos = vec3(UNI_CAMERA.origin.xyz);
+
+    vec3 direction = normalize(imageLoad(CACHE_ORIGIN, pixelPos).xyz - original_pos);
+    float distance = imageLoad(CACHE_INIT_DISTANCES, pixelPos).x;
+
+    if (distance == 0.0)
+        distance = 100.0;
+
+    float phase = ScatterPhase_HenyeyGreenstein(dot(direction, UNI_SUN.direction), -0.75);
+
+    float offset = 0;
+    vec3 currentPos = original_pos;
+    float density = getDensity(currentPos);
+
+    vec3 extinction_factors = vec3(0.0001);
+    vec3 throughput = vec3(1);
+    vec3 inscatter = vec3(0);
+
+    offset += getStep(offset, density);// ? * (rand(pixelPos.xy) - 1);
+
+    while(true)
+    {
+        float density = getDensity(currentPos);
+        float stepLength = getStep(offset, density);
+
+        offset += stepLength;
+
+        if (offset >= distance)
+            break;
+
+        currentPos = original_pos + direction * offset;
+
+        const vec3 shadowBias = -UNI_SUN.direction * 20;
+        float shadow = GetShadow(currentPos );
+
+        vec3 differentialInscatter = (shadow * phase * stepLength * density) * throughput;
+        inscatter += differentialInscatter;
+
+        throughput *= exp(-(stepLength * density) * extinction_factors);
+    }
+
+    vec3 inscatterColor = min(inscatter * sun_color * god_rays_intensity * 1, 0.5);
+    imageStore(CACHE_GOD_RAYS, pixelPos, vec4(inscatterColor, 1));
+}

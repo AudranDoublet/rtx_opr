@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 const SHADER_FOLDER: &str = "cubetracer/shaders";
 const MAX_INSTANCE_BINDING: usize = 1024;
-const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 1024, width: 1024 };
+const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 2048, width: 2048 };
 
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
@@ -239,6 +239,8 @@ pub struct RTXData {
 
     pipeline: RaytracerPipeline,
     reconstruct_pipeline: ComputePipeline,
+    temporal_filter_pipeline: ComputePipeline,
+    god_rays_pipeline: ComputePipeline,
 }
 
 impl RTXData {
@@ -298,7 +300,8 @@ impl RTXData {
             .simple("mer", swapchain, BufferFormat::RGBA)
             .double("pathtracing_illum", swapchain, BufferFormat::RGBA)
             .simple("noise", swapchain, BufferFormat::RGBA)
-            .simple_extent("shadow_map", SHADOW_MAP_EXTENT, BufferFormat::RGBA);
+            .simple_extent("shadow_map", SHADOW_MAP_EXTENT, BufferFormat::RGBA)
+            .simple("god_rays", swapchain, BufferFormat::RGBA);
 
         cache_buffers
             .texture_mut("shadow_map")
@@ -378,7 +381,7 @@ impl RTXData {
             .build();
 
         let cache_descriptors =
-            cache_buffers.descriptor_set(&[ShaderType::Raygen, ShaderType::Compute]);
+            cache_buffers.descriptor_set(&[ShaderType::Raygen, ShaderType::Compute, ShaderType::ClosestHit]);
 
         ////// CREATE PIPELINES
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
@@ -410,6 +413,12 @@ impl RTXData {
         let temporal_filter_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
             .shader("reproject.comp.spv")
             .descriptor_set(&descriptor_set) //FIXME only uniforms
+            .descriptor_set(&cache_descriptors)
+            .build();
+
+        let god_rays_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
+            .shader("god_rays.comp.spv")
+            .descriptor_set(&descriptor_set)
             .descriptor_set(&cache_descriptors)
             .build();
 
@@ -457,16 +466,19 @@ impl RTXData {
                 &cache_buffers.images(&["shadow_map"]),
             );
 
-              temporal_filter_pipeline.bind(&context, buffer);
-              temporal_filter_pipeline.dispatch(buffer, width, height);
+            // temporal filter on pathtracing buffers
+            temporal_filter_pipeline.bind(&context, buffer);
+            temporal_filter_pipeline.dispatch(buffer, width, height);
 
-              image_barrier(
-               &context,
-               buffer,
-               &cache_buffers.images(&["pathtracing_illum"]),
-              );
+            // god rays
+            god_rays_pipeline.bind(&context, buffer);
+            god_rays_pipeline.dispatch(buffer, width, height);
 
-            image_barrier(&context, buffer, &cache_buffers.images(&["shadow"]));
+            image_barrier(
+                &context,
+                buffer,
+                &cache_buffers.images(&["pathtracing_illum", "god_rays", "shadow"]),
+            );
 
             // Reconstruct
             reconstruct_pipeline.bind(&context, buffer);
@@ -490,6 +502,8 @@ impl RTXData {
 
             pipeline,
             reconstruct_pipeline,
+            temporal_filter_pipeline,
+            god_rays_pipeline,
 
             command_buffers,
         }
