@@ -237,4 +237,28 @@ impl BufferList {
 
         self
     }
+
+    pub fn double_extent(&mut self, name: &str, extent: vk::Extent2D, format: BufferFormat) -> &mut Self {
+        let a = TextureVariable::from_extent(
+            &self.context,
+            extent,
+            format.vulkan(),
+        );
+
+        let b = TextureVariable::from_extent(
+            &self.context,
+            extent,
+            format.vulkan(),
+        );
+
+        self.names.insert(name.to_string(), self.buffers.len());
+        self.buffers.push(Box::new(
+            DoubleBufferingCache {
+                a,
+                b,
+            }
+        ));
+
+        self
+    }
 }
