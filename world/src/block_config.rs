@@ -20,6 +20,8 @@ pub struct ClassicBlockConfig {
 
     width: Option<i32>,
     height: Option<i32>,
+
+    continuum: Option<bool>,
 }
 
 #[allow(unused)]
@@ -148,6 +150,7 @@ impl BlockConfig {
                 faces: [top, bottom, side, side, side, side],
                 width,
                 height,
+                continuum: block.continuum.unwrap_or(false),
             }
         } else if let Some(block) = self.flower_blocks.get(&block_name) {
             let texture = texture.texture(&self, &block.texture, None);

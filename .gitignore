@@ -5,3 +5,4 @@ target/
 /map_dump/
 /target/
 *.spv
+/worldp

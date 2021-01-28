@@ -69,8 +69,9 @@ impl ChunkMesh {
         for y in 0..256 {
             for z in 0..16 {
                 for x in 0..16 {
-                    world.renderers[chunk.block_at_chunk(x, y, z) as usize]
-                         .render(world, Vector3::new(x + cx, y, z + cz), &mut mesh);
+                    let block_type = chunk.block_at_chunk(x, y, z);
+                    world.renderers[block_type as usize]
+                         .render(world, block_type, Vector3::new(x + cx, y, z + cz), &mut mesh);
                 }
             }
         }

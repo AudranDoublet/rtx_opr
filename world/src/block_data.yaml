@@ -7,12 +7,10 @@ texture_dimension: [128, 128] # if a texture doesn't match, it will be resized
 empty_blocks:
     - Air
 
-    #FIXME
-    - Water
-
 classic_blocks:
     Stone:
         side: "stone"
+
     Grass:
         side: "grass_block_side"
         side_overlay: "grass_block_side_overlay"
@@ -23,6 +21,12 @@ classic_blocks:
 
         bottom: "dirt"
         bottom_material: 0
+
+    Water:
+        side: "water"
+        side_material: 3
+        height: 9
+        continuum: true
 
     Dirt:
         side: "dirt"
@@ -144,6 +148,8 @@ classic_blocks:
         side: glass_white
     GlassYellow:
         side: glass_yellow
+    Mirror:
+        side: mirror
 
 flower_blocks:
     TallGrass:

@@ -39,7 +39,7 @@ impl World {
         let mut textures = config.init_texture_list();
         let mut renderers = Vec::new();
 
-        for i in 0..Block::StoneBricks as u32 {
+        for i in 0..Block::Mirror as u32 {
             let block = Block::from_id(i);
 
             renderers.push(

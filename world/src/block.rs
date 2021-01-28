@@ -127,6 +127,8 @@ pub enum Block {
     GlassSilver,
     GlassWhite,
     GlassYellow,
+
+    Mirror,
 }
 
 impl std::fmt::Display for Block {
