@@ -55,7 +55,7 @@ float GGXMicrofacetBRDF(const float roughness, const vec3 N, const vec3 L, const
 }
 
 void diffuseBurleySun(const vec3 hitPoint, const vec3 N, const float roughness, out vec3 diffuse, out vec3 specular) {
-    diffuse = C_SUN_COLOR;
+    diffuse = UNI_SUN.color.rgb;
 
     const vec3 V = normalize(vec3(UNI_CAMERA.origin.xyz) - hitPoint);
     const vec3 L = -UNI_SUN.direction;

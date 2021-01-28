@@ -98,7 +98,6 @@ pub enum Block {
     LightBlue,
     LightYellow,
     LightCyan,
-    LightMagenta,
 
     OakPlanks,
     AcaciaPlanks,
@@ -109,6 +108,25 @@ pub enum Block {
 
     Brick,
     StoneBricks,
+
+    LightMagenta,
+    Glass,
+    GlassBlack,
+    GlassBlue,
+    GlassBrown,
+    GlassCyan,
+    GlassGray,
+    GlassGreen,
+    GlassLightBlue,
+    GlassLime,
+    GlassMagenta,
+    GlassOrange,
+    GlassPink,
+    GlassPurple,
+    GlassRed,
+    GlassSilver,
+    GlassWhite,
+    GlassYellow,
 }
 
 impl std::fmt::Display for Block {
@@ -122,12 +140,8 @@ impl Block {
         unsafe { std::mem::transmute(i) }
     }
 
-    pub fn get_nb_lights() -> u32 {
-        7
-    }
-
-    pub fn get_light(t: u32) -> Block {
-        match t {
+    pub fn get_light(t: u32) -> (bool, Block) {
+        let v = match t {
             0 => Block::LightWhite,
             1 => Block::LightRed,
             2 => Block::LightGreen,
@@ -135,6 +149,61 @@ impl Block {
             4 => Block::LightYellow,
             5 => Block::LightCyan,
             _ => Block::LightMagenta,
+        };
+
+        if t >= 6 {
+            (true, v)
+        } else {
+            (false, v)
+        }
+    }
+
+    pub fn get_colored_glass(t: u32) -> (bool, Block) {
+        let v = match t {
+            0  => Block::GlassBlack,
+            1  => Block::GlassBlue,
+            2  => Block::GlassBrown,
+            3  => Block::GlassCyan,
+            4  => Block::GlassGray,
+            5  => Block::GlassGreen,
+            6  => Block::GlassLightBlue,
+            7  => Block::GlassLime,
+            8  => Block::GlassMagenta,
+            9  => Block::GlassOrange,
+            10 => Block::GlassPink,
+            11 => Block::GlassPurple,
+            12 => Block::GlassRed,
+            13 => Block::GlassSilver,
+            14 => Block::GlassWhite,
+            _  => Block::GlassYellow,
+        };
+
+        if t >= 15 {
+            (true, v)
+        } else {
+            (false, v)
+        }
+    }
+
+    pub fn is_glass(&self) -> bool {
+        match self {
+           Block::GlassBlack
+           | Block::GlassBlue
+           | Block::GlassBrown
+           | Block::GlassCyan
+           | Block::GlassGray
+           | Block::GlassGreen
+           | Block::GlassLightBlue
+           | Block::GlassLime
+           | Block::GlassMagenta
+           | Block::GlassOrange
+           | Block::GlassPink
+           | Block::GlassPurple
+           | Block::GlassRed
+           | Block::GlassSilver
+           | Block::GlassWhite
+           | Block::GlassYellow => true,
+           _ => false,
         }
     }
 
@@ -199,6 +268,7 @@ impl Block {
             Block::TallGrass | Block::Cactus => false,
             b if b.is_leaves() => false,
             b if b.is_flower() => false,
+            b if b.is_glass() => false,
             _ => true,
         }
     }

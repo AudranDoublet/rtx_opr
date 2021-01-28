@@ -6,8 +6,10 @@
 #include "../triangle_data.h"
 
 #define G_UNIFORM_SET 0
+#define G_CACHE_SET 1
+#
 #include "../global_uniforms.h"
-#undef G_UNIFORM_SET
+#include "../global_caches.h"
 
 #include "../payloads.h"
 layout(location = PAYLOAD_IDX_GENERAL) rayPayloadInNV InitialPayload PAYLOAD_GENERAL;

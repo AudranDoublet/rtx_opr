@@ -5,7 +5,7 @@ use winit::event_loop::EventLoop;
 use utils::framecounter::FrameCounter;
 use utils::wininput;
 
-use world::{create_main_world, main_world, ChunkListener, PlayerInput, ChunkMesherClient};
+use world::{create_main_world, main_world, ChunkListener, ChunkMesherClient, PlayerInput};
 
 use crate::config::*;
 
@@ -51,6 +51,32 @@ impl ChunkListener for MyChunkListener {
     }
 }
 
+fn num_pressed(input_handler: &wininput::WinInput) -> Option<usize> {
+    if input_handler.is_pressed(KeyCode::Key1) {
+        Some(0)
+    } else if input_handler.is_pressed(KeyCode::Key2) {
+        Some(1)
+    } else if input_handler.is_pressed(KeyCode::Key3) {
+        Some(2)
+    } else if input_handler.is_pressed(KeyCode::Key4) {
+        Some(3)
+    } else if input_handler.is_pressed(KeyCode::Key5) {
+        Some(4)
+    } else if input_handler.is_pressed(KeyCode::Key6) {
+        Some(5)
+    } else if input_handler.is_pressed(KeyCode::Key7) {
+        Some(6)
+    } else if input_handler.is_pressed(KeyCode::Key8) {
+        Some(7)
+    } else if input_handler.is_pressed(KeyCode::Key9) {
+        Some(8)
+    } else if input_handler.is_pressed(KeyCode::Key0) {
+        Some(9)
+    } else {
+        None
+    }
+}
+
 const FOV_RANGE: std::ops::Range<f32> = (std::f32::consts::PI / 16.)..(std::f32::consts::PI / 2.);
 
 pub struct BaseApp {
@@ -85,8 +111,9 @@ impl BaseApp {
         seed: isize,
         flat: bool,
         view_distance: usize,
-        config: Config, layout: Layout) {
-
+        config: Config,
+        layout: Layout,
+    ) {
         // --- World SetUp --
         let mut listener = MyChunkListener::new();
 
@@ -219,20 +246,25 @@ impl BaseApp {
                 let delta_time = frame_counter.delta_time();
 
                 match event {
-                    winit::event::Event::LoopDestroyed => {
-                        return
-                    },
+                    winit::event::Event::LoopDestroyed => return,
                     winit::event::Event::MainEventsCleared => {
                         self.input_handler.update_time(delta_time);
 
                         // --- Process inputs ---
-                        if self.input_handler.updated(wininput::StateChange::MouseScroll) {
+                        if self
+                            .input_handler
+                            .updated(wininput::StateChange::MouseScroll)
+                        {
                             let fov = FOV_RANGE.start
-                                + self.input_handler.get_scroll() * (FOV_RANGE.end - FOV_RANGE.start);
+                                + self.input_handler.get_scroll()
+                                    * (FOV_RANGE.end - FOV_RANGE.start);
                             self.tracer.camera_mut().set_fov(fov)
                         }
 
-                        if self.input_handler.updated(wininput::StateChange::MouseMotion) {
+                        if self
+                            .input_handler
+                            .updated(wininput::StateChange::MouseMotion)
+                        {
                             let offset = self.input_handler.get_mouse_offset() * delta_time;
                             self.tracer.camera_mut().reorient(offset.x, offset.y);
                         }
@@ -274,38 +306,19 @@ impl BaseApp {
                         if self.input_handler.is_pressed(KeyCode::K) {
                             self.update_shadow_map = true;
                             let forward = self.tracer.camera().forward();
-                            self.tracer.sun_mut().update_sun_pos(forward);
+                            self.tracer.camera_mut().update_sun_pos(forward);
                         }
                         if self.input_handler.is_pressed(KeyCode::N) {
                             self.update_shadow_map = true;
-                            self.tracer.sun_mut().sun_light_cycle(delta_time);
+                            self.tracer.camera_mut().sun_light_cycle(delta_time);
                         }
-                        if self.input_handler.is_pressed(KeyCode::Key1) {
-                            self.tracer.set_rendered_buffer(0);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key2) {
-                            self.tracer.set_rendered_buffer(1);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key3) {
-                            self.tracer.set_rendered_buffer(2);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key4) {
-                            self.tracer.set_rendered_buffer(3);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key5) {
-                            self.tracer.set_rendered_buffer(4);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key6) {
-                            self.tracer.set_rendered_buffer(5);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key7) {
-                            self.tracer.set_rendered_buffer(6);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key8) {
-                            self.tracer.set_rendered_buffer(7);
-                        }
-                        if self.input_handler.is_pressed(KeyCode::Key9) {
-                            self.tracer.set_rendered_buffer(8);
+
+                        if let Some(num) = num_pressed(&self.input_handler) {
+                            if self.input_handler.is_pressed(KeyCode::Tab) {
+                                self.player.block_mode(num as u32);
+                            } else {
+                                self.tracer.set_rendered_buffer(num as u32);
+                            }
                         }
 
                         // --- Update States ---
@@ -318,7 +331,9 @@ impl BaseApp {
                             delta_time,
                         );
 
-                        self.tracer.camera_mut().set_origin(self.player.head_position());
+                        self.tracer
+                            .camera_mut()
+                            .set_origin(self.player.head_position());
 
                         if listener.has_been_updated() {
                             listener
@@ -335,9 +350,8 @@ impl BaseApp {
                         }
 
                         while let Some((x, z, chunk)) = self.chunk_mesher_client.pull() {
-                            self.tracer.register_or_update_chunk(
-                                &self.context, x, z, chunk
-                            );
+                            self.tracer
+                                .register_or_update_chunk(&self.context, x, z, chunk);
                         }
 
                         // - Cube Tracer -
@@ -351,14 +365,14 @@ impl BaseApp {
 
                         //FIXME improve wind (and use it with RTX)
                         /*let wind =
-                            Vector3::new((total_time + 0.8).cos() / 4., 1.0, total_time.sin() / 4.)
-                                .normalize();*/
+                        Vector3::new((total_time + 0.8).cos() / 4., 1.0, total_time.sin() / 4.)
+                            .normalize();*/
 
                         //FIXME send wind & highlighted_block & total time
                         self.window.request_redraw();
                     }
                     winit::event::Event::RedrawRequested(_) => {
-                        if self.tracer.update(&self.swapchain,&self.context) {
+                        if self.tracer.update(&self.swapchain, &self.context) {
                             if let Some(_) = self.draw_frame() {
                                 self.tracer.resize(&self.context, &self.swapchain);
                             }
@@ -370,7 +384,9 @@ impl BaseApp {
                         }
                         frame_counter.tick();
                     }
-                    winit::event::Event::DeviceEvent { event, .. } => self.input_handler.on_device_event(event),
+                    winit::event::Event::DeviceEvent { event, .. } => {
+                        self.input_handler.on_device_event(event)
+                    }
                     winit::event::Event::WindowEvent { event, .. } => match event {
                         WindowEvent::KeyboardInput { input, .. } => {
                             self.input_handler.on_keyboard_input(input);
@@ -411,9 +427,7 @@ impl BaseApp {
         );
     }
 
-    pub fn draw_frame(
-        &mut self,
-    ) -> Option<SwapchainProperties> {
+    pub fn draw_frame(&mut self) -> Option<SwapchainProperties> {
         let command_buffers = self.tracer.commands();
 
         log::trace!("Drawing frame.");

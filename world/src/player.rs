@@ -44,8 +44,6 @@ pub trait ChunkListener {
 }
 
 pub struct Player {
-    _debug_light_type: u32, // FIXME: only to debug lights
-
     view_distance: i32,
     position: Vector3<f32>,
     sprinting: bool,
@@ -63,12 +61,15 @@ pub struct Player {
 
     block_break_cooldown: f32,
     block_place_cooldown: f32,
+    block_mode: u32,
+    block_cur_type: u32, // FIXME: only to debug lights
 }
 
 impl Player {
     pub fn new(view_distance: usize) -> Player {
         Player {
-            _debug_light_type: 0,
+            block_mode: 0,
+            block_cur_type: 0,
 
             view_distance: view_distance as i32,
             position: Vector3::zeros(),
@@ -325,7 +326,11 @@ impl Player {
                     if self.block_place_cooldown <= 0.0 {
                         if let Some((pos, face)) = self.looked_block(world, camera_forward) {
                             let pos = pos + face.relative();
-                            let btype = Block::get_light(self._debug_light_type);
+
+                            let (cycle, btype) = match self.block_cur_type {
+                                0 => Block::get_light(self.block_cur_type),
+                                _ => Block::get_colored_glass(self.block_cur_type),
+                            };
 
                             let mut allowed = true;
 
@@ -340,8 +345,12 @@ impl Player {
 
                                 world.set_block_at(pos, btype);
                                 self.block_place_cooldown = BLOCK_PLACE_COOLDOWN;
-                                self._debug_light_type =
-                                    (self._debug_light_type + 1) % Block::get_nb_lights();
+
+                                if cycle {
+                                    self.block_cur_type = 0;
+                                } else {
+                                    self.block_cur_type += 1;
+                                }
                             }
                         }
                     }
@@ -480,5 +489,10 @@ impl Player {
         });
 
         modified.iter().for_each(|v| listener.chunk_load(v.x, v.y));
+    }
+
+    pub fn block_mode(&mut self, block_mode: u32) {
+        self.block_mode = block_mode;
+        self.block_cur_type = 0;
     }
 }

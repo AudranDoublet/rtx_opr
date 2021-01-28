@@ -1,0 +1,69 @@
+#version 460
+#extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_GOOGLE_include_directive    : enable
+#extension GL_EXT_nonuniform_qualifier    : enable
+
+#define G_UNIFORM_SET 0
+#define G_CACHE_SET 1
+
+#include "constants.h"
+#include "global_uniforms.h"
+#include "global_caches.h"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+void main()
+{
+    ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
+    vec4 result = vec4(0.0);
+
+    vec4 fallbackResult = vec4(0.0);
+    float weightSum = 0;
+    float referenceViewDepth = imageLoad(CACHE_INIT_DISTANCES, xy).r;
+    ivec2 lowResOrigin = xy >> 1;
+
+    int field_left = 0;
+    ivec2 size = imageSize(CACHE_GOD_RAYS);
+
+    int field_right = size.x / 2;
+
+    if(xy.x >= field_right)
+    {
+        field_left = field_right;
+        field_right = size.x;
+    }
+
+    for (int dy = -2; dy <= 2; dy++)
+    {
+        for (int dx = -2; dx <= 2; dx++)
+        {
+            ivec2 lowResPos = lowResOrigin + ivec2(dx, dy);
+            ivec2 highResPos = lowResPos * 2;
+
+            if (highResPos.x < 0 || highResPos.x >= size.x || highResPos.y >= size.y)
+                continue;
+
+            vec4 color = imageLoad(CACHE_GOD_RAYS_TEMP, lowResPos);
+            float viewDepth = imageLoad(CACHE_INIT_DISTANCES, highResPos).r;
+
+            float weight = clamp(1 - 10 * abs(viewDepth - referenceViewDepth) / abs(referenceViewDepth), 0, 1);
+            weight *= clamp(5 - length(vec2(highResPos - xy)), 0, 1);
+
+            result.rgba += color.rgba * weight;
+            fallbackResult.rgba += color.rgba;
+            weightSum += weight;
+        }
+    }
+
+    if (weightSum > 0)
+    {
+        // We found some relevant low-res pixels
+        result.rgba = result.rgba / weightSum;
+    }
+    else
+    {
+        // No relevant low-res pixels found - use non-bilateral spatial blur
+        result.rgba = fallbackResult.rgba / 16.0;
+    }
+
+    imageStore(CACHE_GOD_RAYS, xy, result);
+}

@@ -19,8 +19,9 @@ void main() {
         const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
         const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
         const vec4 pt_illum = vec4(imageLoad(CACHE_PT_ILLUM, xy).xyz, 1.0);
+        const vec4 god_rays = imageLoad(CACHE_GOD_RAYS, xy);
 
-        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows + max(pt_illum, 0));
+        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows + max(pt_illum, 0) + god_rays);
     }
     else if (UNI_SCENE.rendered_buffer == 1)
     {
@@ -37,7 +38,7 @@ void main() {
         const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
         const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
 
-        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows);
+        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum );
     }
     else if (UNI_SCENE.rendered_buffer == 4)
     {
@@ -81,12 +82,17 @@ void main() {
     else if (UNI_SCENE.rendered_buffer == 8)
     {
         vec2 xy_ratio = vec2(xy) / vec2(imageSize(CACHE_RESULT_IMAGE));
-        ivec2 xy_scaled_shadow = ivec2(
-            round(xy_ratio * vec2(imageSize(CACHE_SHADOW_MAP)))
-        );
+        vec2 xy_scaled_shadow = xy_ratio * vec2(imageSize(CACHE_SHADOW_MAP));
 
-        vec4 shadow_map = texture(CACHE_SHADOW_MAP_TEX, xy_ratio);
-        imageStore(CACHE_RESULT_IMAGE, xy, vec4(shadow_map.w / 256.0));
+        vec4 shadow_map = texture(CACHE_SHADOW_MAP_TEX, xy_scaled_shadow);
+        imageStore(CACHE_RESULT_IMAGE, xy, vec4(shadow_map.w / 350.0));
+        //imageStore(CACHE_RESULT_IMAGE, xy, shadow_map);
+    }
+    else if (UNI_SCENE.rendered_buffer == 9)
+    {
+        vec4 god_rays = imageLoad(CACHE_GOD_RAYS, xy);
+
+        imageStore(CACHE_RESULT_IMAGE, xy, vec4(god_rays.xyz, 1.0));
     }
 
     imageStore(CACHE_DENOISE_PREV_DIFFUSE, xy, imageLoad(CACHE_PT_ILLUM, xy));

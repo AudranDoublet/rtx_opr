@@ -23,7 +23,6 @@ const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 1024, width: 102
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
     camera: Camera,
-    sun: Sun,
 
     rtx_data: Option<RTXData>,
 
@@ -44,11 +43,8 @@ impl Cubetracer {
             Vector2::new(std::f32::consts::PI / 2.0, 0.0),
             fov,
             ratio,
-        );
-
-        let sun = Sun::new(
             view_distance,
-            Vector3::new(-0.7, -1.5, -1.1),
+            Vector3::new(0.1, -1.0, 0.1),
         );
 
         let textures_info = &main_world().textures;
@@ -75,17 +71,16 @@ impl Cubetracer {
                     updated: 1,
                 },
             ),
-            uniform_sun: UniformVariable::new(&context, &sun.uniform()),
+            uniform_sun: UniformVariable::new(&context, &camera.sun_uniform()),
             uniform_camera: UniformVariable::new(&context, &camera.uniform()),
             camera,
-            sun,
             rendered_buffer: 0,
         }
     }
 
     pub fn update_shadow_map(&mut self) {
         if let Some(rtx_data) = &self.rtx_data {
-            self.uniform_sun.set(&rtx_data.context, &self.sun.uniform());
+            self.uniform_sun.set(&rtx_data.context, &self.camera.sun_uniform());
             rtx_data.update_shadow_map();
         }
     }
@@ -177,14 +172,6 @@ impl Cubetracer {
         &mut self.camera
     }
 
-    pub fn sun(&self) -> &Sun {
-        &self.sun
-    }
-
-    pub fn sun_mut(&mut self) -> &mut Sun {
-        &mut self.sun
-    }
-
     pub fn update(&mut self, swapchain: &Swapchain, context: &Arc<Context>) -> bool {
         if self.chunks.len() > 0 {
             if self.rtx_data.is_none() {
@@ -252,6 +239,9 @@ pub struct RTXData {
 
     pipeline: RaytracerPipeline,
     reconstruct_pipeline: ComputePipeline,
+    temporal_filter_pipeline: ComputePipeline,
+    god_rays_pipeline: ComputePipeline,
+    god_rays_reconstruct_pipeline: ComputePipeline,
 }
 
 impl RTXData {
@@ -295,6 +285,9 @@ impl RTXData {
 
 impl RTXData {
     pub fn new(context: &Arc<Context>, swapchain: &Swapchain, cubetracer: &mut Cubetracer) -> Self {
+        let swapchain_props = swapchain.properties();
+        let width = swapchain_props.extent.width;
+        let height = swapchain_props.extent.height;
 
         ////// CREATE CACHES
         let mut cache_buffers = BufferList::new(context);
@@ -311,7 +304,12 @@ impl RTXData {
             .simple("mer", swapchain, BufferFormat::RGBA)
             .double("pathtracing_illum", swapchain, BufferFormat::RGBA)
             .simple("noise", swapchain, BufferFormat::RGBA)
-            .simple_extent("shadow_map", SHADOW_MAP_EXTENT, BufferFormat::RGBA);
+            .simple_extent("shadow_map", SHADOW_MAP_EXTENT, BufferFormat::RGBA)
+            .simple_extent("god_rays_temp", vk::Extent2D {
+                    width: width / 2,
+                    height: height / 2,
+                }, BufferFormat::RGBA)
+            .simple("god_rays", swapchain, BufferFormat::RGBA);
 
         cache_buffers
             .texture_mut("shadow_map")
@@ -391,7 +389,7 @@ impl RTXData {
             .build();
 
         let cache_descriptors =
-            cache_buffers.descriptor_set(&[ShaderType::Raygen, ShaderType::Compute]);
+            cache_buffers.descriptor_set(&[ShaderType::Raygen, ShaderType::Compute, ShaderType::ClosestHit]);
 
         ////// CREATE PIPELINES
         let pipeline = PipelineBuilder::new(context, SHADER_FOLDER)
@@ -426,14 +424,20 @@ impl RTXData {
             .descriptor_set(&cache_descriptors)
             .build();
 
+        let god_rays_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
+            .shader("god_rays.comp.spv")
+            .descriptor_set(&descriptor_set)
+            .descriptor_set(&cache_descriptors)
+            .build();
+        let god_rays_reconstruct_pipeline = ComputePipelineBuilder::new(context, SHADER_FOLDER)
+            .shader("god_rays_reconstruct.comp.spv")
+            .descriptor_set(&descriptor_set)
+            .descriptor_set(&cache_descriptors)
+            .build();
+
         ////// CREATE COMMANDS
         let command_buffers = CommandBuffers::new(context, swapchain);
         command_buffers.record(|index, buffer| {
-            let swapchain_props = swapchain.properties();
-
-            let width = swapchain_props.extent.width;
-            let height = swapchain_props.extent.height;
-
             // Initial ray
             pipeline.bind(&context, buffer);
             pipeline.dispatch(buffer, width, height, 0);
@@ -470,16 +474,29 @@ impl RTXData {
                 &cache_buffers.images(&["shadow_map"]),
             );
 
-              temporal_filter_pipeline.bind(&context, buffer);
-              temporal_filter_pipeline.dispatch(buffer, width, height);
+            // temporal filter on pathtracing buffers
+            temporal_filter_pipeline.bind(&context, buffer);
+            temporal_filter_pipeline.dispatch(buffer, width, height);
 
-              image_barrier(
-               &context,
-               buffer,
-               &cache_buffers.images(&["pathtracing_illum"]),
-              );
+            // god rays
+            god_rays_pipeline.bind(&context, buffer);
+            god_rays_pipeline.dispatch(buffer, width/2, height/2);
 
-            image_barrier(&context, buffer, &cache_buffers.images(&["shadow"]));
+            image_barrier(
+                &context,
+                buffer,
+                &cache_buffers.images(&["god_rays_temp"]),
+            );
+
+            god_rays_reconstruct_pipeline.bind(&context, buffer);
+            god_rays_reconstruct_pipeline.dispatch(buffer, width, height);
+
+            // wait all branches to end
+            image_barrier(
+                &context,
+                buffer,
+                &cache_buffers.images(&["pathtracing_illum", "god_rays", "shadow"]),
+            );
 
             // Reconstruct
             reconstruct_pipeline.bind(&context, buffer);
@@ -503,6 +520,9 @@ impl RTXData {
 
             pipeline,
             reconstruct_pipeline,
+            temporal_filter_pipeline,
+            god_rays_pipeline,
+            god_rays_reconstruct_pipeline,
 
             command_buffers,
         }

@@ -33,7 +33,8 @@ layout (set=G_UNIFORM_SET, binding = 7) buffer ChunkColumnColor {
 
 layout(set=G_UNIFORM_SET, binding = 6) uniform SSun{
     mat4 projection;
+    mat4 projection_inv;
+    vec4 color;
     vec3 direction;
 } UNI_SUN;
-
 #endif // _GLOBAL_UNIFORMS_H

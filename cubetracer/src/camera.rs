@@ -1,6 +1,7 @@
 use crate::datatypes::{UniformCamera, UniformSun};
 
-use nalgebra::{Vector2, Vector3, Vector4, Matrix4};
+use nalgebra::{Vector2, Vector3, Vector4, Matrix4, Point3};
+use world::AABB;
 
 fn vec3to4(v: Vector3<f32>, last: f32) -> Vector4<f64> {
     Vector4::new(v.x as f64, v.y as f64, v.z as f64, last as f64)
@@ -12,68 +13,6 @@ impl Camera {
             origin: vec3to4(self.origin, 0.0),
             screen_to_world: self.world_to_screen().try_inverse().unwrap(),
             prev_world_to_screen: self.prev_world_to_screen,
-        }
-    }
-}
-
-
-pub struct Sun {
-    sun_direction: Vector3<f32>,
-    light_cycle: f32,
-    view_distance: f32,
-}
-
-impl Sun {
-    pub fn sun_light_cycle(&mut self, dt: f32) {
-        self.light_cycle = (self.light_cycle + dt / 4.) % (std::f32::consts::PI * 1.2);
-
-        let x = self.light_cycle.cos();
-        let y = -self.light_cycle.sin();
-
-        self.sun_direction = Vector3::new(x, y, x * y).normalize();
-    }
-
-    pub fn update_sun_pos(&mut self, forward: Vector3<f32>) {
-        self.sun_direction = -forward;
-    }
-
-    pub fn sun_direction(&self) -> Vector3<f32> {
-        self.sun_direction
-    }
-
-    fn projection_matrix(&self) -> Matrix4<f32> {
-        *nalgebra::Orthographic3::new(
-            -self.view_distance * 16.0,
-            self.view_distance * 16.0,
-            0.0,
-            256.0,
-            0.0,
-            256.0
-        ).as_matrix()
-    }
-
-    pub fn uniform(&self) -> UniformSun {
-        let direction = self.sun_direction();
-        let direction: Vector4<f32> = Vector4::new(
-            direction.x,
-            direction.y,
-            direction.z,
-            0.0
-        );
-
-        UniformSun {
-            projection: self.projection_matrix(),
-            direction,
-        }
-    }
-}
-
-impl Sun {
-    pub fn new(view_distance: usize, direction: Vector3<f32>) -> Self {
-        Sun {
-            view_distance: view_distance as f32,
-            light_cycle: 0.0,
-            sun_direction: direction.normalize(),
         }
     }
 }
@@ -93,6 +32,10 @@ pub struct Camera {
 
     fov: f32,
     aspect_ratio: f32,
+
+    sun_direction: Vector3<f32>,
+    light_cycle: f32,
+    view_distance: i64,
 }
 
 impl Camera {
@@ -191,11 +134,103 @@ impl Camera {
         self.origin = origin;
     }
 
+    pub fn sun_light_cycle(&mut self, dt: f32) {
+        self.light_cycle = (self.light_cycle + dt / 4.) % (std::f32::consts::PI * 1.2);
+
+        let x = self.light_cycle.cos();
+        let y = -self.light_cycle.sin();
+
+        self.sun_direction = Vector3::new(x, y, 0.01).normalize();
+    }
+
+    pub fn update_sun_pos(&mut self, forward: Vector3<f32>) {
+        self.sun_direction = -forward;
+    }
+
+    pub fn sun_direction(&self) -> Vector3<f32> {
+        self.sun_direction
+    }
+
+    fn sun_projection_matrix(&self) -> Matrix4<f32> {
+        let player_chunk = Vector2::new(
+            (self.origin.x as i64) >> 4,
+            (self.origin.z as i64) >> 4,
+        );
+
+        let min_chunk = player_chunk - Vector2::new(self.view_distance, self.view_distance);
+        let max_chunk = player_chunk + Vector2::new(self.view_distance + 1, self.view_distance + 1);
+
+        let min_pos = min_chunk * 16;
+        let max_pos = max_chunk * 16;
+
+        let aabb = AABB::new_from_coords(&vec![
+            Vector3::new(min_pos.x as f32, 0.0  , min_pos.y as f32),
+            Vector3::new(max_pos.x as f32, 0.0  , min_pos.y as f32),
+            Vector3::new(min_pos.x as f32, 256.0, min_pos.y as f32),
+            Vector3::new(max_pos.x as f32, 256.0, min_pos.y as f32),
+
+            Vector3::new(min_pos.x as f32, 0.0  , max_pos.y as f32),
+            Vector3::new(max_pos.x as f32, 0.0  , max_pos.y as f32),
+            Vector3::new(min_pos.x as f32, 256.0, max_pos.y as f32),
+            Vector3::new(max_pos.x as f32, 256.0, max_pos.y as f32),
+        ]);
+
+        let aabb = aabb.rotate(self.sun_view_matrix());
+
+        *nalgebra::Orthographic3::new(
+            aabb.min.x,
+            aabb.max.x,
+            aabb.min.y,
+            aabb.max.y,
+            0.0,
+            256.0,
+        ).as_matrix()
+    }
+
+    fn sun_view_matrix(&self) -> Matrix4<f32> {
+        let center = Vector3::new(self.origin.x, 0.0, self.origin.z);
+
+        Matrix4::look_at_rh(
+            &Point3::from(center),
+            &Point3::from(center - self.sun_direction),
+            &Vector3::y(),
+        )
+    }
+
+    fn sun_world_to_screen(&self) -> Matrix4<f32> {
+        self.sun_projection_matrix() * self.sun_view_matrix()
+    }
+
+    fn sun_screen_to_world(&self) -> Matrix4<f32> {
+        self.sun_world_to_screen().try_inverse().unwrap()
+    }
+
+    pub fn sun_uniform(&self) -> UniformSun {
+        let direction = self.sun_direction();
+        let direction: Vector4<f32> = Vector4::new(
+            direction.x,
+            direction.y,
+            direction.z,
+            0.0
+        );
+
+        let sun_color = crate::atmosphere::compute_sky_light(-self.sun_direction(), self.sun_direction());
+
+        UniformSun {
+            projection: self.sun_screen_to_world(),
+            projection_inv: self.sun_world_to_screen(),
+            direction,
+            color: Vector4::new(sun_color.x, sun_color.y, sun_color.z, 0.0),
+        }
+    }
+
     pub fn new(
         origin: Vector3<f32>,
         rotation: Vector2<f32>,
         fov: f32,
         aspect_ratio: f32,
+        view_distance: usize,
+        direction: Vector3<f32>,
     ) -> Camera {
         let mut camera = Camera {
             origin,
@@ -210,6 +245,9 @@ impl Camera {
             fov,
 
             prev_world_to_screen: Matrix4::identity(),
+            view_distance: view_distance as i64,
+            sun_direction: direction.normalize(),
+            light_cycle: 0.0,
         };
 
         camera.update_axes();

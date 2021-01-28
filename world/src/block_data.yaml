@@ -110,6 +110,41 @@ classic_blocks:
     LightMagenta:
         side: light_magenta
 
+    Glass:
+        side: glass
+    GlassBlack:
+        side: glass_black
+    GlassBlue:
+        side: glass_blue
+    GlassBrown:
+        side: glass_brown
+    GlassCyan:
+        side: glass_cyan
+    GlassGray:
+        side: glass_gray
+    GlassGreen:
+        side: glass_green
+    GlassLightBlue:
+        side: glass_light_blue
+    GlassLime:
+        side: glass_lime
+    GlassMagenta:
+        side: glass_magenta
+    GlassOrange:
+        side: glass_orange
+    GlassPink:
+        side: glass_pink
+    GlassPurple:
+        side: glass_purple
+    GlassRed:
+        side: glass_red
+    GlassSilver:
+        side: glass_silver
+    GlassWhite:
+        side: glass_white
+    GlassYellow:
+        side: glass_yellow
+
 flower_blocks:
     TallGrass:
         texture: "grass"
