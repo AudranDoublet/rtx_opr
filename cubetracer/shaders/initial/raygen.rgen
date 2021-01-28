@@ -41,13 +41,29 @@ void main() {
     vec3 directIllum;
 
     if (PAYLOAD_GENERAL.hit) {
-        directIllum = composeColor(
-            PAYLOAD_GENERAL.hit_position,
-            PAYLOAD_GENERAL.normal,
-            PAYLOAD_GENERAL.illumination,
-            PAYLOAD_GENERAL.mer
+        vec3 diffuse;
+        vec3 specular;
+        float NoL;
+        diffuseBurleySun(
+            PAYLOAD_GENERAL.hit_position, 
+            PAYLOAD_GENERAL.normal, 
+            PAYLOAD_GENERAL.mer.b,
+            diffuse, 
+            specular,
+            NoL);
+        vec3 surfaceColor = PAYLOAD_GENERAL.illumination;
+
+        diffuse = surfaceColor * (1 - specular);
+        specular = mix(vec3(1), surfaceColor, PAYLOAD_GENERAL.mer.r) * specular;
+
+        directIllum = sunIllum(PAYLOAD_GENERAL.normal) * composeColor(
+            diffuse,
+            specular,
+            NoL
         );
-        // directIllum = PAYLOAD_GENERAL.illumination;
+
+
+        // directIllum = PAYLOAD_GENERAL.mer;
 
         imageStore(CACHE_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, 0.0));
         imageStore(CACHE_INIT_DISTANCES, xy, vec4(PAYLOAD_GENERAL.distance));

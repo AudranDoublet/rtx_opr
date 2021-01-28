@@ -78,13 +78,13 @@ vec3 sampleCosHemisphere(vec3 normal, vec2 uv) {
 
 // Eric Heitz, Sampling the GGX Distribution of Visible Normals, Journal of Computer Graphics Techniques (JCGT), vol. 7, no. 4, 1–13, 2018
 // Input Ve: view direction
-// Input alpha_x, alpha_y: roughness parameters
+// Input alpha: roughness parameters
 // Input U1, U2: uniform random numbers
 // Output Ne: normal sampled with PDF D_Ve(Ne) = G1(Ve) * max(0, dot(Ve, Ne)) * D(Ne) / Ve.z
-vec3 sampleGGXVNDF(vec3 Ve, float alpha_x, float alpha_y, float U1, float U2)
+vec3 sampleGGXVNDF(vec3 Ve, float alpha, float U1, float U2)
 {
     // Section 3.2: transforming the view direction to the hemisphere configuration
-    vec3 Vh = normalize(vec3(alpha_x * Ve.x, alpha_y * Ve.y, Ve.z));
+    vec3 Vh = normalize(vec3(alpha* Ve.x, alpha * Ve.y, Ve.z));
 
     // Section 4.1: orthonormal basis (with special case if cross product is zero)
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
@@ -103,7 +103,7 @@ vec3 sampleGGXVNDF(vec3 Ve, float alpha_x, float alpha_y, float U1, float U2)
     vec3 Nh = t1*T1 + t2*T2 + sqrt(max(0.0, 1.0 - t1*t1 - t2*t2))*Vh;
 
     // Section 3.4: transforming the normal back to the ellipsoid configuration
-    vec3 Ne = normalize(vec3(alpha_x * Nh.x, alpha_y * Nh.y, max(0.0, Nh.z)));
+    vec3 Ne = normalize(vec3(alpha * Nh.x, alpha * Nh.y, max(0.0, Nh.z)));
     return Ne;
 }
 #endif // _RNG_H_

@@ -52,7 +52,7 @@ void main() {
 
     // normal deformation
     const vec3 normal_deformed = transform * (2 * textureLod(UNI_TEXTURE_ARRAY, orig + vec3(0, 0, 1), lod).xyz - vec3(1.0));
-    const vec3 illum = max(dot(-UNI_SUN.direction, normal_deformed), 0.0) * textureLod(UNI_TEXTURE_ARRAY, orig, lod).xyz * color_modifier;
+    const vec3 illum = textureLod(UNI_TEXTURE_ARRAY, orig, lod).xyz * color_modifier;
 
     const vec3 coeffs = textureLod(UNI_TEXTURE_ARRAY, orig + vec3(0, 0, 2), lod).xyz;
 
