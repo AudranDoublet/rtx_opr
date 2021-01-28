@@ -189,7 +189,8 @@ impl Block {
 
     pub fn is_glass(&self) -> bool {
         match self {
-           Block::GlassBlack
+            Block::Glass
+           | Block::GlassBlack
            | Block::GlassBlue
            | Block::GlassBrown
            | Block::GlassCyan

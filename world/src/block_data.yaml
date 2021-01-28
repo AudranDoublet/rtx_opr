@@ -130,24 +130,34 @@ classic_blocks:
         side: glass_green
     GlassLightBlue:
         side: glass_light_blue
+        continuum: true
     GlassLime:
         side: glass_lime
+        continuum: true
     GlassMagenta:
         side: glass_magenta
+        continuum: true
     GlassOrange:
         side: glass_orange
+        continuum: true
     GlassPink:
         side: glass_pink
+        continuum: true
     GlassPurple:
         side: glass_purple
+        continuum: true
     GlassRed:
         side: glass_red
+        continuum: true
     GlassSilver:
         side: glass_silver
+        continuum: true
     GlassWhite:
         side: glass_white
+        continuum: true
     GlassYellow:
         side: glass_yellow
+        continuum: true
     Mirror:
         side: mirror
 

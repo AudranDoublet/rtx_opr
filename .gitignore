@@ -6,4 +6,4 @@ target/
 /target/
 *.spv
 /worldp
-/world*/
+/world?*/
