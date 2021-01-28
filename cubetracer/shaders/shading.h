@@ -19,7 +19,6 @@ vec3 fresnelSchlick(float NoL, vec3 surfaceColor, float metalness) {
     return fresnelSchlick(NoL, F0);
 }
 
-
 // http://graphicrants.blogspot.com/2013/08/specular-brdf-reference.html
 float GGX_NDF(float alpha, float NoH) {
     float D = alpha / (NoH * NoH * (alpha*alpha - 1) + 1);

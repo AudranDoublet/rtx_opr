@@ -6,6 +6,8 @@
  *  0: basic
  *  1: need to apply column color on the whole texture
  *  2: need to apply column color on a mask texture (id + 3)
+ *  3: water
+ *  4: glass
  */
 
 struct TriangleData {

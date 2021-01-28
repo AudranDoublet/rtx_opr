@@ -311,7 +311,8 @@ impl RTXData {
                 }, BufferFormat::RGBA)
             .simple("god_rays", swapchain, BufferFormat::RGBA)
             .double("pt_specular", swapchain, BufferFormat::RGBA)
-            .simple("block_color", swapchain, BufferFormat::RGBA);
+            .simple("block_color", swapchain, BufferFormat::RGBA)
+            .simple("refract", swapchain, BufferFormat::RGBA);
 
         cache_buffers
             .texture_mut("shadow_map")
@@ -400,6 +401,7 @@ impl RTXData {
             .general_shader(ShaderType::Raygen, "path_tracing/diffuse.rgen.spv")
             .general_shader(ShaderType::Raygen, "shadow_map/raygen.rgen.spv")
             .general_shader(ShaderType::Raygen, "path_tracing/specular.rgen.spv")
+            .general_shader(ShaderType::Raygen, "refract/raygen.rgen.spv")
 
             .general_shader(ShaderType::Miss, "initial/miss.rmiss.spv")
             .general_shader(ShaderType::Miss, "shadow/miss.rmiss.spv")
@@ -458,6 +460,9 @@ impl RTXData {
                 ]),
             );
 
+            // refract
+            pipeline.dispatch(buffer, width, height, 5);
+
             // Shadows
             pipeline.dispatch(buffer, width, height, 1);
 
@@ -494,7 +499,7 @@ impl RTXData {
             image_barrier(
                 &context,
                 buffer,
-                &cache_buffers.images(&["pt_diffuse", "pt_specular", "god_rays", "shadow"]),
+                &cache_buffers.images(&["pt_diffuse", "pt_specular", "god_rays", "shadow", "refract"]),
             );
 
             // Reconstruct

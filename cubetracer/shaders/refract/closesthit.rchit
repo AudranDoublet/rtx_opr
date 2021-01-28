@@ -52,16 +52,15 @@ void main() {
 
     // normal deformation
     const vec3 normal_deformed = transform * (2 * textureLod(UNI_TEXTURE_ARRAY, orig + vec3(0, 0, 1), lod).xyz - vec3(1.0));
-    const vec4 illum = textureLod(UNI_TEXTURE_ARRAY, orig, lod);
+    const vec3 illum = textureLod(UNI_TEXTURE_ARRAY, orig, lod).xyz * color_modifier;
 
     const vec3 coeffs = textureLod(UNI_TEXTURE_ARRAY, orig + vec3(0, 0, 2), lod).xyz;
 
     PAYLOAD_GENERAL.hit = true;
     PAYLOAD_GENERAL.normal = normal_deformed;
     PAYLOAD_GENERAL.distance = gl_RayTmaxNV;
-    PAYLOAD_GENERAL.illumination = illum.xyz * color_modifier;
+    PAYLOAD_GENERAL.illumination = illum;
     PAYLOAD_GENERAL.material = material;
-    PAYLOAD_GENERAL.alpha = illum.a;
 
     PAYLOAD_GENERAL.mer = coeffs;
 }

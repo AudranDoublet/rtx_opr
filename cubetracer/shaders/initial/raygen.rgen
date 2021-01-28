@@ -59,13 +59,13 @@ void main() {
         diffuse = surfaceColor * (1 - specular);
         specular = mix(vec3(1), surfaceColor, mer.r) * specular;
 
-        directIllum = sunIllum(PAYLOAD_GENERAL.normal) * (diffuse + specular);
+        directIllum = sunIllum(PAYLOAD_GENERAL.normal) * (diffuse + specular) * PAYLOAD_GENERAL.alpha;
 
         imageStore(CACHE_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, 0.0));
         imageStore(CACHE_INIT_DISTANCES, xy, vec4(PAYLOAD_GENERAL.distance));
         imageStore(CACHE_ORIGIN, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
         imageStore(CACHE_ILLUM_COEFFS, xy, vec4(PAYLOAD_GENERAL.mer, PAYLOAD_GENERAL.material));
-        imageStore(CACHE_BLOCK_COLOR, xy, vec4(PAYLOAD_GENERAL.illumination, 0.0));
+        imageStore(CACHE_BLOCK_COLOR, xy, vec4(PAYLOAD_GENERAL.illumination, PAYLOAD_GENERAL.alpha));
     } else {
         directIllum = PAYLOAD_GENERAL.illumination;
 

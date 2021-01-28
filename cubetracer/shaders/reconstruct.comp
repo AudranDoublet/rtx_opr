@@ -22,12 +22,14 @@ void main() {
         const vec4 emissive = vec4(imageLoad(CACHE_BLOCK_COLOR, xy).xyz, 1.0) * imageLoad(CACHE_ILLUM_COEFFS, xy).g;
         const vec4 pt_diffuse = vec4(imageLoad(CACHE_PT_DIFFUSE, xy).xyz, 1.0);
         const vec4 pt_specular = vec4(imageLoad(CACHE_PT_SPECULAR, xy).xyz, 1.0);
+        const vec4 refraction = vec4(imageLoad(CACHE_REFRACTION, xy).xyz, 1.0);
 
         const vec4 god_rays = imageLoad(CACHE_GOD_RAYS, xy);
 
         vec4 pt_illum = (pt_diffuse/C_PI + pt_specular);
 
-        imageStore(CACHE_RESULT_IMAGE, xy, emissive + direct_illum * shadows + pt_illum + god_rays);
+        imageStore(CACHE_RESULT_IMAGE, xy, 
+                emissive + direct_illum * shadows + pt_illum + god_rays + refraction);
     }
     else if (UNI_SCENE.rendered_buffer == 1)
     {
@@ -41,7 +43,8 @@ void main() {
     }
     else if (UNI_SCENE.rendered_buffer == 3)
     {
-        const vec4 pt_specular = vec4(imageLoad(CACHE_PT_SPECULAR, xy).xyz, 1.0);
+        //const vec4 pt_specular = vec4(imageLoad(CACHE_PT_SPECULAR, xy).xyz, 1.0);
+        const vec4 pt_specular = vec4(imageLoad(CACHE_REFRACTION, xy).xyz, 1.0);
         imageStore(CACHE_RESULT_IMAGE, xy, pt_specular);
     }
     else if (UNI_SCENE.rendered_buffer == 4)

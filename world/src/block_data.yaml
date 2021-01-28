@@ -24,7 +24,7 @@ classic_blocks:
 
     Water:
         side: "water"
-        side_material: 3
+        side_material: 4
         height: 9
         continuum: true
 
@@ -116,48 +116,72 @@ classic_blocks:
 
     Glass:
         side: glass
+        continuum: true
+        side_material: 3
     GlassBlack:
         side: glass_black
+        continuum: true
+        side_material: 3
     GlassBlue:
         side: glass_blue
+        continuum: true
+        side_material: 3
     GlassBrown:
         side: glass_brown
+        continuum: true
+        side_material: 3
     GlassCyan:
         side: glass_cyan
+        continuum: true
+        side_material: 3
     GlassGray:
         side: glass_gray
+        continuum: true
+        side_material: 3
     GlassGreen:
         side: glass_green
+        continuum: true
+        side_material: 3
     GlassLightBlue:
         side: glass_light_blue
         continuum: true
+        side_material: 3
     GlassLime:
         side: glass_lime
         continuum: true
+        side_material: 3
     GlassMagenta:
         side: glass_magenta
         continuum: true
+        side_material: 3
     GlassOrange:
         side: glass_orange
         continuum: true
+        side_material: 3
     GlassPink:
         side: glass_pink
         continuum: true
+        side_material: 3
     GlassPurple:
         side: glass_purple
         continuum: true
+        side_material: 3
     GlassRed:
         side: glass_red
         continuum: true
+        side_material: 3
     GlassSilver:
         side: glass_silver
         continuum: true
+        side_material: 3
     GlassWhite:
         side: glass_white
         continuum: true
+        side_material: 3
     GlassYellow:
         side: glass_yellow
         continuum: true
+        side_material: 3
     Mirror:
         side: mirror
 

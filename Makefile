@@ -8,6 +8,7 @@ SRC=\
 	./cubetracer/shaders/shadow/anyhit.rahit \
 	./cubetracer/shaders/path_tracing/miss.rmiss \
 	./cubetracer/shaders/path_tracing/diffuse.rgen \
+	./cubetracer/shaders/path_tracing/specular.rgen \
 	./cubetracer/shaders/reconstruct.comp \
 	./cubetracer/shaders/reconstruct.comp \
 	./cubetracer/shaders/reproject.comp \
@@ -16,7 +17,7 @@ SRC=\
 	./cubetracer/shaders/shadow_map/closesthit.rchit \
 	./cubetracer/shaders/god_rays.comp \
 	./cubetracer/shaders/god_rays_reconstruct.comp \
-	./cubetracer/shaders/path_tracing/specular.rgen \
+	./cubetracer/shaders/refract/raygen.rgen \
 
 OBJ=$(SRC:=.spv)
 
