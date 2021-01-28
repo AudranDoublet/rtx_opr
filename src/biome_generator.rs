@@ -1,5 +1,5 @@
-use world::BiomeType;
 use world::generator::layers::Layer;
+use world::BiomeType;
 
 pub fn generate_biome(seed: isize) -> Result<(), Box<dyn std::error::Error>> {
     let (_, mut generator) = Layer::create_generator(seed);
@@ -23,7 +23,11 @@ pub fn generate_biome(seed: isize) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     image::save_buffer(
-        &std::path::Path::new("biomes.png"), &result, width as u32, width as u32, image::ColorType::Rgb8
+        &std::path::Path::new("biomes.png"),
+        &result,
+        width as u32,
+        width as u32,
+        image::ColorType::Rgb8,
     )?;
 
     Ok(())

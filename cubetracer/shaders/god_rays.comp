@@ -46,7 +46,7 @@ float getStep(float t, float density)
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 void main()
 {
-    const vec3 sun_color = vec3(1.0); //FIXME sami râle
+    const vec3 sun_color = UNI_SUN.color.xyz;
     const float god_rays_intensity = 2.0;
 
     ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
@@ -92,6 +92,10 @@ void main()
         throughput *= exp(-(stepLength * density) * extinction_factors);
     }
 
-    vec3 inscatterColor = min(inscatter * sun_color * god_rays_intensity * 1, 0.5);
+    vec3 inscatterColor = inscatter * sun_color * god_rays_intensity * 1;
+
+    if (length(inscatterColor) > 0.5)
+        inscatterColor /= length(inscatterColor) / 0.5;
+
     imageStore(CACHE_GOD_RAYS, pixelPos, vec4(inscatterColor, 1));
 }

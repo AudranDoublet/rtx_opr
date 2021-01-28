@@ -214,10 +214,13 @@ impl Camera {
             0.0
         );
 
+        let sun_color = crate::atmosphere::compute_sky_light(-self.sun_direction(), self.sun_direction());
+
         UniformSun {
             projection: self.sun_screen_to_world(),
             projection_inv: self.sun_world_to_screen(),
             direction,
+            color: Vector4::new(sun_color.x, sun_color.y, sun_color.z, 0.0),
         }
     }
 

@@ -39,9 +39,8 @@ void main() {
         PAYLOAD_IDX_GENERAL
     );
 
-    const vec3 sunColor = C_SUN_COLOR;
     float hitDistance = PAYLOAD_GENERAL.hit ? PAYLOAD_GENERAL.distance : tmax;
 
     //imageStore(CACHE_SHADOW_MAP, xy, vec4(PAYLOAD_GENERAL.illumination, 1.0));
-    imageStore(CACHE_SHADOW_MAP, xy, vec4(C_SUN_COLOR, hitDistance));
+    imageStore(CACHE_SHADOW_MAP, xy, vec4(hitDistance));
 }

@@ -17,6 +17,7 @@ pub struct UniformCamera {
 pub struct UniformSun {
     pub projection: Matrix4<f32>,
     pub projection_inv: Matrix4<f32>,
+    pub color: Vector4<f32>,
     pub direction: Vector4<f32>,
 }
 

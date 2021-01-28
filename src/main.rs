@@ -2,12 +2,12 @@
 extern crate clap;
 
 mod biome_generator;
+pub mod config;
 mod dump;
 mod game;
-pub mod config;
 
-use config::*;
 use clap::App;
+use config::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let conf = load_yaml!("cli.yaml");
@@ -22,11 +22,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .parse::<usize>()?;
         // FIXME use it with RTX
         /*let resolution_coeff = args
-            .value_of("resolution-coeff")
-            .unwrap_or("1")
-            .parse::<f32>()?
-            .max(0.125)
-            .min(10.0);*/
+        .value_of("resolution-coeff")
+        .unwrap_or("1")
+        .parse::<f32>()?
+        .max(0.125)
+        .min(10.0);*/
         let world_path = args.value_of("world").unwrap_or("worldp");
         let layout = Layout::parse(args.value_of("layout").unwrap_or("fr"));
         let flat = args.is_present("flat");
