@@ -31,13 +31,18 @@ dvec2 basic_reprojection(const vec3 origin) {
 //// check if a given reprojection seems to be valid
 //// (same object, similar depth/normal, ...)
 //// FIXME
-bool is_reprojection_valid(const ivec2 screen_size, const ivec2 prev_xy, const float dist) {
+bool is_reprojection_valid(const ivec2 screen_size, const vec3 origin, const ivec2 prev_xy, const float dist) {
+    const float diff = length(
+        imageLoad(CACHE_DENOISE_PREV_ORIGIN, prev_xy).xyz - origin
+    );
+
     const float prev_dist = imageLoad(CACHE_DENOISE_PREV_INITIAL_DISTANCES, prev_xy).x;
 
     return prev_xy.x >= 0
         && prev_xy.y >= 0
         && prev_xy.x < screen_size.x
         && prev_xy.y < screen_size.y
+        && diff < 0.5
         && abs(prev_dist - dist) < 2; //FIXME doesn't works with low FPS
 }
 
@@ -60,7 +65,8 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevSpecu
             return true;
         }
 
-        dvec2 prev = screen_size * basic_reprojection(imageLoad(CACHE_ORIGIN, xy).xyz);
+        const vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
+        dvec2 prev = screen_size * basic_reprojection(origin);
         dvec2 prev_frac = fract(prev);
 
         ivec2 offsets[4] = { ivec2(0, 0), ivec2(1, 0), ivec2(0, 1), ivec2(1, 1) };
@@ -72,7 +78,7 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevSpecu
         for (int sampleIdx = 0; sampleIdx < 4; sampleIdx++)
         {
             ivec2 loc = ivec2(prev) + offsets[sampleIdx];
-            valid_arr[sampleIdx] = is_reprojection_valid(screen_size, loc, dist);
+            valid_arr[sampleIdx] = is_reprojection_valid(screen_size, origin, loc, dist);
 
             valid = valid || valid_arr[sampleIdx];
         }
@@ -117,8 +123,6 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevSpecu
             }
         }
 
-        // imageStore(CACHE_PT_DIFFUSE, xy, imageLoad(CACHE_DIRECT_ILLUM, ivec2(round(prev))));
-
         // STEP 3: if surrounding pixels wern't valid, try to do a bilateral filter with more pixels
 
            if (!valid) {
@@ -136,7 +140,7 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevSpecu
                 {
                     ivec2 loc = ivec2(prev) + ivec2(xx, yy);
 
-                    if (is_reprojection_valid(screen_size, loc, dist))
+                    if (is_reprojection_valid(screen_size, origin, loc, dist))
                     {
                         prevDiffuse  += imageLoad(CACHE_DENOISE_PREV_DIFFUSE, loc);
                         prevSpecular += imageLoad(CACHE_DENOISE_PREV_SPECULAR, loc);

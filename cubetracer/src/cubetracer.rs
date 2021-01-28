@@ -299,7 +299,7 @@ impl RTXData {
             .simple("normals", swapchain, BufferFormat::RGBA)
             .double("initial_distances", swapchain, BufferFormat::RGBA)
             .simple("direct_illumination", swapchain, BufferFormat::RGBA)
-            .simple("hit_point", swapchain, BufferFormat::RGBA)
+            .double("hit_point", swapchain, BufferFormat::RGBA)
             .simple("shadow", swapchain, BufferFormat::RGBA)
             .simple("mer", swapchain, BufferFormat::RGBA)
             .double("pt_diffuse", swapchain, BufferFormat::RGBA)

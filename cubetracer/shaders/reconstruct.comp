@@ -105,4 +105,5 @@ void main() {
     imageStore(CACHE_DENOISE_PREV_MOMENTS, xy, imageLoad(CACHE_DENOISE_NEW_MOMENTS, xy));
     imageStore(CACHE_DENOISE_PREV_HISTORY_LENGTH, xy, imageLoad(CACHE_DENOISE_NEW_HISTORY_LENGTH, xy));
     imageStore(CACHE_DENOISE_PREV_INITIAL_DISTANCES, xy, imageLoad(CACHE_INIT_DISTANCES, xy));
+    imageStore(CACHE_DENOISE_PREV_ORIGIN, xy, imageLoad(CACHE_ORIGIN, xy));
 }

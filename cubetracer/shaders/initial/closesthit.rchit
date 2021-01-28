@@ -18,7 +18,7 @@ hitAttributeNV vec3 attribs;
 
 void main() {
     // FIXME: maybe we should avoid deref multiple times and store the struct?? 
-    const float lod = gl_RayTmaxNV / 10.0;
+    const float lod = gl_RayTmaxNV / 50.0;
     const vec3 normal = BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].normal;
     uint material = BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].material;
 
