@@ -76,4 +76,47 @@ vec3 sunIllum(vec3 N) {
     return UNI_SUN.color.rgb * max(0, dot(N, -UNI_SUN.direction));
 }
 
+float fresnelSchlick(vec3 N, vec3 I, float n1, float n2, float eta) {
+    float F0 = (n1-n2) / (n1+n2);
+    F0 *= F0;
+
+    float cosX = -dot(N, I);
+    if (n1 > n2) {
+        float sinT2 = eta*eta*(1.0-cosX*cosX);
+        // Total internal reflection
+        if (sinT2 > 1.0)
+            return 1.0;
+        cosX = sqrt(1.0-sinT2);
+    }
+
+    float x = 1.0-cosX;
+    return F0 + (1.0 - F0)*x*x*x*x*x;
+}
+
+vec3 getMaterialTransparencyColor(uint material, vec3 color) {
+    switch (material) {
+        case 3: // glass
+        case 5: // glass hack
+            return color;
+        case 4: // water
+            return color*1.2;
+    }
+    return vec3(0.0001);
+}
+
+float getMaterialIOR(uint material) {
+    switch (material) {
+        case 3: // glass
+        case 5: // glass hack
+            return 1.5;
+        case 4: // water
+            return 1.325;
+    }
+    return 1.0;
+}
+
+vec3 beerLaw(float t, uint material, vec3 E) {
+    return exp(t*log(getMaterialTransparencyColor(material, E)));
+}
+
 #endif // _SHADING_H_

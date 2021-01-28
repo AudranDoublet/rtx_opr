@@ -32,49 +32,6 @@ bool isShadowed(vec3 origin) {
     return PAYLOAD_SHADOWED;
 }
 
-float fresnelSchlick(vec3 N, vec3 I, float n1, float n2, float eta) {
-    float F0 = (n1-n2) / (n1+n2);
-    F0 *= F0;
-
-    float cosX = -dot(N, I);
-    if (n1 > n2) {
-        float sinT2 = eta*eta*(1.0-cosX*cosX);
-        // Total internal reflection
-        if (sinT2 > 1.0)
-            return 1.0;
-        cosX = sqrt(1.0-sinT2);
-    }
-
-    float x = 1.0-cosX;
-    return F0 + (1.0 - F0)*x*x*x*x*x;
-}
-
-vec3 getMaterialTransparencyColor(uint material, vec3 color) {
-    switch (material) {
-        case 3: // glass
-        case 5: // glass hack
-            return color;
-        case 4: // water
-            return color*1.2;
-    }
-    return vec3(0.0001);
-}
-
-float getMaterialIOR(uint material) {
-    switch (material) {
-        case 3: // glass
-        case 5: // glass hack
-            return 1.5;
-        case 4: // water
-            return 1.325;
-    }
-    return 1.0;
-}
-
-vec3 beerLaw(float t, uint material, vec3 E) {
-    return exp(t*log(getMaterialTransparencyColor(material, E)));
-}
-
 vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transparencyColor, float opacity) {
     float n1 = getMaterialIOR(0);
     float n2 = getMaterialIOR(material);
@@ -83,13 +40,9 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transpare
     vec3 throughput = vec3(1);
     bool stop = false;
 
-    for (uint i = 0; i < C_REFRACT_MIN_CONTRIB
+    for (uint i = 0; i < C_REFRACT_DEPTH_MAX
             && dot(throughput, throughput) > C_REFRACT_MIN_CONTRIB
             && !stop; i++) {
-
-        // if (dot(N, I) > 0) {
-            // N = -N;
-        // }
 
         const float eta = n1/n2;
 
@@ -114,7 +67,7 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transpare
         // SKY 
         if (!PAYLOAD_GENERAL.hit) {
             stop = true;
-            if (dot(throughput, throughput) < 0.999)
+            if (dot(throughput, throughput) < 0.989)
                 behindColor = PAYLOAD_GENERAL.illumination;
         } else if (PAYLOAD_GENERAL.material < 3) { // OPAQUE MATERIAL
             stop = true;
@@ -129,6 +82,10 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transpare
             N = PAYLOAD_GENERAL.normal;
             I = direction;
             transparencyColor = PAYLOAD_GENERAL.illumination.rgb;
+
+            if (dot(N, I) > 0) {
+                N = -N;
+            }
             if (opacity > 0) {
                 float shadow = isShadowed(PAYLOAD_GENERAL.hit_position) ? 0 : 1;
                 behindColor =
@@ -160,7 +117,6 @@ void main() {
     const vec3 I = normalize(origin - vec3(UNI_CAMERA.origin.xyz));
 
     vec3 refractionContrib = traceRefractions(origin, N, I, uint(merm.w), color.rgb, opacity);
-    refractionContrib *= (1 - opacity);
 
     imageStore(CACHE_REFRACTION, xy, vec4(refractionContrib, 1.0));
 }

@@ -8,6 +8,7 @@
 #include "rng.h"
 #include "global_uniforms.h"
 #include "global_caches.h"
+#include "shading.h"
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
@@ -23,12 +24,27 @@ void main() {
         const vec4 pt_diffuse = max(vec4(imageLoad(CACHE_PT_DIFFUSE, xy).xyz, 1.0), 0.0);
         const vec4 pt_specular = max(vec4(imageLoad(CACHE_PT_SPECULAR, xy).xyz, 1.0), 0.0);
         const vec4 refraction = max(vec4(imageLoad(CACHE_REFRACTION, xy).xyz, 1.0), 0.0);
-
         const vec4 god_rays = imageLoad(CACHE_GOD_RAYS, xy);
 
-        vec4 pt_illum = (pt_diffuse + pt_specular);
+        const vec4 merm = imageLoad(CACHE_ILLUM_COEFFS, xy);
 
-        vec3 color = (emissive + direct_illum*shadows + pt_illum + god_rays + refraction).rgb;
+        vec4 color = god_rays + emissive + direct_illum*shadows;
+
+        vec3 N = imageLoad(CACHE_NORMALS, xy).xyz;
+        float opacity = imageLoad(CACHE_BLOCK_COLOR, xy).a;
+        if (N != vec3(0) && (merm.w == 3 || merm.w == 5) && opacity < 0.9) {
+            float n1 = getMaterialIOR(0);
+            float n2 = getMaterialIOR(uint(merm.w));
+
+            vec3 I = normalize(imageLoad(CACHE_ORIGIN, xy).xyz - vec3(UNI_CAMERA.origin.xyz));
+            float coeffReflection = fresnelSchlick(N, I, n1, n2, n1/n2);
+            vec4 others = (1 - coeffReflection) * refraction + coeffReflection * pt_specular;
+
+            color += mix(pt_diffuse, others, opacity);
+            color += others; //+ pt_diffuse;
+        } else {
+            color += pt_diffuse + pt_specular + refraction;
+        }
 
         const float gamma = 1.0;
         vec3 corrected_color = pow(color.rgb, vec3(1.0/gamma));
