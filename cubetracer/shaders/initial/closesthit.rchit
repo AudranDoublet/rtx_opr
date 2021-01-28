@@ -51,7 +51,13 @@ void main() {
     );
 
     // normal deformation
-    const vec3 normal_deformed = transform * (2 * textureLod(UNI_TEXTURE_ARRAY, orig + vec3(0, 0, 1), lod).xyz - vec3(1.0));
+    vec3 normal_deformed = transform * (2 * textureLod(UNI_TEXTURE_ARRAY, orig + vec3(0, 0, 1), lod).xyz - vec3(1.0));
+
+    // water
+    if (material == 4) {
+        normal_deformed = normal;
+    }
+
     const vec4 illum = textureLod(UNI_TEXTURE_ARRAY, orig, lod);
 
     const vec3 coeffs = textureLod(UNI_TEXTURE_ARRAY, orig + vec3(0, 0, 2), lod).xyz;
