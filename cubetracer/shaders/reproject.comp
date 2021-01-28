@@ -210,7 +210,8 @@ void main() {
     diffuse.a = variance.r;
 
     // compute new specular
-    specular = mix(prevSpecular, specular, alpha);
+    float roughness = imageLoad(CACHE_ILLUM_COEFFS, xy).b;
+    specular = mix(prevSpecular, specular, max(1 - roughness, alpha));
     specular.a = variance.g;
 
     imageStore(CACHE_DENOISE_NEW_MOMENTS, xy, moments);
