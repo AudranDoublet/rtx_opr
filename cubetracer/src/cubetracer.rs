@@ -465,8 +465,6 @@ impl RTXData {
             pipeline.dispatch(buffer, width, height, 2);
             pipeline.dispatch(buffer, width, height, 4);
 
-            pipeline.dispatch(buffer, SHADOW_MAP_EXTENT.width, SHADOW_MAP_EXTENT.height, 3);
-
             // temporal filter on pathtracing buffers
             image_barrier(
                 &context,
@@ -480,12 +478,6 @@ impl RTXData {
             temporal_filter_pipeline.dispatch(buffer, width, height);
 
             // god rays
-            image_barrier(
-                &context,
-                buffer,
-                &cache_buffers.images(&["shadow_map"]),
-            );
-
             god_rays_pipeline.bind(&context, buffer);
             god_rays_pipeline.dispatch(buffer, width/2, height/2);
 
