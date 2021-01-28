@@ -65,7 +65,7 @@ bool sampleBrdfDiffuseBounces(const vec2 rnd,
 
     // FIXME: must replace by correct formula (div by prob)
 
-    vec3 BRDF = vec3(1);
+    vec3 BRDF = vec3(1) * PAYLOAD_GENERAL.illumination;
     diffuse += 2.0 * BRDF * sunIllum(normal) * throughput;
 
     return true;
@@ -89,7 +89,7 @@ vec3 sampleBrdfDiffuse(inout uint seed, vec3 origin, vec3 normal, const uint n_b
     return diffuse;
 }
 
-const int N_BOUNCES_DIFFUSE = 1;
+const int N_BOUNCES_DIFFUSE = 4;
 const float SEED_MAX = float(1 << 12);
 
 void main() {
@@ -106,7 +106,7 @@ void main() {
         const vec3 mer = imageLoad(CACHE_ILLUM_COEFFS, xy).rgb;
         const vec3 color = imageLoad(CACHE_BLOCK_COLOR, xy).rgb;
         const float alpha = mer.b * mer.b;
-        diffuse = sampleBrdfDiffuse(seed, origin, normal, N_BOUNCES_DIFFUSE);
+        diffuse = color * sampleBrdfDiffuse(seed, origin, normal, N_BOUNCES_DIFFUSE);
     }
 
     seed_f += C_PI;
