@@ -19,6 +19,6 @@ void main() {
     float lod = gl_RayTmaxNV / 10.0;
     float alpha = textureLod(UNI_TEXTURE_ARRAY, orig, lod).a;
 
-    if (alpha != 1.0 && material < 3)
+    if (alpha < 0.5 && material < 3)
         ignoreIntersectionNV();
 }

@@ -117,7 +117,7 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material) {
 
     for (uint i = 0; i < C_REFRACT_DEPTH_MAX 
             && throughput > C_REFRACT_MIN_CONTRIB
-            && stop; i++) {
+            && !stop; i++) {
 
         refractColor += traceRefraction( origin, N, I, n1, n2, throughput, stop);
     }
@@ -128,9 +128,10 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material) {
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
 
+    const vec4 merm = imageLoad(CACHE_ILLUM_COEFFS, xy);
     const float opacity = imageLoad(CACHE_BLOCK_COLOR, xy).a;
-    if (imageLoad(CACHE_INIT_DISTANCES, xy).r == 0.0 || opacity == 1.0)
-    {
+
+    if (imageLoad(CACHE_INIT_DISTANCES, xy).r == 0.0 || opacity == 1.0 || merm.w <= 2) {
         imageStore(CACHE_REFRACTION, xy, vec4(0));
         return;
     }
@@ -139,10 +140,8 @@ void main() {
     const vec3 N = imageLoad(CACHE_NORMALS, xy).xyz;
     const vec3 I = normalize(origin - vec3(UNI_CAMERA.origin.xyz));
 
-    const vec4 merm = imageLoad(CACHE_ILLUM_COEFFS, xy);
-
     vec3 refractionContrib = traceRefractions(origin, N, I, uint(merm.w));
     refractionContrib *= (1 - opacity);
 
-    imageStore(CACHE_REFRACTION, xy, vec4(1));
+    imageStore(CACHE_REFRACTION, xy, vec4(refractionContrib, 1.0));
 }
