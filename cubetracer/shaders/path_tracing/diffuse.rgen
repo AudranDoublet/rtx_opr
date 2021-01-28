@@ -104,6 +104,7 @@ void main() {
     if (normal != vec3(0)) {
         const vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
         const vec3 mer = imageLoad(CACHE_ILLUM_COEFFS, xy).rgb;
+        const vec3 color = imageLoad(CACHE_BLOCK_COLOR, xy).rgb;
         const float alpha = mer.b * mer.b;
         diffuse = sampleBrdfDiffuse(seed, origin, normal, N_BOUNCES_DIFFUSE);
     }

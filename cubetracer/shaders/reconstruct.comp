@@ -45,8 +45,9 @@ void main() {
     }
     else if (UNI_SCENE.rendered_buffer == 4)
     {
+        const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
         const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
-        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum );
+        imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows);
     }
     else if (UNI_SCENE.rendered_buffer == 5)
     {
