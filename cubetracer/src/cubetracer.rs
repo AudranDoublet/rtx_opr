@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 const SHADER_FOLDER: &str = "cubetracer/shaders";
 const MAX_INSTANCE_BINDING: usize = 1024;
-const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 2048, width: 2048 };
+const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 1024, width: 1024 };
 
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
