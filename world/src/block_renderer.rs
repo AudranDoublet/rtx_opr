@@ -1,4 +1,4 @@
-use crate::{World, ChunkMesh, BlockFace};
+use crate::{World, ChunkMesh, BlockFace, Block};
 use nalgebra::{Vector2, Vector3};
 
 #[derive(Clone, Copy)]
@@ -20,6 +20,7 @@ pub enum BlockRenderer {
     Empty,
     ClassicBlock {
         faces: [FaceProperties; 6],
+        continuum: bool,
         height: i32,
         width: i32,
     },
@@ -33,14 +34,6 @@ pub const BLOCK_RENDERERS: [BlockRenderer; 1] = [
 ];
 
 impl BlockRenderer {
-    pub fn classic(prop: FaceProperties) -> BlockRenderer {
-        BlockRenderer::ClassicBlock {
-            faces: [prop; 6],
-            height: 10,
-            width: 10,
-        }
-    }
-
     fn generate_face(
         &self,
         mesh: &mut ChunkMesh,
@@ -84,16 +77,30 @@ impl BlockRenderer {
         );
     }
 
-    pub fn render(&self, world: &World, position: Vector3<i32>, mesh: &mut ChunkMesh) {
+    pub fn render(&self, world: &World, self_type: Block, position: Vector3<i32>, mesh: &mut ChunkMesh) {
         match self {
             BlockRenderer::Empty => (),
-            BlockRenderer::ClassicBlock{faces, height, width} => {
+            BlockRenderer::ClassicBlock{faces, height, width, continuum} => {
+                let mut height = *height;
+
+                if *continuum {
+                    if let Some(block) = world.block_at(position + BlockFace::Up.relative()) {
+                        if block == self_type {
+                            height = 10;
+                        }
+                    }
+                }
+
                 for (i, face) in BlockFace::faces().enumerate() {
                     let rel = face.relative();
 
                     // skip face if the neighbouring block is opaque (the face won't be seen)
                     if let Some(block) = world.block_at(position + rel) {
                         if block.is_opaque() {
+                            continue;
+                        }
+
+                        if *continuum && block == self_type {
                             continue;
                         }
                     }
@@ -111,7 +118,7 @@ impl BlockRenderer {
                         // compute starting corner of the face
                         let position = position * 10
                                             // up face: change y
-                                        + Vector3::new(0, rel.y.max(0), 0) * *height
+                                        + Vector3::new(0, rel.y.max(0), 0) * height
                                             // width offsets
                                         + z * width_offset
                                         + Vector3::x() * width_offset
@@ -129,7 +136,7 @@ impl BlockRenderer {
                         // add width offsets
                         let dpos = dpos - rel * width_offset + right * width_offset;
 
-                        (*height, 0, Vector3::y(), right, position * 10 + dpos)
+                        (height, 0, Vector3::y(), right, position * 10 + dpos)
                     };
 
                     self.generate_face(
