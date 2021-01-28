@@ -15,7 +15,7 @@ void main() {
                     +  BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_u * attribs.x
                     +  BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
 
-    float lod = gl_RayTmaxNV / 50.0;
+    float lod = gl_RayTmaxNV / 10.0;
     float alpha = textureLod(UNI_TEXTURE_ARRAY, orig, lod).a;
 
     if (alpha < 0.5)

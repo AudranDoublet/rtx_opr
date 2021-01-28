@@ -14,7 +14,7 @@ vec3 fresnelSchlick(float NoL) {
 }
 
 vec3 fresnelSchlick(float NoL, vec3 surfaceColor, float metalness) {
-    vec3 F0 = vec3(0.04);
+    vec3 F0 = vec3(0);
     F0 = mix(F0, surfaceColor, metalness);
     return fresnelSchlick(NoL, F0);
 }

@@ -2,7 +2,7 @@ texture_path: data/ # all textures should be in this path
 texture_extension: '' # all textures should have the same extension
 texture_normal_extension: _n # all textures normals should have the same extension
 texture_mer_extension: _mer # all textures mer should have the same extension
-texture_dimension: [128, 128] # if a texture doesn't match, it will be resized
+texture_dimension: [512, 512] # if a texture doesn't match, it will be resized
 
 empty_blocks:
     - Air
@@ -12,11 +12,11 @@ classic_blocks:
         side: "stone"
 
     Grass:
-        side: "grass_block_side"
-        side_overlay: "grass_block_side_overlay"
+        side: "grass_side"
+        side_overlay: "grass_side_overlay"
         side_material: 2
 
-        top: "grass_block_top"
+        top: "grass_top"
         top_material: 1
 
         bottom: "dirt"
@@ -50,8 +50,8 @@ classic_blocks:
         side: "log_acacia"
         top: "log_acacia_top"
     BigOakLog:
-        side: "log_dark_oak"
-        top: "log_dark_oak_top"
+        side: "log_big_oak"
+        top: "log_big_oak_top"
     BirchLog:
         side: "log_birch"
         top: "log_birch_top"
@@ -69,7 +69,7 @@ classic_blocks:
         side: "leaves_acacia"
         side_material: 1
     BigOakLeaves:
-        side: "leaves_dark_oak"
+        side: "leaves_big_oak"
         side_material: 1
     BirchLeaves:
         side: "leaves_birch"
@@ -86,7 +86,7 @@ classic_blocks:
     AcaciaPlanks:
         side: "planks_acacia"
     BigOakPlanks:
-        side: "planks_dark_oak"
+        side: "planks_big_oak"
     BirchPlanks:
         side: "planks_birch"
     JunglePlanks:
@@ -95,9 +95,9 @@ classic_blocks:
         side: "planks_spruce"
 
     Brick:
-        side: "bricks"
+        side: "brick"
     StoneBricks:
-        side: "stone_bricks"
+        side: "stonebrick"
 
     LightWhite:
         side: light_white
@@ -163,7 +163,7 @@ classic_blocks:
 
 flower_blocks:
     TallGrass:
-        texture: "grass"
+        texture: "tallgrass"
         material: 1
     OrangeTulipe:
         texture: "flower_tulip_orange"

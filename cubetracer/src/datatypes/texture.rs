@@ -111,7 +111,7 @@ impl TextureVariable {
             vk::ImageViewType::TYPE_2D_ARRAY,
             vk::ImageAspectFlags::COLOR,
         );
-        let sampler = image.create_sampler_nearest(context);
+        let sampler = image.create_sampler(context);
 
         TextureVariable::new(Arc::clone(context), image, view, Some(sampler))
     }
