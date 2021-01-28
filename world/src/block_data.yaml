@@ -144,6 +144,8 @@ classic_blocks:
         side: glass_white
     GlassYellow:
         side: glass_yellow
+    Mirror:
+        side: mirror
 
 flower_blocks:
     TallGrass:

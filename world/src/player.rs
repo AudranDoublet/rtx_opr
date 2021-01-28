@@ -329,7 +329,9 @@ impl Player {
 
                             let (cycle, btype) = match self.block_cur_type {
                                 0 => Block::get_light(self.block_cur_type),
-                                _ => Block::get_colored_glass(self.block_cur_type),
+                                1 => Block::get_colored_glass(self.block_cur_type),
+                                2 => (true, Block::Glass),
+                                _ => (true, Block::Mirror),
                             };
 
                             let mut allowed = true;
