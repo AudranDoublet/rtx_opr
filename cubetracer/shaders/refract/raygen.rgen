@@ -67,8 +67,9 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transpare
         // SKY 
         if (!PAYLOAD_GENERAL.hit) {
             stop = true;
-            if (dot(throughput, throughput) < 0.989)
-                behindColor = PAYLOAD_GENERAL.illumination;
+            // return vec3(1,0,0);
+            // if (dot(throughput, throughput) < 0.989)
+            behindColor = PAYLOAD_GENERAL.illumination;
         } else if (PAYLOAD_GENERAL.material < 3) { // OPAQUE MATERIAL
             stop = true;
             float shadow = isShadowed(PAYLOAD_GENERAL.hit_position) ? 0 : 1;

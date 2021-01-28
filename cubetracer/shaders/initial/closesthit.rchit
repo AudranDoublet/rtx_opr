@@ -55,6 +55,7 @@ void main() {
 
     // water
     if (material == 4) {
+        PAYLOAD_GENERAL.hit_position -= normal * 0.001;
         normal_deformed = normal;
     }
 
