@@ -69,8 +69,8 @@ void diffuseBurleySun(const vec3 hitPoint, const vec3 N, const vec3 mer,
     diffuse *= NoL;
 }
 
-float sunIllum(vec3 N) {
-    return max(0, dot(N, -UNI_SUN.direction));
+vec3 sunIllum(vec3 N) {
+    return UNI_SUN.color.rgb * max(0, dot(N, -UNI_SUN.direction));
 }
 
 vec3 composeColor(
