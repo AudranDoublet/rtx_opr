@@ -45,7 +45,7 @@ float luminance(const vec4 rgb) {
     return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
 }
 
-bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMoments, out float historyLength) {
+bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevSpecular, out vec4 prevMoments, out float historyLength) {
     const ivec2 screen_size = imageSize(CACHE_ORIGIN);
     const float dist = imageLoad(CACHE_INIT_DISTANCES, xy).x;
 
@@ -54,6 +54,7 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
     {
         if (UNI_SCENE.updated == 0) {
             prevDiffuse = imageLoad(CACHE_DENOISE_PREV_DIFFUSE, xy);
+            prevSpecular = imageLoad(CACHE_DENOISE_PREV_SPECULAR, xy);
             prevMoments = imageLoad(CACHE_DENOISE_PREV_MOMENTS, xy);
             historyLength = imageLoad(CACHE_DENOISE_PREV_HISTORY_LENGTH, xy).x;
             return true;
@@ -86,8 +87,9 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
                                 prev_frac.x  *      prev_frac.y };
 
             float sumw = 0;
-            prevDiffuse = vec4(0);
-            prevMoments = vec4(0);
+            prevDiffuse  = vec4(0);
+            prevSpecular = vec4(0.0);
+            prevMoments  = vec4(0);
 
             // perform the actual bilinear interpolation
             for (int sampleIdx = 0; sampleIdx < 4; sampleIdx++)
@@ -97,6 +99,7 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
                 if (valid_arr[sampleIdx])
                 {
                     prevDiffuse   += float(w[sampleIdx]) * imageLoad(CACHE_DENOISE_PREV_DIFFUSE, loc);
+                    prevSpecular  += float(w[sampleIdx]) * imageLoad(CACHE_DENOISE_PREV_SPECULAR, loc);
                     prevMoments   += float(w[sampleIdx]) * imageLoad(CACHE_DENOISE_PREV_MOMENTS, loc);
                     sumw          += float(w[sampleIdx]);
                 }
@@ -104,10 +107,12 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
 
             // redistribute weights in case not all taps were used
             if (sumw >= 0.01) {
-                prevDiffuse   = prevDiffuse / sumw;
-                prevMoments   = prevMoments / sumw;
+                prevDiffuse   /= sumw;
+                prevSpecular  /= sumw;
+                prevMoments   /= sumw;
             } else {
                 prevDiffuse   = vec4(0);
+                prevSpecular  = vec4(0.0);
                 prevMoments   = vec4(0);
             }
         }
@@ -117,8 +122,9 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
         // STEP 3: if surrounding pixels wern't valid, try to do a bilateral filter with more pixels
 
            if (!valid) {
-            prevDiffuse = vec4(0);
-            prevMoments = vec4(0);
+            prevDiffuse  = vec4(0);
+            prevMoments  = vec4(0);
+            prevSpecular = vec4(0);
 
             float cnt = 0.0;
 
@@ -132,8 +138,9 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
 
                     if (is_reprojection_valid(screen_size, loc, dist))
                     {
-                        prevDiffuse += imageLoad(CACHE_DENOISE_PREV_DIFFUSE, loc);
-                        prevMoments += imageLoad(CACHE_DENOISE_PREV_MOMENTS, loc);
+                        prevDiffuse  += imageLoad(CACHE_DENOISE_PREV_DIFFUSE, loc);
+                        prevSpecular += imageLoad(CACHE_DENOISE_PREV_SPECULAR, loc);
+                        prevMoments  += imageLoad(CACHE_DENOISE_PREV_MOMENTS, loc);
                         cnt += 1.0;
                     }
                 }
@@ -141,8 +148,9 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
 
             if (cnt > 0.0) {
                 valid = true;
-                prevDiffuse /= cnt;
-                prevMoments /= cnt;
+                prevDiffuse  /= cnt;
+                prevSpecular /= cnt;
+                prevMoments  /= cnt;
             }
         }
 
@@ -155,6 +163,7 @@ bool load_previous_data(const ivec2 xy, out vec4 prevDiffuse, out vec4 prevMomen
 
     historyLength = 0.0;
     prevDiffuse = vec4(0.0);
+    prevSpecular = vec4(0.0);
     prevMoments = vec4(0.0);
 
     return false;
@@ -165,13 +174,15 @@ void main() {
 
     // new data
     vec4 diffuse = imageLoad(CACHE_PT_DIFFUSE, xy);
+    vec4 specular = imageLoad(CACHE_PT_SPECULAR, xy);
 
     // previous data
     vec4 prevDiffuse;
+    vec4 prevSpecular;
     vec4 prevMoments;
     float historyLength;
 
-    bool success = load_previous_data(xy, prevDiffuse, prevMoments, historyLength);
+    bool success = load_previous_data(xy, prevDiffuse, prevSpecular, prevMoments, historyLength);
 
     historyLength = min(32.0, historyLength + 1.0);
 
@@ -181,7 +192,7 @@ void main() {
     // compute new moment
     vec4 moments;
     moments.r = luminance(diffuse);
-    moments.g = 0.0; //FIXME other buffer
+    moments.g = luminance(specular);
     moments.b = moments.r * moments.r;
     moments.a = moments.g * moments.g;
 
@@ -194,7 +205,12 @@ void main() {
     diffuse = mix(prevDiffuse, diffuse, alpha);
     diffuse.a = variance.r;
 
+    // compute new specular
+    specular = mix(prevSpecular, specular, alpha);
+    specular.a = variance.g;
+
     imageStore(CACHE_DENOISE_NEW_MOMENTS, xy, moments);
     imageStore(CACHE_DENOISE_NEW_HISTORY_LENGTH, xy, vec4(historyLength));
     imageStore(CACHE_PT_DIFFUSE, xy, diffuse);
+    imageStore(CACHE_PT_SPECULAR, xy, specular);
 }
