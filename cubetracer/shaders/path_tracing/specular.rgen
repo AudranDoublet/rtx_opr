@@ -80,6 +80,8 @@ vec3 sampleBrdfSpecular(
     return (specularColor / C_PI + F * G1_GGX(roughness, NoL)) * Li * NoL;
 }
 
+const uint N_SAMPLES_SPECULAR = 1;
+
 void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
     float seed_f = imageLoad(CACHE_NOISE, xy).r * 1024.;
@@ -94,7 +96,7 @@ void main() {
         const vec3 mer = imageLoad(CACHE_ILLUM_COEFFS, xy).rgb;
         const vec3 surfaceColor = imageLoad(CACHE_BLOCK_COLOR, xy).rgb;
 
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < N_SAMPLES_SPECULAR; i++) {
             specular += sampleBrdfSpecular(
                 seed,
                 origin,
@@ -105,7 +107,7 @@ void main() {
             );
         }
 
-        specular /= 3;
+        specular /= N_SAMPLES_SPECULAR;
     }
 
     imageStore(CACHE_PT_SPECULAR, xy, vec4(specular, 0.0));
