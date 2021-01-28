@@ -92,6 +92,13 @@ pub enum Block {
     Allium,
     Poppy,
 
+    LightWhite,
+    LightRed,
+    LightGreen,
+    LightBlue,
+    LightYellow,
+    LightCyan,
+
     OakPlanks,
     AcaciaPlanks,
     BigOakPlanks,
@@ -102,14 +109,7 @@ pub enum Block {
     Brick,
     StoneBricks,
 
-    LightWhite,
-    LightRed,
-    LightGreen,
-    LightBlue,
-    LightYellow,
-    LightCyan,
     LightMagenta,
-
     Glass,
     GlassBlack,
     GlassBlue,
