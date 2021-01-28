@@ -412,7 +412,11 @@ impl RTXData {
                 Some("initial/closesthit.rchit.spv"),
                 Some("initial/anyhit.rahit.spv"),
             )
-            .hit_shaders(None, Some("initial/anyhit.rahit.spv"))
+            .hit_shaders(None, Some("shadow/anyhit.rahit.spv"))
+            .hit_shaders(
+                Some("initial/closesthit.rchit.spv"),
+                Some("refract/refract_anyhit.rahit.spv"),
+            )
             .descriptor_set(&descriptor_set)
             .descriptor_set(&cache_descriptors)
             .build(3);

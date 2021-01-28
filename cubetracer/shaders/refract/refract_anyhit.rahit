@@ -3,13 +3,22 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
 
+
 #define G_UNIFORM_SET 0
 #include "../global_uniforms.h"
-#undef G_UNIFORM_SET
 
 hitAttributeNV vec3 attribs;
 
 void main() {
+    uint material = BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].material;
+
+    if (material == 3) {
+        const vec3 normal = BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].normal;
+
+        if (dot(normal, gl_WorldRayDirectionNV) < 0)
+            ignoreIntersectionNV();
+    }
+
     vec3 orig = BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_orig
                     +  BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_u * attribs.x
                     +  BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
@@ -17,6 +26,6 @@ void main() {
     float lod = gl_RayTmaxNV / 10.0;
     float alpha = textureLod(UNI_TEXTURE_ARRAY, orig, lod).a;
 
-    if (alpha != 1.0)
+    if (alpha < 0.5 && material < 3)
         ignoreIntersectionNV();
 }

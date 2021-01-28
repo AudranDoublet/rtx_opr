@@ -92,6 +92,7 @@ impl BlockRenderer {
                 }
 
                 for (i, face) in BlockFace::faces().enumerate() {
+                    let mut props = faces[i].clone();
                     let rel = face.relative();
 
                     // skip face if the neighbouring block is opaque (the face won't be seen)
@@ -102,6 +103,10 @@ impl BlockRenderer {
 
                         if *continuum && block == self_type {
                             continue;
+                        }
+
+                        if props.material_id == 3 && block == Block::Air {
+                            props.material_id = 5;
                         }
                     }
 
@@ -141,7 +146,7 @@ impl BlockRenderer {
 
                     self.generate_face(
                         mesh,
-                        &faces[i],
+                        &props,
                         width_offset,
                         height,
                         height_offset,

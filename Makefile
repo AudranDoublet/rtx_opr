@@ -18,6 +18,7 @@ SRC=\
 	./cubetracer/shaders/god_rays.comp \
 	./cubetracer/shaders/god_rays_reconstruct.comp \
 	./cubetracer/shaders/refract/raygen.rgen \
+	./cubetracer/shaders/refract/refract_anyhit.rahit \
 
 OBJ=$(SRC:=.spv)
 

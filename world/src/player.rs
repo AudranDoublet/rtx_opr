@@ -328,9 +328,9 @@ impl Player {
                             let pos = pos + face.relative();
 
                             let (cycle, btype) = match self.block_mode {
-                                0 => Block::get_light(self.block_cur_type),
+                                2 => Block::get_light(self.block_cur_type),
                                 1 => Block::get_colored_glass(self.block_cur_type),
-                                2 => (true, Block::Glass),
+                                0 => (true, Block::Glass),
                                 _ => (true, Block::Mirror),
                             };
 

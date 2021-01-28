@@ -51,63 +51,16 @@ float fresnelSchlick(vec3 N, vec3 I, float n1, float n2, float eta) {
 
 float getMaterialIOR(uint material) {
     switch (material) {
-        case 3:
-            return 1.325;
-        case 4:
+        case 3: // glass
+        case 5: // glass hack
             return 1.5;
+        case 4: // water
+            return 1.325;
     }
     return 1.0;
 }
 
-vec3 traceRefraction(inout vec3 origin, inout vec3 N, inout vec3 I,
-        inout float n1, inout float n2, inout float throughput, out bool stop) {
-    const float eta = n1/n2;
-
-    vec3 direction = refract(I, N, eta);
-    float reflectionCoeff = fresnelSchlick(N, I, n1, n2, eta);
-    throughput *= (1 - reflectionCoeff);
-
-    traceNV(
-        UNI_TLAS,
-        gl_RayFlagsNoneNV,
-        0xff, 0, 0, 0,
-        origin, 0.01, direction, 200.0,
-        PAYLOAD_IDX_GENERAL
-    );
-
-    // SKY 
-    if (!PAYLOAD_GENERAL.hit) {
-        stop = true;
-        return throughput * PAYLOAD_GENERAL.illumination;
-    }
-
-    float opacity = PAYLOAD_GENERAL.alpha;
-    // OPAQUE MATERIAL
-    if (opacity == 1.0) {
-        stop = true;
-        float shadow = isShadowed(PAYLOAD_GENERAL.hit_position) ? 0 : 1;
-        return shadow * throughput *
-            sunIllum(PAYLOAD_GENERAL.normal) * PAYLOAD_GENERAL.illumination;
-    }
-
-    const uint material = PAYLOAD_GENERAL.material;
-
-    // FIXME: should compute color + update ior, normal, etc...
-    // n1 = n2;
-    // n2 = getMaterialIOR(material);
-    // origin = PAYLOAD_GENERAL.hit_position;
-    // N = PAYLOAD_GENERAL.normal;
-    // I = direction;
-
-    // refractionColor = sunIllum(N) * PAYLOAD_GENERAL.illumination;
-
-    // FIXME: should test if continue or stop
-    // FIXME: color scattering
-
-    return vec3(1,0,0);
-}
-
-vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material) {
+vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transparencyColor) {
     float n1 = getMaterialIOR(0);
     float n2 = getMaterialIOR(material);
 
@@ -115,11 +68,53 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material) {
     float throughput = 1.0;
     bool stop = false;
 
-    for (uint i = 0; i < C_REFRACT_DEPTH_MAX 
+    for (uint i = 0; i < 2
             && throughput > C_REFRACT_MIN_CONTRIB
             && !stop; i++) {
 
-        refractColor += traceRefraction( origin, N, I, n1, n2, throughput, stop);
+        if (dot(N, I) > 0) {
+            N = -N;
+        }
+
+        const float eta = n1/n2;
+
+        vec3 direction = normalize(refract(I, N, eta));
+        float reflectionCoeff = fresnelSchlick(N, I, n1, n2, eta);
+        throughput *= (1 - reflectionCoeff);
+
+        traceNV(
+            UNI_TLAS,
+            gl_RayFlagsNoneNV,
+            0xff, 2, 0, 0,
+            origin, 0.01, direction, 200.0,
+            PAYLOAD_IDX_GENERAL
+        );
+
+        vec3 resultColor = transparencyColor;
+        float opacity = PAYLOAD_GENERAL.alpha;
+
+        // SKY 
+        if (!PAYLOAD_GENERAL.hit) {
+            stop = true;
+            resultColor *= PAYLOAD_GENERAL.illumination;
+        } else if (opacity == 1.0) { // OPAQUE MATERIAL
+            stop = true;
+            float shadow = isShadowed(PAYLOAD_GENERAL.hit_position) ? 0 : 1;
+            resultColor *= shadow * sunIllum(PAYLOAD_GENERAL.normal) * PAYLOAD_GENERAL.illumination;
+        } else { // transparent material
+            material = PAYLOAD_GENERAL.material;
+
+            n1 = n2;
+            n2 = getMaterialIOR(material);
+            origin = PAYLOAD_GENERAL.hit_position;
+            N = PAYLOAD_GENERAL.normal;
+            I = direction;
+            transparencyColor = PAYLOAD_GENERAL.illumination.rgb;
+            throughput *= (1 - PAYLOAD_GENERAL.alpha);
+
+        }
+
+        refractColor += throughput * resultColor;
     }
 
     return refractColor;
@@ -129,7 +124,8 @@ void main() {
     const ivec2 xy = ivec2(gl_LaunchIDNV.xy);
 
     const vec4 merm = imageLoad(CACHE_ILLUM_COEFFS, xy);
-    const float opacity = imageLoad(CACHE_BLOCK_COLOR, xy).a;
+    const vec4 color = imageLoad(CACHE_BLOCK_COLOR, xy);
+    const float opacity = color.a;
 
     if (imageLoad(CACHE_INIT_DISTANCES, xy).r == 0.0 || opacity == 1.0 || merm.w <= 2) {
         imageStore(CACHE_REFRACTION, xy, vec4(0));
@@ -140,7 +136,7 @@ void main() {
     const vec3 N = imageLoad(CACHE_NORMALS, xy).xyz;
     const vec3 I = normalize(origin - vec3(UNI_CAMERA.origin.xyz));
 
-    vec3 refractionContrib = traceRefractions(origin, N, I, uint(merm.w));
+    vec3 refractionContrib = traceRefractions(origin, N, I, uint(merm.w), color.rgb);
     refractionContrib *= (1 - opacity);
 
     imageStore(CACHE_REFRACTION, xy, vec4(refractionContrib, 1.0));
