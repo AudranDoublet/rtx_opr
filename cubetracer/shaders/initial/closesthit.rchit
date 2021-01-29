@@ -28,7 +28,7 @@ void main() {
     vec3 color_modifier = vec3(1.0);
 
     PAYLOAD_GENERAL.real_hit_position = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
-    PAYLOAD_GENERAL.hit_position = PAYLOAD_GENERAL.real_hit_position + normal * 0.01;
+    PAYLOAD_GENERAL.hit_position = PAYLOAD_GENERAL.real_hit_position + normal * 0.001;
 
     // if material is 2 (grass color overlay) and if the overlay isn't transparent,
     //  switch to material 1 and use the overlay texture
