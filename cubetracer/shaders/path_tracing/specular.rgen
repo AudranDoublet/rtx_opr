@@ -27,7 +27,7 @@ bool isShadowed(vec3 origin) {
         UNI_TLAS,
         gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsSkipClosestHitShaderNV, 0xff,
         1, 0, 1,
-        origin, 0.01, -UNI_SUN.direction, 200.0,
+        origin, 0.00, -UNI_SUN.direction, 200.0,
         PAYLOAD_IDX_SHADOWED
     );
 
@@ -64,7 +64,7 @@ vec3 sampleBrdfSpecular(
         UNI_TLAS,
         gl_RayFlagsNoneNV, 0xff,
         0, 0, 0,
-        origin, 0.01, L, 200.0,
+        origin, 0.0, L, 200.0,
         PAYLOAD_IDX_GENERAL
     );
 

@@ -25,7 +25,7 @@ bool isShadowed(vec3 origin) {
         UNI_TLAS,
         gl_RayFlagsTerminateOnFirstHitNV | gl_RayFlagsSkipClosestHitShaderNV, 0xff,
         1, 0, 1,
-        origin, 0.01, -UNI_SUN.direction, 200.0,
+        origin, 0.0, -UNI_SUN.direction, 200.0,
         PAYLOAD_IDX_SHADOWED
     );
 
@@ -40,10 +40,12 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transpare
     vec3 throughput = vec3(1);
     bool stop = false;
 
-    for (uint i = 0; i < C_REFRACT_DEPTH_MAX
+    for (uint i = 0; i < 8
             && dot(throughput, throughput) > C_REFRACT_MIN_CONTRIB
             && !stop; i++) {
-
+        if (dot(N, I) > 0) {
+            N = -N;
+        }
         const float eta = n1/n2;
 
         vec3 direction = refract(normalize(I), normalize(N), eta);
@@ -55,7 +57,7 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transpare
             UNI_TLAS,
             gl_RayFlagsNoneNV,
             0xff, 2, 0, 0,
-            origin, 0.01, direction, 200.0,
+            origin, 0.0001, direction, 200.0,
             PAYLOAD_IDX_GENERAL
         );
 
@@ -67,8 +69,6 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transpare
         // SKY 
         if (!PAYLOAD_GENERAL.hit) {
             stop = true;
-            // return vec3(1,0,0);
-            // if (dot(throughput, throughput) < 0.989)
             behindColor = PAYLOAD_GENERAL.illumination;
         } else if (PAYLOAD_GENERAL.material < 3) { // OPAQUE MATERIAL
             stop = true;
@@ -84,9 +84,6 @@ vec3 traceRefractions(vec3 origin, vec3 N, vec3 I, uint material, vec3 transpare
             I = direction;
             transparencyColor = PAYLOAD_GENERAL.illumination.rgb;
 
-            if (dot(N, I) > 0) {
-                N = -N;
-            }
             if (opacity > 0) {
                 float shadow = isShadowed(PAYLOAD_GENERAL.hit_position) ? 0 : 1;
                 behindColor =

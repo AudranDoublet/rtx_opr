@@ -48,7 +48,7 @@ void main() {
         vec3 specular;
         float NoL;
         diffuseBurleySun(
-            PAYLOAD_GENERAL.hit_position, 
+            PAYLOAD_GENERAL.hit_position,
             PAYLOAD_GENERAL.normal, 
             mer,
             surfaceColor,
@@ -63,7 +63,8 @@ void main() {
 
         imageStore(CACHE_NORMALS, xy, vec4(PAYLOAD_GENERAL.normal, 0.0));
         imageStore(CACHE_INIT_DISTANCES, xy, vec4(PAYLOAD_GENERAL.distance));
-        imageStore(CACHE_ORIGIN, xy, vec4(PAYLOAD_GENERAL.hit_position, 0.0));
+        imageStore(CACHE_DENOISE_NEW_ORIGIN, xy, vec4(PAYLOAD_GENERAL.real_hit_position, 0.0));
+        imageStore(CACHE_ORIGIN, xy, vec4(PAYLOAD_GENERAL.hit_position, 1.0));
         imageStore(CACHE_ILLUM_COEFFS, xy, vec4(PAYLOAD_GENERAL.mer, PAYLOAD_GENERAL.material));
         imageStore(CACHE_BLOCK_COLOR, xy, vec4(PAYLOAD_GENERAL.illumination, PAYLOAD_GENERAL.alpha));
     } else {
@@ -72,6 +73,7 @@ void main() {
         imageStore(CACHE_NORMALS, xy, vec4(0));
         imageStore(CACHE_INIT_DISTANCES, xy, vec4(0.0));
         imageStore(CACHE_ORIGIN, xy, vec4(origin + direction, 1.0));
+        imageStore(CACHE_DENOISE_NEW_ORIGIN, xy, vec4(origin + direction, 1.0));
         imageStore(CACHE_ILLUM_COEFFS, xy, vec4(0));
         imageStore(CACHE_BLOCK_COLOR, xy, vec4(0.0));
     }

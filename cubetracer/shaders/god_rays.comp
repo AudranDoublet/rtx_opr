@@ -39,7 +39,7 @@ float getDensity(vec3 p)
 
 float getStep(float t, float density)
 {
-    return 0.3;
+    return 0.1;
     return max(1, mix(20, 5, density));
 }
 
