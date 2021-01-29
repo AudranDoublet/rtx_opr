@@ -27,7 +27,8 @@ void main() {
                     +  BLAS_TRIANGLE_DATA[gl_InstanceID].data[gl_PrimitiveID].tex_v * attribs.y;
     vec3 color_modifier = vec3(1.0);
 
-    PAYLOAD_GENERAL.hit_position = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;// + normal * 0.001;
+    PAYLOAD_GENERAL.real_hit_position = gl_WorldRayOriginNV + gl_WorldRayDirectionNV * gl_HitTNV;
+    PAYLOAD_GENERAL.hit_position = PAYLOAD_GENERAL.real_hit_position + normal * 0.01;
 
     // if material is 2 (grass color overlay) and if the overlay isn't transparent,
     //  switch to material 1 and use the overlay texture
@@ -55,6 +56,7 @@ void main() {
 
     // water
     if (material == 4) {
+        PAYLOAD_GENERAL.hit_position = PAYLOAD_GENERAL.real_hit_position - normal * 0.001;
         normal_deformed = normal;
     }
 

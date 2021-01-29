@@ -12,44 +12,47 @@
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
+void showAll(const ivec2 xy, bool withGodRays) {
+    const vec4 direct_illum = max(imageLoad(CACHE_DIRECT_ILLUM, xy), 0.0);
+    const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
+
+    const vec4 emissive = max(vec4(imageLoad(CACHE_BLOCK_COLOR, xy).xyz, 1.0) * imageLoad(CACHE_ILLUM_COEFFS, xy).g, 0.0);
+    const vec4 pt_diffuse = max(vec4(imageLoad(CACHE_PT_DIFFUSE, xy).xyz, 1.0), 0.0);
+    const vec4 pt_specular = max(vec4(imageLoad(CACHE_PT_SPECULAR, xy).xyz, 1.0), 0.0);
+    const vec4 refraction = max(vec4(imageLoad(CACHE_REFRACTION, xy).xyz, 1.0), 0.0);
+    const vec4 god_rays = withGodRays ? imageLoad(CACHE_GOD_RAYS, xy) : vec4(0);
+
+    const vec4 merm = imageLoad(CACHE_ILLUM_COEFFS, xy);
+
+    vec4 color = god_rays + emissive + direct_illum*shadows;
+
+    vec3 N = imageLoad(CACHE_NORMALS, xy).xyz;
+    float opacity = imageLoad(CACHE_BLOCK_COLOR, xy).a;
+    if (N != vec3(0) && (merm.w == 3 || merm.w == 5) && opacity < 0.9) {
+        float n1 = getMaterialIOR(0);
+        float n2 = getMaterialIOR(uint(merm.w));
+
+        vec3 I = normalize(imageLoad(CACHE_ORIGIN, xy).xyz - vec3(UNI_CAMERA.origin.xyz));
+        float coeffReflection = fresnelSchlick(N, I, n1, n2, n1/n2);
+        vec4 others = (1 - coeffReflection) * refraction + coeffReflection * pt_specular;
+
+        color += mix(pt_diffuse, others, opacity);
+        color += others; //+ pt_diffuse;
+    } else {
+        color += pt_diffuse + pt_specular + refraction;
+    }
+
+    const float gamma = 1.0;
+    vec3 corrected_color = pow(color.rgb, vec3(1.0/gamma));
+
+    imageStore(CACHE_RESULT_IMAGE, xy, vec4(corrected_color, 1.0));
+}
+
 void main() {
     const ivec2 xy = ivec2(gl_GlobalInvocationID.xy);
 
-    if (UNI_SCENE.rendered_buffer == 0)
-    {
-        const vec4 direct_illum = max(imageLoad(CACHE_DIRECT_ILLUM, xy), 0.0);
-        const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
-
-        const vec4 emissive = max(vec4(imageLoad(CACHE_BLOCK_COLOR, xy).xyz, 1.0) * imageLoad(CACHE_ILLUM_COEFFS, xy).g, 0.0);
-        const vec4 pt_diffuse = max(vec4(imageLoad(CACHE_PT_DIFFUSE, xy).xyz, 1.0), 0.0);
-        const vec4 pt_specular = max(vec4(imageLoad(CACHE_PT_SPECULAR, xy).xyz, 1.0), 0.0);
-        const vec4 refraction = max(vec4(imageLoad(CACHE_REFRACTION, xy).xyz, 1.0), 0.0);
-        const vec4 god_rays = imageLoad(CACHE_GOD_RAYS, xy);
-
-        const vec4 merm = imageLoad(CACHE_ILLUM_COEFFS, xy);
-
-        vec4 color = god_rays + emissive + direct_illum*shadows;
-
-        vec3 N = imageLoad(CACHE_NORMALS, xy).xyz;
-        float opacity = imageLoad(CACHE_BLOCK_COLOR, xy).a;
-        if (N != vec3(0) && (merm.w == 3 || merm.w == 5) && opacity < 0.9) {
-            float n1 = getMaterialIOR(0);
-            float n2 = getMaterialIOR(uint(merm.w));
-
-            vec3 I = normalize(imageLoad(CACHE_ORIGIN, xy).xyz - vec3(UNI_CAMERA.origin.xyz));
-            float coeffReflection = fresnelSchlick(N, I, n1, n2, n1/n2);
-            vec4 others = (1 - coeffReflection) * refraction + coeffReflection * pt_specular;
-
-            color += mix(pt_diffuse, others, opacity);
-            color += others; //+ pt_diffuse;
-        } else {
-            color += pt_diffuse + pt_specular + refraction;
-        }
-
-        const float gamma = 1.0;
-        vec3 corrected_color = pow(color.rgb, vec3(1.0/gamma));
-
-        imageStore(CACHE_RESULT_IMAGE, xy, vec4(corrected_color, 1.0));
+    if (UNI_SCENE.rendered_buffer == 0) {
+        showAll(xy, true);
     }
     else if (UNI_SCENE.rendered_buffer == 1)
     {
@@ -74,37 +77,13 @@ void main() {
         const vec4 shadows = imageLoad(CACHE_SHADOWS, xy);
         const vec4 direct_illum = imageLoad(CACHE_DIRECT_ILLUM, xy);
         imageStore(CACHE_RESULT_IMAGE, xy, direct_illum * shadows);
-
-        // vec3 origin = imageLoad(CACHE_ORIGIN, xy).xyz;
-        // vec3 normal = imageLoad(CACHE_NORMALS, xy).xyz;
-        // vec3 color = vec3(0);
-//
-        // if (normal != vec3(0)) {
-//
-            // origin /= vec3(16, 1, 16);
-            // origin = floor(origin);
-            // origin *= C_PI;
-//
-            // uint seed = uint(origin.x) * 7 + uint(origin.z) * 11;
-//
-            // float a = noise(seed);
-            // float b = noise(seed);
-//
-            // color = vec3(a, b, 0.5+(cos(2*C_PI*origin.x) + sin(2*C_PI*origin.z))/4);
-        // }
-
-        // imageStore(CACHE_RESULT_IMAGE, xy, vec4(color, 0.0));
     }
-    else if (UNI_SCENE.rendered_buffer == 6)
-    {
+    else if (UNI_SCENE.rendered_buffer == 6) {
         const vec4 shadows = vec4(imageLoad(CACHE_DENOISE_NEW_HISTORY_LENGTH, xy).r) / 32.0;
-
         imageStore(CACHE_RESULT_IMAGE, xy, shadows);
     }
-    else if (UNI_SCENE.rendered_buffer == 7)
-    {
-        float noise = imageLoad(CACHE_NOISE, xy).r;
-        imageStore(CACHE_RESULT_IMAGE, xy, vec4(noise));
+    else if (UNI_SCENE.rendered_buffer == 7) {
+        showAll(xy, false);
     }
     else if (UNI_SCENE.rendered_buffer == 8)
     {
@@ -127,5 +106,5 @@ void main() {
     imageStore(CACHE_DENOISE_PREV_MOMENTS, xy, imageLoad(CACHE_DENOISE_NEW_MOMENTS, xy));
     imageStore(CACHE_DENOISE_PREV_HISTORY_LENGTH, xy, imageLoad(CACHE_DENOISE_NEW_HISTORY_LENGTH, xy));
     imageStore(CACHE_DENOISE_PREV_INITIAL_DISTANCES, xy, imageLoad(CACHE_INIT_DISTANCES, xy));
-    imageStore(CACHE_DENOISE_PREV_ORIGIN, xy, imageLoad(CACHE_ORIGIN, xy));
+    imageStore(CACHE_DENOISE_PREV_ORIGIN, xy, imageLoad(CACHE_DENOISE_NEW_ORIGIN, xy));
 }

@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 const SHADER_FOLDER: &str = "cubetracer/shaders";
 const MAX_INSTANCE_BINDING: usize = 1024;
-const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 1024, width: 1024 };
+const SHADOW_MAP_EXTENT : vk::Extent2D = vk::Extent2D { height: 4096, width: 4096};
 
 pub struct Cubetracer {
     chunks: HashMap<BlasName, ChunkMesh>,
@@ -286,8 +286,8 @@ impl RTXData {
 impl RTXData {
     pub fn new(context: &Arc<Context>, swapchain: &Swapchain, cubetracer: &mut Cubetracer) -> Self {
         let swapchain_props = swapchain.properties();
-        let width = swapchain_props.extent.width;// / 4 * 3;
-        let height = swapchain_props.extent.height;// / 4 * 3;
+        let width = swapchain_props.extent.width / 4 * 3;
+        let height = swapchain_props.extent.height / 4 * 3;
 
         let extent = vk::Extent2D {
             width,
@@ -304,7 +304,7 @@ impl RTXData {
             .simple("normals", swapchain, BufferFormat::RGBA)
             .double("initial_distances", swapchain, BufferFormat::RGBA)
             .simple("direct_illumination", swapchain, BufferFormat::RGBA)
-            .double_extent("hit_point", extent, BufferFormat::RGBA)
+            .double_extent("hit_point_denoising", extent, BufferFormat::RGBA)
             .simple("shadow", swapchain, BufferFormat::RGBA)
             .simple("mer", swapchain, BufferFormat::RGBA)
             .double("pt_diffuse", swapchain, BufferFormat::RGBA)
@@ -317,7 +317,8 @@ impl RTXData {
             .simple_extent("god_rays", extent, BufferFormat::RGBA)
             .double("pt_specular", swapchain, BufferFormat::RGBA)
             .simple("block_color", swapchain, BufferFormat::RGBA)
-            .simple("refract", swapchain, BufferFormat::RGBA);
+            .simple("refract", swapchain, BufferFormat::RGBA)
+            .simple_extent("hit_point", extent, BufferFormat::RGBA);
 
         cache_buffers
             .texture_mut("shadow_map")
@@ -463,6 +464,7 @@ impl RTXData {
                     "normals",
                     "initial_distances",
                     "hit_point",
+                    "hit_point_denoising",
                     "mer",
                     "direct_illumination",
                     "block_color",
