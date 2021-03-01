@@ -286,8 +286,8 @@ impl RTXData {
 impl RTXData {
     pub fn new(context: &Arc<Context>, swapchain: &Swapchain, cubetracer: &mut Cubetracer) -> Self {
         let swapchain_props = swapchain.properties();
-        let width = swapchain_props.extent.width / 4 * 3;
-        let height = swapchain_props.extent.height / 4 * 3;
+        let width = swapchain_props.extent.width;// / 4 * 3;
+        let height = swapchain_props.extent.height;// / 4 * 3;
 
         let extent = vk::Extent2D {
             width,
