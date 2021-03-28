@@ -17,9 +17,7 @@ Images are more talkative than long texts, so here are few samples of what our e
 
 Here is a demonstration video that shows some scenes captured from the game (*you have to click on the image below*):
 
-[![Demonstration Video](https://res.cloudinary.com/marcomontalbano/image/upload/v1598040748/video_to_markdown/images/youtube--cHuE7GmoEc8-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://www.youtube.com/watch?v=cHuE7GmoEc8 "Demonstration Video")
-
-**For further details about the conception of this project, you can watch the french (but subtitled) explanation video available [https://youtu.be/dpVvFUy8lug](**here**).**
+[![Demonstration Video](http://img.youtube.com/vi/OUKqvlPS1nk/0.jpg)](http://www.youtube.com/watch?v=OUKqvlPS1nk "Demonstration Video")
 
 ## Disclaimer
 
