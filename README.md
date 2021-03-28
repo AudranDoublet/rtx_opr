@@ -9,13 +9,11 @@ The project is entirely written in Rust and GLSL (for Vulkan), using [Ash](https
 
 ## Samples
 
-FIXME new samples
-
 Images are more talkative than long texts, so here are few samples of what our engines are capable of:
 
-<img src="/data/samples/sky_sctr.jpg" width="384" height="216"> <img src="/data/samples/lights.jpg" width="384" height="216">
-<img src="/data/samples/hole.jpg" width="384" height="216"> <img src="/data/samples/trees.jpg" width="384" height="216">
-<img src="/data/samples/water_deformation.jpg" width="384" height="216"> <img src="/data/samples/plants.jpg" width="384" height="216">
+<img src="/data/samples/1.png" width="384" height="216"> <img src="/data/samples/4.png" width="384" height="216">
+<img src="/data/samples/2.png" width="384" height="216"> <img src="/data/samples/5.png" width="384" height="216">
+<img src="/data/samples/3.png" width="384" height="216"> <img src="/data/samples/6.png" width="384" height="216">
 
 Here is a demonstration video that shows some scenes captured from the game (*you have to click on the image below*):
 
