@@ -23,6 +23,8 @@ Here is a demonstration video that shows some scenes captured from the game (*yo
 
 We made every resources used by the project except for the Textures that we took from the internet, a **big thanks** to people who contributed to those **beautiful** and **free** textures! :heart:
 
+This project was written in a rush, there may be some mistakes and imperfections, although we put a lot of effort and the results are satisfactory.
+
 # Functionalities
 
 RTX-GlOPR is a simple Minecraft-like game, which use path tracing algorithms for rendering.
@@ -36,7 +38,7 @@ We implemented a minimalistic game engine using AABB collisions.
 
 Finally, we implemented a rendering pipeline in Vulkan with a few steps:
 
-FIXME schema
+ <img src="/data/samples/schema.png">
 
 **Initial ray**, which is basically a ray casting for each screen pixel, to known the hitten object (and store the normal, material properties, material color, ...).
 It can be noted that this could be replaced by traditional rasterization, which would probably be faster.
@@ -48,9 +50,9 @@ In fact, these lights are not managed in raytracing but we "hope" to simply touc
 
 The interest of this implementation is the performance: Minecraft is a game where light sources can be counted by hundreds or thousands, and it would be unthinkable to throw so many rays.
 
-**Diffuse reflections** are implemented using Disney-Burley model. FIXME
+**Diffuse reflections** are implemented using  **Disney-Burley [1]** model, resulting in high quality results with simple textures, easily taking into account the roughness, metalness and specularity of a material.
 
-**Specular reflections** are implemented using a Microfacet-based BRDF. FIXME
+**Specular reflections** are implemented using a **Microfacet-based BRDF [2]**, describing a material surface realistically as many micro-facets that deviate the direction of the reflected light rays. 
 
 **Refraction** step sends rays through transparents surfaces (glasses and water). This step isn't done through path tracing for performance reasons.
 A big flaw of this approach is that diffuse and specular lightning won't be seen behind a transparent surface, nevertheless it's still provides good results.
@@ -63,7 +65,7 @@ Our version implements only the temporal filter, because the rest of our graphic
 **Shadow maps** are used as part of the god rays rendering. It's basically implemented as a depth map of the scene from the sun view (orthographic projection). As for the initial ray, we implemented
 this step using RTX, but using rasterization would probably have been better.
 
-**God rays (atmospheric light scattering)** are due to small particles in the light-transmitting medium. To simulate the effect we samples some air points between the camera and the initial hit point. For each of
+**God rays (atmospheric light scattering) [3]** are due to small particles in the light-transmitting medium. To simulate the effect we samples some air points between the camera and the initial hit point. For each of
 these points, we need to know whether or not their are shadowed. If they are, the point doesn't provide illumination, otherwise it does. The shadowmap is then very useful, because it wouldn't be feasible to launch so many shadow rays.
 
 This part could benefit from a less basic implementation of shadowmaps.
@@ -74,8 +76,26 @@ Note: in fact, for performance reasons, god rays are computed with a resolution 
 
 # Performances
 
-FIXME
+Having an optimized code wasn't the main focus of this project, however, the performances are still correct.
 
+On an **NVIDIA RTX 3060 Ti** (yeeeeah I was fortunate enough to get one 😁), with a **1080P** resolution, the performances are approximately:
+
+
+|                                                                CONFIGURATION                                                               |  FPS |
+|:------------------------------------------------------------------------------------------------------------------------------------------:|:----:|
+| Ray Tracing: diffuse + shadow only                                                                                                         | >144 |
+| Path Tracing: 3 samples per pixel, 4 bounces                                                                                               | ~80  |
+| Path tracing: 1 sample per pixel, 4 bounces + Direct/Indirect specular + God rays (shadowmap 4k resolution) + Refraction (up to 8 bounces) | ~25  |
+
+This is way better than the performances we got on our initial project: [Path-traced Minecraft using OpenGL compute shaders](https://github.com/AudranDoublet/glopr) where having optimized code was one of our main targets. Here are the performances on OpenGL with compute shaders (and less features):
+
+|      Graphic Card      | Ray Tracing 540P (FPS) | Path Tracing 540P (FPS)  *diffuse only, up to 5 bounces* |
+|:----------------------:|:----------------------:|:--------------------------------------------------------:|
+| Intel UHD Graphics 620 |           30           |                            10                            |
+| Nvidia GTX 1050        |           60           |                            20                            |
+| Nvidia RTX 2060        |           200          |                            60                            |
+
+ 
 # Compile me
 
 1. Install rustup: https://rustup.rs/
@@ -89,7 +109,7 @@ Example:
 ```
 cargo run --release -- game \
           --view-distance 10 \
-          --layout fr
+          --layout us
 ```
 
 Main game parameters:
@@ -131,7 +151,9 @@ NVIDIA offers resources on RTX (including the official version of Minecraft RTX 
 * [Q2RTX, the RTX version of Quake2 made by NVIDIA](https://github.com/NVIDIA/Q2RTX)
 * [RTX tutorial for DX12](https://developer.nvidia.com/rtx/raytracing/dxr/DX12-Raytracing-tutorial-Part-1)
 
-FIXME
-[1] disney burley
-[2] microfacet
-[3] Q2RTX video on godrays
+
+[1] [Burley, Brent, and Walt Disney Animation Studios. "Physically-based shading at disney." ACM SIGGRAPH. Vol. 2012. vol. 2012, 2012.](https://media.disneyanimation.com/uploads/production/publication_asset/48/asset/s2012_pbs_disney_brdf_notes_v3.pdf)
+
+[2] [Walter, Bruce, et al. "Microfacet Models for Refraction through Rough Surfaces." Rendering techniques 2007 (2007): 18th.](http://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf)
+
+[3] [GDC 2016: Fast, Flexible, Physically-Based Volumetric Light Scattering (presented by NVIDIA)](https://www.gdcvault.com/play/1023519/Fast-Flexible-Physically-Based-Volumetric)
