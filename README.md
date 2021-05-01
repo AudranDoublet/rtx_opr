@@ -52,7 +52,14 @@ The interest of this implementation is the performance: Minecraft is a game wher
 
 **Diffuse reflections** are implemented using  **Disney-Burley [1]** model, resulting in high quality results with simple textures, easily taking into account the roughness, metalness and specularity of a material.
 
-**Specular reflections** are implemented using a **Microfacet-based BRDF [2]**, describing a material surface realistically as many micro-facets that deviate the direction of the reflected light rays. 
+**Specular reflections** are implemented using a **Microfacet-based BRDF [2]**, describing a material surface realistically as many micro-facets that deviate the direction of the reflected light rays.
+
+This is done by calculating:
+- Fresnel term: reflectance for a given normal et light direction
+- **D** microfacet distribution term: distribution of surface normals for a given microfacet (how the microfacet normal is distributd around a given direction), e.g., [Blinn-Phong distribution](https://en.wikipedia.org/wiki/Blinn%E2%80%93Phong_reflection_model). *We use the GGX distribution*.
+- **G** shadowing-masking term: probability that the microfacet is visible from the incoming/outgoing direction. *We use the Smith G*.
+
+Roughly, by multiplying those three terms together (normalizing by other stuffs), we obtain the amount of light reflected by a given microfacet.
 
 **Refraction** step sends rays through transparents surfaces (glasses and water). This step isn't done through path tracing for performance reasons.
 A big flaw of this approach is that diffuse and specular lightning won't be seen behind a transparent surface, nevertheless it's still provides good results.
@@ -78,7 +85,7 @@ Note: in fact, for performance reasons, god rays are computed with a resolution 
 
 Having an optimized code wasn't the main focus of this project, however, the performances are still correct.
 
-On an **NVIDIA RTX 3060 Ti** (yeeeeah I was fortunate enough to get one 😁), with a **1080P** resolution, the performances are approximately:
+On an **NVIDIA RTX 3060 Ti**, with a **1080P** resolution, the performances are approximately:
 
 
 |                                                                CONFIGURATION                                                               |  FPS |
